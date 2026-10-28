@@ -1,0 +1,7 @@
+# Local AI agent tooling (not versioned)
+.claude/
+
+# Spec Kit agent integration state (machine-local; recreate with `specify init`)
+.specify/init-options.json
+.specify/integration.json
+.specify/integrations/
