@@ -1,0 +1,9 @@
+{
+  "extends": "@cognitive-dag/config/tsconfig.node.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}
