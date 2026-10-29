@@ -199,11 +199,11 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Implementation for User Story 6
 
-- [ ] T065 [P] [US6] Crear `docs/adr/template.md` (MADR 4) y `docs/adr/0001-record-architecture-decisions.md`
-- [ ] T066 [P] [US6] Crear ADRs 0002–0011 en `docs/adr/` para D1–D10 de `docs/PLAN.md` §2
-- [ ] T067 [P] [US6] Crear ADRs 0012 (TypeScript 6), 0013 (NestJS 11), 0014 (polling en F0), 0015 (pruebas con Compose compartido), 0016 (librerías del API) y 0017 (tooling de calidad y CI) en `docs/adr/`
-- [ ] T068 [P] [US6] Crear `docs/threat-model.md`: diagrama de flujo de datos con límites de confianza y tabla STRIDE por componente y flujo, con estado `mitigated`, `accepted` o `planned:<fase>`
-- [ ] T069 [US6] Completar `README.md` (inglés): descripción, arquitectura, enlaces a `docs/PLAN.md`, constitution, ADRs y modelo de amenazas
+- [X] T065 [P] [US6] Crear `docs/adr/template.md` (MADR 4) y `docs/adr/0001-registrar-decisiones-de-arquitectura.md`
+- [X] T066 [P] [US6] Crear ADRs 0002–0011 en `docs/adr/` para D1–D10 de `docs/PLAN.md` §2
+- [X] T067 [P] [US6] Crear ADRs 0012 (TypeScript 6), 0013 (NestJS 11), 0014 (polling en F0), 0015 (pruebas con Compose compartido), 0016 (librerías del API) y 0017 (tooling de calidad y CI) en `docs/adr/`
+- [X] T068 [P] [US6] Crear `docs/threat-model.md`: diagrama de flujo de datos con límites de confianza y tabla STRIDE por componente y flujo, con estado `mitigated`, `accepted` o `planned:<fase>`
+- [X] T069 [US6] Completar `README.md` (inglés): descripción, arquitectura, enlaces a `docs/PLAN.md`, constitution, ADRs y modelo de amenazas
 
 **Checkpoint**: SC-008 verificado
 
@@ -211,11 +211,11 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ## Phase 9: Polish & Cross-Cutting Concerns
 
-- [ ] T070 [P] Actualizar `docs/PLAN.md` con las decisiones de F0 (TypeScript 6, NestJS 11, versiones fijadas) y marcar O3 (Valkey) como cerrada
-- [ ] T071 [P] Crear issue de seguimiento para migrar a NestJS 12 cuando `nestjs-zod` y `@openfeature/nestjs-sdk` lo soporten
-- [ ] T072 Verificar que no queden `TODO` sin issue asociado (`git grep -n TODO`)
-- [ ] T073 Ejecutar todos los escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T074 Revisar la tabla "Security Considerations" de la spec contra la implementación y marcar el checklist de seguridad en la PR
+- [X] T070 [P] Actualizar `docs/PLAN.md` con las decisiones de F0 (TypeScript 6, NestJS 11, versiones fijadas) y marcar O3 (Valkey) como cerrada
+- [X] T071 [P] Crear issue de seguimiento para migrar a NestJS 12 cuando `nestjs-zod` y `@openfeature/nestjs-sdk` lo soporten
+- [X] T072 Verificar que no queden `TODO` sin issue asociado (`git grep -n TODO`)
+- [X] T073 Ejecutar todos los escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T074 Revisar la tabla "Security Considerations" de la spec contra la implementación y marcar el checklist de seguridad en la PR
 
 ---
 
