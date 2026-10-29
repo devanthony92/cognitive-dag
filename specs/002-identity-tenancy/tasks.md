@@ -80,21 +80,21 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T027 [P] [US2] Unitarias `session.service.test.ts`: token 32 bytes, solo hash persistido, rotación, validez = PostgreSQL vigente **y** clave en Valkey; clave ausente → revocada con `idle_timeout`
-- [ ] T028 [P] [US2] Integración `login.test.ts`: credenciales inválidas, email inexistente y cuenta sin verificar → misma respuesta 401 `INVALID_CREDENTIALS`; cookie `__Host-session` con `HttpOnly`, `Secure`, `SameSite=Lax`; cookie previa invalidada al iniciar sesión
-- [ ] T029 [P] [US2] Integración `rate-limit.test.ts`: espera progresiva por cuenta y por IP desde el 5.º fallo; 429 con `Retry-After`; Valkey caído → 503
-- [ ] T030 [P] [US2] Integración `csrf.test.ts`: sin `X-CSRF-Token`, token de otra sesión u `Origin` distinto → 403 `CSRF_REJECTED`
-- [ ] T031 [P] [US2] Integración `timing.test.ts`: tiempo medio de login, registro y restablecimiento con email existente e inexistente difiere < 50 ms (SC-004)
-- [ ] T032 [P] [US2] Integración `logout.test.ts`: logout revoca en < 1 s; sesión vencida por 12 h → 401
+- [X] T027 [P] [US2] Unitarias `session.service.test.ts`: token 32 bytes, solo hash persistido, rotación, validez = PostgreSQL vigente **y** clave en Valkey; clave ausente → revocada con `idle_timeout`
+- [X] T028 [P] [US2] Integración `login.test.ts`: credenciales inválidas, email inexistente y cuenta sin verificar → misma respuesta 401 `INVALID_CREDENTIALS`; cookie `__Host-session` con `HttpOnly`, `Secure`, `SameSite=Lax`; cookie previa invalidada al iniciar sesión
+- [X] T029 [P] [US2] Integración `rate-limit.test.ts`: espera progresiva por cuenta y por IP desde el 5.º fallo; 429 con `Retry-After`; Valkey caído → 503
+- [X] T030 [P] [US2] Integración `csrf.test.ts`: sin `X-CSRF-Token`, token de otra sesión u `Origin` distinto → 403 `CSRF_REJECTED`
+- [X] T031 [P] [US2] Integración `timing.test.ts`: tiempo medio de login, registro y restablecimiento con email existente e inexistente difiere < 50 ms (SC-004)
+- [X] T032 [P] [US2] Integración `logout.test.ts`: logout revoca en < 1 s; sesión vencida por 12 h → 401
 
 ### Implementation
 
-- [ ] T033 [US2] `session.service.ts`: PostgreSQL + Valkey según R5; hash Argon2id ficticio para emails inexistentes (R12)
-- [ ] T034 [US2] `session.guard.ts` global (excepto salud, flags públicos y autenticación) y `csrf.guard.ts`
-- [ ] T035 [US2] Controlador: `/auth/login`, `/auth/logout`, `/auth/session`; CORS con `credentials: true` solo para `WEB_ORIGIN`
-- [ ] T036 [US2] Mover el ping a `/api/v1/organizations/{organizationId}/pings` detrás de `identity-enabled`, con guard de organización; ruta de F0 solo con el flag apagado
-- [ ] T037 [US2] Web: `/login`, cierre de sesión, rutas protegidas con `beforeLoad`, cliente HTTP con `credentials: 'include'` y `X-CSRF-Token`, redirección a `/login` ante 401
-- [ ] T038 [US2] Eventos `auth.login_succeeded`, `auth.login_failed`, `auth.logout`, `auth.rate_limited`
+- [X] T033 [US2] `session.service.ts`: PostgreSQL + Valkey según R5; hash Argon2id ficticio para emails inexistentes (R12)
+- [X] T034 [US2] `session.guard.ts` global (excepto salud, flags públicos y autenticación) y `csrf.guard.ts`
+- [X] T035 [US2] Controlador: `/auth/login`, `/auth/logout`, `/auth/session`; CORS con `credentials: true` solo para `WEB_ORIGIN`
+- [X] T036 [US2] Mover el ping a `/api/v1/organizations/{organizationId}/pings` detrás de `identity-enabled`, con guard de organización; ruta de F0 solo con el flag apagado
+- [X] T037 [US2] Web: `/login`, cierre de sesión, rutas protegidas con `beforeLoad`, cliente HTTP con `credentials: 'include'` y `X-CSRF-Token`, redirección a `/login` ante 401
+- [X] T038 [US2] Eventos `auth.login_succeeded`, `auth.login_failed`, `auth.logout`, `auth.rate_limited`
 
 ---
 
@@ -102,15 +102,15 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T039 [P] [US3] Integración `cross-tenant.test.ts`: para cada endpoint bajo `/organizations/{id}` y cada combinación (no miembro, recurso de otra organización), 404 `NOT_FOUND` (SC-002)
-- [ ] T040 [P] [US3] Integración `rls-defense.test.ts`: con el guard de organización desactivado en una app de prueba, las lecturas y escrituras a otra organización siguen bloqueadas (SC-003)
-- [ ] T041 [P] [US3] Unitarias `organization.guard.test.ts`: membresía activa requerida, rol requerido por ruta, membresía borrada → 404
+- [X] T039 [P] [US3] Integración `cross-tenant.test.ts`: para cada endpoint bajo `/organizations/{id}` y cada combinación (no miembro, recurso de otra organización), 404 `NOT_FOUND` (SC-002)
+- [X] T040 [P] [US3] Integración `rls-defense.test.ts`: con el guard de organización desactivado en una app de prueba, las lecturas y escrituras a otra organización siguen bloqueadas (SC-003)
+- [X] T041 [P] [US3] Unitarias `organization.guard.test.ts`: membresía activa requerida, rol requerido por ruta, membresía borrada → 404
 
 ### Implementation
 
-- [ ] T042 [US3] `organization.guard.ts`: valida membresía y rol en cada petición y abre el contexto RLS con `withContext`
-- [ ] T043 [US3] `POST /api/v1/organizations` (crea y deja owner) y `GET /auth/session` con las organizaciones del usuario
-- [ ] T044 [US3] Web: selector de organización activa en la cabecera; rutas `/orgs/$organizationId/...`; organización expulsada → redirección a otra
+- [X] T042 [US3] `organization.guard.ts`: valida membresía y rol en cada petición y abre el contexto RLS con `withContext`
+- [X] T043 [US3] `POST /api/v1/organizations` (crea y deja owner) y `GET /auth/session` con las organizaciones del usuario
+- [X] T044 [US3] Web: selector de organización activa en la cabecera; rutas `/orgs/$organizationId/...`; organización expulsada → redirección a otra
 
 ---
 

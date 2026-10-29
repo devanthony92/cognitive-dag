@@ -41,7 +41,7 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.browser } },
   },
   {
-    files: ['apps/web/src/routes/**/*.{ts,tsx}'],
+    files: ['apps/web/src/routes/**/*.{ts,tsx}', 'apps/web/src/features/session/guards.ts'],
     rules: {
       // TanStack Router redirects are thrown by design.
       '@typescript-eslint/only-throw-error': 'off',

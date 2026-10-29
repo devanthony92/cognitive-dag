@@ -24,3 +24,6 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
+
+# TanStack Router generator cache
+.tanstack/

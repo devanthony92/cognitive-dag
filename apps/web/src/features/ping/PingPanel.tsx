@@ -23,8 +23,15 @@ function isTerminal(ping: PingExecution | undefined): boolean {
   return ping !== undefined && TERMINAL_PING_STATUSES.includes(ping.status);
 }
 
-/** Starts a ping and follows it until a terminal status. Hidden while the feature flag is off. */
-export function PingPanel() {
+/**
+ * Starts a ping and follows it until a terminal status. Hidden while the feature flag is off.
+ * Inside an organization (identity on) the ping is scoped to it; otherwise it is the F0 route.
+ */
+export function PingPanel({ organizationId }: { organizationId?: string } = {}) {
+  const basePath =
+    organizationId === undefined
+      ? '/api/v1/pings'
+      : `/api/v1/organizations/${organizationId}/pings`;
   const features = useQuery({
     queryKey: ['features'],
     queryFn: async () => (await request('/api/v1/features', PublicFeaturesSchema)).data,
@@ -33,7 +40,7 @@ export function PingPanel() {
   const start = useMutation({
     mutationFn: async () =>
       (
-        await request('/api/v1/pings', PingExecutionSchema, {
+        await request(basePath, PingExecutionSchema, {
           method: 'POST',
           headers: { [IDEMPOTENCY_KEY_HEADER]: crypto.randomUUID() },
           body: JSON.stringify({}),
@@ -43,10 +50,10 @@ export function PingPanel() {
 
   const pingId = start.data?.pingId;
   const status = useQuery({
-    queryKey: ['ping', pingId],
+    queryKey: ['ping', organizationId, pingId],
     enabled: pingId !== undefined,
     initialData: start.data,
-    queryFn: async () => (await request(`/api/v1/pings/${pingId}`, PingExecutionSchema)).data,
+    queryFn: async () => (await request(`${basePath}/${pingId}`, PingExecutionSchema)).data,
     refetchInterval: (query) => (isTerminal(query.state.data) ? false : POLL_INTERVAL_MS),
   });
 
