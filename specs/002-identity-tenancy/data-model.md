@@ -2,6 +2,9 @@
 
 > **Estado: APROBADO por el autor el 2026-10-29.** Cualquier cambio posterior requiere nueva
 > revisión del autor.
+>
+> Modificado el 2026-10-29 con aprobación del autor: `deleted_at` fuera de las políticas de RLS
+> (opción A). Ver la nota de "Aislamiento".
 
 Base de datos: PostgreSQL 18, esquema `public`. Decisiones de soporte en [research.md](./research.md)
 (R2 identificadores, R3 borrado lógico, R5 sesiones, R8 RLS, R9 roles).
@@ -225,20 +228,32 @@ Todas las tablas: `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`. Cont
 
 | Tabla | Lectura (`SELECT`) | Escritura |
 |---|---|---|
-| `users` | `deleted_at IS NULL` y (`id = ctx(user_id)` o `email = ctx(lookup_email)` o el usuario es miembro activo de `ctx(organization_id)`) | `INSERT` libre (registro); `UPDATE` solo `id = ctx(user_id)` |
-| `organizations` | `deleted_at IS NULL` y existe membresía activa de `ctx(user_id)` | `INSERT` con `created_by = ctx(user_id)`; `UPDATE` si `id = ctx(organization_id)` |
-| `memberships` | `deleted_at IS NULL` y (`user_id = ctx(user_id)` o `organization_id = ctx(organization_id)`) | `INSERT` y `UPDATE` si `organization_id = ctx(organization_id)` |
+| `users` | `id = ctx(user_id)` o `email = ctx(lookup_email)` o el usuario es miembro activo de `ctx(organization_id)` | `INSERT` libre (registro); `UPDATE` solo `id = ctx(user_id)` |
+| `organizations` | existe membresía activa de `ctx(user_id)` | `INSERT` con `created_by = ctx(user_id)`; `UPDATE` si `id = ctx(organization_id)` |
+| `memberships` | `user_id = ctx(user_id)` o `organization_id = ctx(organization_id)` | `INSERT` y `UPDATE` si `organization_id = ctx(organization_id)` |
 | `sessions` | `user_id = ctx(user_id)` o `token_hash = ctx(lookup_token_hash)` | `INSERT` y `UPDATE` con la misma condición |
 | `one_time_tokens` | `user_id = ctx(user_id)` o `token_hash = ctx(lookup_token_hash)` | igual |
 | `invitations` | `organization_id = ctx(organization_id)` o `token_hash = ctx(lookup_token_hash)` | `INSERT` y `UPDATE` con la misma condición |
 
 Notas:
+- En SQL, `ctx(x)` es `nullif(current_setting('app.x', true), '')` (un ajuste local a la transacción queda como texto vacío, no
+  NULL, al volver la conexión al pool) y `ctx(lookup_token_hash)` es el SHA-256 en hexadecimal, decodificado a
+  `bytea`.
+- **`deleted_at` no forma parte de las políticas de lectura** (opción A, aprobada por el autor). PostgreSQL
+  aplica también la política `SELECT` a la fila nueva de un `UPDATE` que lee columnas (`WHERE` o
+  `RETURNING`); con `deleted_at IS NULL` en la política, `UPDATE ... SET deleted_at = now() WHERE id = ...`
+  falla con "new row violates row-level security policy" (verificado en PostgreSQL 18.6 como
+  `app_runtime`). El aislamiento entre organizaciones no cambia: las filas borradas siguen siendo
+  invisibles e intocables desde otra organización. El filtro `deleted_at IS NULL` vive en un único lugar,
+  los selectores `active` de `packages/db`, y una regla de ESLint prohíbe en `apps/api` leer `users`,
+  `organizations` y `memberships` sin ellos. El trigger `memberships_keep_owner` cuenta solo owners
+  activos.
 - El registro crea usuario, organización personal y membresía en una transacción. Como
   `INSERT ... RETURNING` exige que la fila nueva cumpla la política de lectura, los ids se generan
   primero con `SELECT uuidv7()`, se fija `app.user_id` y `app.organization_id` con ellos y luego se
   insertan las filas.
 - Las políticas de `UPDATE` permiten marcar `deleted_at` (borrado lógico) dentro de la misma
-  organización; la fila deja de ser visible para lecturas posteriores.
+  organización; la aplicación deja de leer la fila a través de `active`.
 - Una prueba dedicada conecta como `app_runtime` sin contexto y verifica que no ve ninguna fila de
   ninguna tabla (SC-003).
 
