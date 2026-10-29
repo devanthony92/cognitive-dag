@@ -1,7 +1,7 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: planificación. Fecha: 2026-10-28.
-> Documento vivo: cada decisión cerrada se registra aquí o en un ADR (`docs/adr/`).
+> Estado: F0 completada; F1 es la siguiente fase. Fecha: 2026-10-28.
+> Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
 
@@ -40,16 +40,37 @@ del grafo publicado.
 | D9  | Frontend           | React + Vite + React Flow                                   | SPA; no se requiere SSR                                      |
 | D10 | Hosting            | Oracle Cloud Always Free (Ampere A1)                        | Ver sección 9                                                |
 
+### 2.1 Cambios y decisiones tomadas en F0
+
+Cada decisión de F0 tiene su ADR; aquí solo se listan los cambios que afectan a este plan.
+
+| Tema                   | Cambio respecto al plan                                                                                                                       | ADR                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| Registro de decisiones | ADRs MADR 4 en `docs/adr/`; D1–D10 tienen un ADR cada una                                                                                     | [0001](adr/0001-registrar-decisiones-de-arquitectura.md)–[0011](adr/0011-oracle-cloud-always-free.md)     |
+| TypeScript             | 6.0.3 (no 7): `typescript-eslint` aún no lo soporta                                                                                           | [0012](adr/0012-typescript-6.md)                                                                          |
+| NestJS                 | 11.2.8 (no 12): `nestjs-zod` y `@openfeature/nestjs-sdk` no soportan 12; issue [#10](https://github.com/devanthony92/cognitive-dag/issues/10) | [0013](adr/0013-nestjs-11.md)                                                                             |
+| Gestor de paquetes     | pnpm 12.16.1 vía Corepack; Node.js 24.22.1; todas las versiones fijadas de forma exacta                                                       | [0017](adr/0017-tooling-de-calidad-y-ci.md), [0020](adr/0020-politica-de-cadena-de-suministro-de-pnpm.md) |
+| Estado de la web       | Polling cada 1 s en F0; SSE en F3                                                                                                             | [0014](adr/0014-polling-en-f0.md)                                                                         |
+| Pruebas de integración | Contra el Compose compartido, no Testcontainers (§8)                                                                                          | [0015](adr/0015-pruebas-con-compose-compartido.md)                                                        |
+| Librerías del API      | `nestjs-pino`, `nestjs-cls`, `nestjs-zod`, terminus, OpenFeature, `iovalkey`, `pg`                                                            | [0016](adr/0016-librerias-del-api.md)                                                                     |
+| Tipos entre paquetes   | Condición de exportación `@cognitive-dag/source`                                                                                              | [0018](adr/0018-condicion-de-exportacion-source-para-tipos.md)                                            |
+| Dependencia vulnerable | Override de `multer` 2.5.0 hasta que Nest lo actualice; issue [#11](https://github.com/devanthony92/cognitive-dag/issues/11)                  | [0019](adr/0019-override-de-multer-2-5-0.md)                                                              |
+| PostgreSQL local       | Puerto de host 5433 (no 5432)                                                                                                                 | [0021](adr/0021-postgresql-en-puerto-5433.md)                                                             |
+| Llamadas a Temporal    | Plazo de 5 s y reintentos gRPC acotados en el API                                                                                             | [0022](adr/0022-plazo-y-reintentos-grpc-en-llamadas-a-temporal.md)                                        |
+| Imágenes               | Debian `bookworm-slim` fijada por digest; CI en amd64 y arm64                                                                                 | [0023](adr/0023-imagenes-de-contenedor-sobre-debian.md)                                                   |
+
+Modelo de amenazas v1: [`threat-model.md`](threat-model.md).
+
 ## 3. Decisiones abiertas
 
-| #   | Tema                                            | Opciones                                              | Recomendación                                                                                    |
-| --- | ----------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely                               | Drizzle: SQL explícito, buen soporte para RLS con `set_config` por transacción                   |
-| O2  | Autenticación                                   | Propia (Passport + argon2id) o librería (Better Auth) | Propia con argon2id + refresh tokens rotados; buen aprendizaje de OWASP A07                      |
-| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL                                    | Redis (Valkey): token bucket y CB con operaciones atómicas                                       |
-| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio                                 | AST propio pequeño y tipado en Zod; nunca `eval`                                                 |
-| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio                      | Grafana Cloud free para no consumir RAM de la VM                                                 |
-| O6  | Modelo Gemini concreto                          | Familia Flash / Flash-Lite / Pro                      | Verificar modelos vigentes al iniciar la fase 5; Flash-Lite para clasificar, Flash para compilar |
+| #   | Tema                                            | Opciones                                              | Recomendación                                                                                                                                                         |
+| --- | ----------------------------------------------- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely                               | Drizzle: SQL explícito, buen soporte para RLS con `set_config` por transacción                                                                                        |
+| O2  | Autenticación                                   | Propia (Passport + argon2id) o librería (Better Auth) | Propia con argon2id + refresh tokens rotados; buen aprendizaje de OWASP A07                                                                                           |
+| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL                                    | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4 |
+| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio                                 | AST propio pequeño y tipado en Zod; nunca `eval`                                                                                                                      |
+| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio                      | Grafana Cloud free para no consumir RAM de la VM                                                                                                                      |
+| O6  | Modelo Gemini concreto                          | Familia Flash / Flash-Lite / Pro                      | Verificar modelos vigentes al iniciar la fase 5; Flash-Lite para clasificar, Flash para compilar                                                                      |
 
 ## 4. Arquitectura
 
@@ -251,7 +272,7 @@ parcialmente al compilador y a futuras extensiones agénticas.
 ## 8. Calidad
 
 - TypeScript estricto, ESLint, Prettier.
-- Pruebas unitarias (Vitest), de integración con Testcontainers (Postgres, Redis, Temporal dev).
+- Pruebas unitarias (Vitest), de integración contra el Compose compartido ([ADR-0015](adr/0015-pruebas-con-compose-compartido.md)).
 - Pruebas de workflow y replay (sección 5.6).
 - **Evals del compilador**: dataset de intenciones con propiedades esperadas del DAG;
   se ejecutan bajo demanda o de forma programada por costo.
