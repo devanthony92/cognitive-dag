@@ -13,7 +13,9 @@ import { JsonBodyMiddleware } from './common/http/json-body.middleware';
 import { LoggingModule } from './common/logging/logging.module';
 import { AppConfigModule } from './config/config.module';
 import type { AppConfig } from './config/env.schema';
+import { FlagsModule } from './flags/flags.module';
 import { HealthModule } from './health/health.module';
+import { PingModule } from './ping/ping.module';
 import { TemporalModule } from './temporal/temporal.module';
 
 @Module({})
@@ -27,7 +29,9 @@ export class AppModule implements NestModule {
         CorrelationModule,
         LoggingModule,
         TemporalModule,
+        FlagsModule.forRoot(config.FEATURE_FLAGS),
         HealthModule,
+        PingModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },
