@@ -31,15 +31,15 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 **Purpose**: inicializar el monorepo y las herramientas de calidad locales
 
-- [ ] T001 Crear `.gitattributes` (`* text=auto eol=lf`), `.editorconfig` y `.nvmrc` (`24.22.1`) en la raíz
-- [ ] T002 Crear `package.json` raíz (`packageManager` pnpm fijado, `engines.node` `24.22.1`, scripts `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration`, `format`) y `pnpm-workspace.yaml` (`apps/*`, `packages/*`)
-- [ ] T003 [P] Crear `.npmrc` con `engine-strict=true` y `save-exact=true`
-- [ ] T004 [P] Crear `turbo.json` con pipelines `build`, `dev` (persistente, sin caché), `lint`, `typecheck`, `test`, `test:integration`
-- [ ] T005 [P] Crear `packages/config` con `tsconfig.base.json` (strict, TypeScript 6.0.3), presets de Vitest y `prettier.config.mjs`
-- [ ] T006 [P] Crear `eslint.config.mjs` raíz (ESLint 10 flat + `typescript-eslint` con type-checking, regla `no-eval` y `no-new-func` como error)
-- [ ] T007 [P] Crear `lefthook.yml` (pre-commit: lint y format de staged; commit-msg: commitlint) y `commitlint.config.mjs` con `@commitlint/config-conventional`
-- [ ] T008 [P] Crear `.env.example` con todas las variables de API, worker y web, `FEATURE_FLAGS='{"ping-enabled":true}'` y sin valores secretos reales
-- [ ] T009 Ejecutar `pnpm install` y verificar `pnpm lint`, `pnpm typecheck` y lefthook instalados
+- [X] T001 Crear `.gitattributes` (`* text=auto eol=lf`), `.editorconfig` y `.nvmrc` (`24.22.1`) en la raíz
+- [X] T002 Crear `package.json` raíz (`packageManager` pnpm fijado, `engines.node` `24.22.1`, scripts `dev`, `build`, `lint`, `typecheck`, `test`, `test:integration`, `format`) y `pnpm-workspace.yaml` (`apps/*`, `packages/*`)
+- [X] T003 [P] Crear `.npmrc` con `engine-strict=true` y `save-exact=true`
+- [X] T004 [P] Crear `turbo.json` con pipelines `build`, `dev` (persistente, sin caché), `lint`, `typecheck`, `test`, `test:integration`
+- [X] T005 [P] Crear `packages/config` con `tsconfig.base.json` (strict, TypeScript 6.0.3), presets de Vitest y `prettier.config.mjs`
+- [X] T006 [P] Crear `eslint.config.mjs` raíz (ESLint 10 flat + `typescript-eslint` con type-checking, regla `no-eval` y `no-new-func` como error)
+- [X] T007 [P] Crear `lefthook.yml` (pre-commit: lint y format de staged; commit-msg: commitlint) y `commitlint.config.mjs` con `@commitlint/config-conventional`
+- [X] T008 [P] Crear `.env.example` con todas las variables de API, worker y web, `FEATURE_FLAGS='{"ping-enabled":true}'` y sin valores secretos reales
+- [X] T009 Ejecutar `pnpm install` y verificar `pnpm lint`, `pnpm typecheck` y lefthook instalados
 
 ---
 
@@ -51,23 +51,23 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Tests (escribir primero)
 
-- [ ] T010 [P] Pruebas de esquemas en `packages/contracts/test/contracts.test.ts`: `ProblemDetails` exige `status`, `title`, `detail`, `code`, `correlationId` y rechaza `type`/`instance`; `message` "1–100 caracteres imprimibles"; `CorrelationId` acepta solo UUID "de ≤ 36 caracteres"
-- [ ] T011 [P] Pruebas de redacción en `packages/logger/test/redaction.test.ts`: `authorization`, `cookie`, `*.password`, `*.token`, `*.secret`, `*.apiKey`, `*.credentials` → `[REDACTED]`
+- [X] T010 [P] Pruebas de esquemas en `packages/contracts/test/contracts.test.ts`: `ProblemDetails` exige `status`, `title`, `detail`, `code`, `correlationId` y rechaza `type`/`instance`; `message` "1–100 caracteres imprimibles"; `CorrelationId` acepta solo UUID "de ≤ 36 caracteres"
+- [X] T011 [P] Pruebas de redacción en `packages/logger/test/redaction.test.ts`: `authorization`, `cookie`, `*.password`, `*.token`, `*.secret`, `*.apiKey`, `*.credentials` → `[REDACTED]`
 
 ### Implementation
 
-- [ ] T012 [P] Crear `packages/contracts/src/problem.ts` (esquema Zod `ProblemDetails` y enum de `code`: `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `ROUTE_NOT_FOUND`, `PING_NOT_FOUND`, `FEATURE_NOT_AVAILABLE`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`)
-- [ ] T013 [P] Crear `packages/contracts/src/correlation.ts` (esquema y función `resolveCorrelationId(input)` que valida o genera UUID v4)
-- [ ] T014 [P] Crear `packages/contracts/src/ping.ts` (`CreatePingRequest`, `PingExecution` con `status` enum `pending`, `running`, `completed`, `failed`, `timed_out`) según data-model.md
-- [ ] T015 [P] Crear `packages/contracts/src/health.ts` y `packages/contracts/src/flags.ts` (`HealthReport`, mapa de flags públicos)
-- [ ] T016 [P] Crear `packages/logger/src/index.ts` con la configuración pino compartida y rutas de redacción
-- [ ] T017 Crear `apps/api` (NestJS 11.2.8) con `src/main.ts` y `src/app.module.ts`; Helmet, CORS restringido a `WEB_ORIGIN` y límite de cuerpo configurable (`BODY_LIMIT`)
-- [ ] T018 Crear `apps/api/src/config/env.schema.ts`: validación Zod antes de crear la app; si falla, salir con código 1 listando solo nombres de variables
-- [ ] T019 Crear `apps/api/src/common/correlation/correlation.middleware.ts` con `nestjs-cls`: usa `resolveCorrelationId` y agrega el header `X-Correlation-Id` a toda respuesta
-- [ ] T020 Crear `apps/api/src/common/logging/logging.module.ts` con `nestjs-pino`, `packages/logger` y `correlationId` desde CLS
-- [ ] T021 Crear `apps/api/src/common/errors/problem-details.filter.ts` (`@Catch()` global) con el mapeo de research.md R6 y `ZodValidationPipe` global de `nestjs-zod`
-- [ ] T022 [P] Crear `apps/worker` con `src/main.ts`, `src/config/env.schema.ts` (misma regla de salida que T018) y `src/logging/logger.ts` (pino + `Runtime.install` con logger que delega en pino)
-- [ ] T023 [P] Crear `apps/web` (React 19.3 + Vite 8.3) con `src/main.tsx`, `QueryClientProvider` y `src/api/client.ts` que parsea respuestas con `packages/contracts`
+- [X] T012 [P] Crear `packages/contracts/src/problem.ts` (esquema Zod `ProblemDetails` y enum de `code`: `VALIDATION_FAILED`, `PAYLOAD_TOO_LARGE`, `ROUTE_NOT_FOUND`, `PING_NOT_FOUND`, `FEATURE_NOT_AVAILABLE`, `SERVICE_UNAVAILABLE`, `INTERNAL_ERROR`)
+- [X] T013 [P] Crear `packages/contracts/src/correlation.ts` (esquema y función `resolveCorrelationId(input)` que valida o genera UUID v4)
+- [X] T014 [P] Crear `packages/contracts/src/ping.ts` (`CreatePingRequest`, `PingExecution` con `status` enum `pending`, `running`, `completed`, `failed`, `timed_out`) según data-model.md
+- [X] T015 [P] Crear `packages/contracts/src/health.ts` y `packages/contracts/src/flags.ts` (`HealthReport`, mapa de flags públicos)
+- [X] T016 [P] Crear `packages/logger/src/index.ts` con la configuración pino compartida y rutas de redacción
+- [X] T017 Crear `apps/api` (NestJS 11.2.8) con `src/main.ts` y `src/app.module.ts`; Helmet, CORS restringido a `WEB_ORIGIN` y límite de cuerpo configurable (`BODY_LIMIT`)
+- [X] T018 Crear `apps/api/src/config/env.schema.ts`: validación Zod antes de crear la app; si falla, salir con código 1 listando solo nombres de variables
+- [X] T019 Crear `apps/api/src/common/correlation/correlation.middleware.ts` con `nestjs-cls`: usa `resolveCorrelationId` y agrega el header `X-Correlation-Id` a toda respuesta
+- [X] T020 Crear `apps/api/src/common/logging/logging.module.ts` con `nestjs-pino`, `packages/logger` y `correlationId` desde CLS
+- [X] T021 Crear `apps/api/src/common/errors/problem-details.filter.ts` (`@Catch()` global) con el mapeo de research.md R6 y `ZodValidationPipe` global de `nestjs-zod`
+- [X] T022 [P] Crear `apps/worker` con `src/main.ts`, `src/config/env.schema.ts` (misma regla de salida que T018) y `src/logging/logger.ts` (pino + `Runtime.install` con logger que delega en pino)
+- [X] T023 [P] Crear `apps/web` (React 19.3 + Vite 8.3) con `src/main.tsx`, `QueryClientProvider` y `src/api/client.ts` que parsea respuestas con `packages/contracts`
 
 **Checkpoint**: monorepo compila, API y worker arrancan con configuración válida
 
@@ -81,17 +81,17 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Tests for User Story 1
 
-- [ ] T024 [P] [US1] Prueba de configuración inválida en `apps/api/test/unit/env.schema.test.ts` y `apps/worker/test/unit/env.schema.test.ts`: falta `TEMPORAL_ADDRESS` → error con el nombre y sin el valor
-- [ ] T025 [P] [US1] Prueba de integración de readiness en `apps/api/test/integration/health.test.ts`: 200 con `postgres`, `valkey`, `temporal` en `up`
-- [ ] T026 [P] [US1] Prueba de integración en `apps/worker/test/integration/health.test.ts` según `contracts/worker-health.md`
+- [X] T024 [P] [US1] Prueba de configuración inválida en `apps/api/test/unit/env.schema.test.ts` y `apps/worker/test/unit/env.schema.test.ts`: falta `TEMPORAL_ADDRESS` → error con el nombre y sin el valor
+- [X] T025 [P] [US1] Prueba de integración de readiness en `apps/api/test/integration/health.test.ts`: 200 con `postgres`, `valkey`, `temporal` en `up`
+- [X] T026 [P] [US1] Prueba de integración en `apps/worker/test/integration/health.test.ts` según `contracts/worker-health.md`
 
 ### Implementation for User Story 1
 
-- [ ] T027 [US1] Crear `compose.yaml`: Postgres 18, Valkey 9 y `temporalio/temporal` 1.9.1 (`server start-dev --ip 0.0.0.0 --db-filename /data/temporal.db --search-attribute CorrelationId=Keyword`), imágenes por digest, `healthcheck`, volúmenes persistentes y puertos solo en `127.0.0.1`
-- [ ] T028 [US1] Crear `apps/api/src/health/health.module.ts` con `@nestjs/terminus`: `/health/live` y `/health/ready` (Postgres `SELECT 1` con `pg`, Valkey `PING` con `iovalkey`, Temporal `healthService.check`), respuesta `HealthReport` sin mensajes internos
-- [ ] T029 [P] [US1] Crear `apps/worker/src/health/server.ts` (`node:http`, `127.0.0.1:${WORKER_HEALTH_PORT}`) según `contracts/worker-health.md`
-- [ ] T030 [US1] Configurar `pnpm dev` (Turborepo) con recarga en caliente de API (watch), worker (watch) y web (Vite HMR)
-- [ ] T031 [US1] Escribir sección de arranque del `README.md` (inglés): prerrequisitos con versiones exactas, `pnpm install`, `cp .env.example .env`, `docker compose up -d --wait`, `pnpm dev`, puertos
+- [X] T027 [US1] Crear `compose.yaml`: Postgres 18, Valkey 9 y `temporalio/temporal` 1.9.1 (`server start-dev --ip 0.0.0.0 --db-filename /data/temporal.db --search-attribute CorrelationId=Keyword`), imágenes por digest, `healthcheck`, volúmenes persistentes y puertos solo en `127.0.0.1`
+- [X] T028 [US1] Crear `apps/api/src/health/health.module.ts` con `@nestjs/terminus`: `/health/live` y `/health/ready` (Postgres `SELECT 1` con `pg`, Valkey `PING` con `iovalkey`, Temporal `healthService.check`), respuesta `HealthReport` sin mensajes internos
+- [X] T029 [P] [US1] Crear `apps/worker/src/health/server.ts` (`node:http`, `127.0.0.1:${WORKER_HEALTH_PORT}`) según `contracts/worker-health.md`
+- [X] T030 [US1] Configurar `pnpm dev` (Turborepo) con recarga en caliente de API (watch), worker (watch) y web (Vite HMR)
+- [X] T031 [US1] Escribir sección de arranque del `README.md` (inglés): prerrequisitos con versiones exactas, `pnpm install`, `cp .env.example .env`, `docker compose up -d --wait`, `pnpm dev`, puertos
 
 **Checkpoint**: US1 verificable con quickstart escenarios 1 y 2
 
@@ -157,10 +157,10 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Implementation for User Story 4
 
-- [ ] T052 [P] [US4] Crear `apps/api/Dockerfile` y `apps/worker/Dockerfile`: multi-stage, `node:24.22.1-bookworm-slim@sha256:<digest>`, `pnpm deploy --prod`, `USER node`, `NODE_ENV=production`
-- [ ] T053 [P] [US4] Crear `.github/renovate.json`: `minimumReleaseAge` 3 días, `pinDigests`, agrupación por ecosistema
-- [ ] T054 [P] [US4] Crear `.gitleaks.toml` con la configuración por defecto y allowlist solo para `.env.example`
-- [ ] T055 [US4] Crear `.github/workflows/ci.yml`: acciones fijadas por SHA, `permissions: contents: read`; jobs `quality` (format, lint, typecheck, unit), `security` (`pnpm audit --audit-level high`, gitleaks), `integration` y `images` en matriz `ubuntu-24.04` / `ubuntu-24.04-arm` (`docker compose up --wait`, integración, replay, caos; `docker buildx build` sin push)
+- [X] T052 [P] [US4] Crear `apps/api/Dockerfile` y `apps/worker/Dockerfile`: multi-stage, `node:24.22.1-bookworm-slim@sha256:<digest>`, `pnpm deploy --prod`, `USER node`, `NODE_ENV=production`
+- [X] T053 [P] [US4] Crear `.github/renovate.json`: `minimumReleaseAge` 3 días, `pinDigests`, agrupación por ecosistema
+- [X] T054 [P] [US4] Crear `.gitleaks.toml` con la configuración por defecto y allowlist solo para `.env.example`
+- [X] T055 [US4] Crear `.github/workflows/ci.yml`: acciones fijadas por SHA, `permissions: contents: read`; jobs `quality` (format, lint, typecheck, unit), `security` (`pnpm audit --audit-level high`, gitleaks), `integration` y `images` en matriz `ubuntu-24.04` / `ubuntu-24.04-arm` (`docker compose up --wait`, integración, replay, caos; `docker buildx build` sin push)
 - [ ] T056 [US4] Subir la rama, abrir la PR de F0 y verificar que los cuatro jobs pasan en ambas arquitecturas y que CI dura < 15 min
 - [ ] T057 [US4] Configurar protección de `main` en GitHub: PR obligatoria y checks `quality`, `security`, `integration`, `images` requeridos (requiere confirmación del autor)
 - [ ] T058 [US4] Verificar cada control con una PR de prueba descartable (estilo, tipos, prueba fallida, dependencia vulnerable, secreto de prueba) y registrar la evidencia en `specs/001-foundations-skeleton/checklists/ci-evidence.md`
