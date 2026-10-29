@@ -88,6 +88,7 @@ The project follows Spec-Driven Development with [GitHub Spec Kit](https://githu
 pnpm install
 cp .env.example .env
 docker compose up -d --wait
+pnpm db:migrate   # applies the schema as app_migrator
 pnpm dev
 ```
 
@@ -98,6 +99,7 @@ pnpm dev
 | API readiness     | http://localhost:3000/health/ready |
 | Worker readiness  | http://localhost:3001/health/ready |
 | Temporal UI       | http://localhost:8233              |
+| Mailpit (email)   | http://localhost:8025              |
 | PostgreSQL (host) | `127.0.0.1:5433`                   |
 | Valkey (host)     | `127.0.0.1:6379`                   |
 

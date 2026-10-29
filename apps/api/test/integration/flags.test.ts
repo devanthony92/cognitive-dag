@@ -40,12 +40,15 @@ describe('feature flags (requires docker compose up)', () => {
     const api = await appWith(flags);
     await request(httpServer(api)).post('/api/v1/pings').expect(404);
     const features = await request(httpServer(api)).get('/api/v1/features').expect(200);
-    expect(PublicFeaturesSchema.parse(features.body)).toEqual({ 'ping-enabled': false });
+    expect(PublicFeaturesSchema.parse(features.body)).toEqual({
+      'ping-enabled': false,
+      'identity-enabled': false,
+    });
   });
 
   it('exposes only public flags in /api/v1/features', async () => {
     const api = await appWith('{"ping-enabled":true,"internal-secret-flag":true}');
     const response = await request(httpServer(api)).get('/api/v1/features').expect(200);
-    expect(response.body).toEqual({ 'ping-enabled': true });
+    expect(response.body).toEqual({ 'ping-enabled': true, 'identity-enabled': false });
   });
 });

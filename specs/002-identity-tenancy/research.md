@@ -35,6 +35,8 @@ reemplazan por el parche anterior (política de pnpm, ADR-0020). Cada dependenci
   - Retener datos personales de usuarios borrados exige una política de anonimización, que se define
     junto con la retención en F9.
 - **Alternatives considered**: borrado físico (recomendado inicialmente; el autor eligió lógico).
+- **Actualización (2026-10-29, opción A del autor)**: las políticas de RLS no filtran `deleted_at` en `users`,
+  `organizations` y `memberships`; ver R8.
 
 ## R4. Contraseñas
 
@@ -88,6 +90,10 @@ reemplazan por el parche anterior (política de pnpm, ADR-0020). Cada dependenci
 - Consultas previas a la autenticación (login por email, resolución de sesión por hash, tokens de un
   solo uso, invitaciones por token) usan claves de contexto específicas
   (`app.lookup_email`, `app.lookup_token_hash`) que solo el módulo de autenticación fija.
+- **Soft delete y RLS (2026-10-29)**: PostgreSQL aplica la política `SELECT` también a la fila nueva de un
+  `UPDATE` que lee columnas, así que una política con `deleted_at IS NULL` impide marcar `deleted_at`. Las
+  políticas de `SELECT` de `users`, `organizations` y `memberships` no lo comprueban; el filtro vive en los
+  selectores `active` de `packages/db` (regla de ESLint en `apps/api`).
 - **Rationale**: RLS protege contra el olvido del filtro por organización en la aplicación
   (SC-003), sin funciones `SECURITY DEFINER` ni roles con `BYPASSRLS`.
 - **Alternatives considered**: funciones `SECURITY DEFINER` para las consultas previas (requieren un

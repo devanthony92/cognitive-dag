@@ -25,12 +25,12 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ## Phase 1: Setup
 
-- [ ] T001 Agregar Mailpit `axllent/mailpit:v1.32.0` por digest a `compose.yaml` (SMTP `127.0.0.1:1025`, UI `127.0.0.1:8025`, healthcheck) y variables `SMTP_*`, `MAIL_FROM`, `APP_BASE_URL` a `.env.example`
-- [ ] T002 Crear `infra/postgres/init/01-roles.sql` montado en `/docker-entrypoint-initdb.d`: roles `app_migrator` (dueño) y `app_runtime` (`LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`) con contraseñas solo de desarrollo; agregar `DATABASE_URL` (runtime) y `DATABASE_MIGRATOR_URL` a `.env.example`
-- [ ] T003 Crear `packages/db` (Drizzle ORM 0.45.4, drizzle-kit 0.31.11, `pg`), `drizzle.config.ts` y scripts raíz `db:generate`, `db:migrate`
-- [ ] T004 [P] Agregar el flag `identity-enabled` (privado al API y público a la web) al catálogo de flags y a `.env.example`
-- [ ] T005 [P] Configurar la web: TanStack Router con plugin de Vite y rutas por archivo, Tailwind CSS 4.3 (`@tailwindcss/vite`), shadcn/ui (button, input, label, form, card, alert, dropdown-menu, table, dialog) en `apps/web/src/components/ui`; migrar `PingPanel` a la nueva estructura sin cambiar su comportamiento
-- [ ] T006 [P] Actualizar CI (`.github/workflows/ci.yml`): el job `integration` ejecuta `pnpm db:migrate` tras levantar Compose
+- [X] T001 Agregar Mailpit `axllent/mailpit:v1.32.0` por digest a `compose.yaml` (SMTP `127.0.0.1:1025`, UI `127.0.0.1:8025`, healthcheck) y variables `SMTP_*`, `MAIL_FROM`, `APP_BASE_URL` a `.env.example`
+- [X] T002 Crear `infra/postgres/init/01-roles.sql` montado en `/docker-entrypoint-initdb.d`: roles `app_migrator` (dueño) y `app_runtime` (`LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE`) con contraseñas solo de desarrollo; agregar `DATABASE_URL` (runtime) y `DATABASE_MIGRATOR_URL` a `.env.example`
+- [X] T003 Crear `packages/db` (Drizzle ORM 0.45.4, drizzle-kit 0.31.11, `pg`), `drizzle.config.ts` y scripts raíz `db:generate`, `db:migrate`
+- [X] T004 [P] Agregar el flag `identity-enabled` (privado al API y público a la web) al catálogo de flags y a `.env.example`
+- [X] T005 [P] Configurar la web: TanStack Router con plugin de Vite y rutas por archivo, Tailwind CSS 4.3 (`@tailwindcss/vite`), shadcn/ui (button, input, label, form, card, alert, dropdown-menu, table, dialog) en `apps/web/src/components/ui`; migrar `PingPanel` a la nueva estructura sin cambiar su comportamiento
+- [X] T006 [P] Actualizar CI (`.github/workflows/ci.yml`): el job `integration` ejecuta `pnpm db:migrate` tras levantar Compose
 
 ---
 
@@ -38,22 +38,22 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T007 [P] Pruebas de contratos en `packages/contracts/test/auth.test.ts` y `organizations.test.ts`: contraseña "15–128" caracteres Unicode, email normalizado "≤ 254", token "43 caracteres base64url", roles `owner|editor|viewer`, códigos de problema nuevos y `retryAfterSeconds` solo con `RATE_LIMITED`
-- [ ] T008 [P] Pruebas de RLS en `packages/db/test/rls.test.ts` conectando como `app_runtime`: sin contexto, 0 filas en las 6 tablas; con contexto de la organización A, 0 filas de B en lectura y rechazo en escritura; `DELETE` y `TRUNCATE` rechazados en todas las tablas; `UPDATE` de `deleted_at` permitido y fila invisible después
-- [ ] T009 [P] Pruebas de invariantes en `packages/db/test/constraints.test.ts`: email único entre no borrados, una organización personal por usuario y no borrable, membresía única activa, trigger "siempre un owner", estados de invitación coherentes
-- [ ] T010 [P] Pruebas unitarias en `apps/api/test/unit/password-policy.test.ts`: 14 rechazada, 15 y 128 aceptadas, 129 rechazada, NFKC, espacios y emoji válidos, contraseña común rechazada
+- [X] T007 [P] Pruebas de contratos en `packages/contracts/test/auth.test.ts` y `organizations.test.ts`: contraseña "15–128" caracteres Unicode, email normalizado "≤ 254", token "43 caracteres base64url", roles `owner|editor|viewer`, códigos de problema nuevos y `retryAfterSeconds` solo con `RATE_LIMITED`
+- [X] T008 [P] Pruebas de RLS en `packages/db/test/rls.test.ts` conectando como `app_runtime`: sin contexto, 0 filas en las 6 tablas; con contexto de la organización A, 0 filas de B en lectura y rechazo en escritura; `DELETE` y `TRUNCATE` rechazados en todas las tablas; `UPDATE` de `deleted_at` permitido y fila invisible después
+- [X] T009 [P] Pruebas de invariantes en `packages/db/test/constraints.test.ts`: email único entre no borrados, una organización personal por usuario y no borrable, membresía única activa, trigger "siempre un owner", estados de invitación coherentes
+- [X] T010 [P] Pruebas unitarias en `apps/api/test/unit/password-policy.test.ts`: 14 rechazada, 15 y 128 aceptadas, 129 rechazada, NFKC, espacios y emoji válidos, contraseña común rechazada
 
 ### Implementation
 
-- [ ] T011 [P] Contratos Zod en `packages/contracts/src/auth.ts` y `organizations.ts`; códigos nuevos en `problem.ts` (`UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `CSRF_REJECTED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `TOKEN_INVALID`, `ALREADY_MEMBER`, `LAST_OWNER`) y extensión `retryAfterSeconds`
-- [ ] T012 Esquema Drizzle de las 6 tablas y 4 enums en `packages/db/src/schema/` exactamente como `data-model.md`; migración inicial generada
-- [ ] T013 Migración SQL manual: `ENABLE` + `FORCE ROW LEVEL SECURITY`, políticas por tabla, triggers `updated_at` y `memberships_keep_owner`, `GRANT` según la tabla de privilegios de `data-model.md`
-- [ ] T014 `packages/db/src/tenant.ts`: `withContext({ userId?, organizationId?, lookupEmail?, lookupTokenHash? }, fn)` que abre una transacción y fija `set_config(..., true)`; el API no ejecuta consultas fuera de esta función (regla de lint o revisión)
-- [ ] T015 [P] `apps/api/src/auth/password-policy.ts` con lista de 100 000 contraseñas comunes en `apps/api/src/auth/common-passwords.txt` (fuente y licencia citadas en el ADR)
-- [ ] T016 [P] `apps/api/src/mail/`: interfaz `Mailer`, implementación SMTP con nodemailer 10.2.1, envío tras confirmar la transacción con reintentos y backoff, plantillas en español con cabecera `X-Correlation-Id`
-- [ ] T017 [P] `apps/api/src/security-events/security-event.logger.ts`: tipos de evento estables de FR-026 y campos de FR-027; nunca contraseñas, tokens ni ids de sesión
-- [ ] T018 [P] `apps/api/src/rate-limit/`: `rate-limiter-flexible` 11.2.3 sobre `iovalkey`, espera progresiva de R10, 429 con `Retry-After` y `retryAfterSeconds`, fallo cerrado si Valkey no responde
-- [ ] T019 Módulo de base de datos en el API: pool `pg` como `app_runtime`, readiness existente reutilizado, timeouts de consulta
+- [X] T011 [P] Contratos Zod en `packages/contracts/src/auth.ts` y `organizations.ts`; códigos nuevos en `problem.ts` (`UNAUTHENTICATED`, `INVALID_CREDENTIALS`, `CSRF_REJECTED`, `FORBIDDEN`, `NOT_FOUND`, `RATE_LIMITED`, `TOKEN_INVALID`, `ALREADY_MEMBER`, `LAST_OWNER`) y extensión `retryAfterSeconds`
+- [X] T012 Esquema Drizzle de las 6 tablas y 4 enums en `packages/db/src/schema/` exactamente como `data-model.md`; migración inicial generada
+- [X] T013 Migración SQL manual: `ENABLE` + `FORCE ROW LEVEL SECURITY`, políticas por tabla, triggers `updated_at` y `memberships_keep_owner`, `GRANT` según la tabla de privilegios de `data-model.md`
+- [X] T014 `packages/db/src/tenant.ts`: `withContext({ userId?, organizationId?, lookupEmail?, lookupTokenHash? }, fn)` que abre una transacción y fija `set_config(..., true)`; el API no ejecuta consultas fuera de esta función (regla de lint o revisión)
+- [X] T015 [P] `apps/api/src/auth/password-policy.ts` con lista de 100 000 contraseñas comunes en `apps/api/src/auth/common-passwords.txt` (fuente y licencia citadas en el ADR)
+- [X] T016 [P] `apps/api/src/mail/`: interfaz `Mailer`, implementación SMTP con nodemailer 10.2.1, envío tras confirmar la transacción con reintentos y backoff, plantillas en español con cabecera `X-Correlation-Id`
+- [X] T017 [P] `apps/api/src/security-events/security-event.logger.ts`: tipos de evento estables de FR-026 y campos de FR-027; nunca contraseñas, tokens ni ids de sesión
+- [X] T018 [P] `apps/api/src/rate-limit/`: `rate-limiter-flexible` 11.2.3 sobre `iovalkey`, espera progresiva de R10, 429 con `Retry-After` y `retryAfterSeconds`, fallo cerrado si Valkey no responde
+- [X] T019 Módulo de base de datos en el API: pool `pg` como `app_runtime`, readiness existente reutilizado, timeouts de consulta
 
 **Checkpoint**: migraciones aplicadas; pruebas de RLS e invariantes en verde
 
@@ -63,16 +63,16 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T020 [P] [US1] Integración `apps/api/test/integration/register.test.ts`: registro crea usuario, organización personal y membresía owner; email existente → misma respuesta y correo de aviso (leído vía API de Mailpit); contraseña inválida → 422 con `errors[]`; registros simultáneos con el mismo email → una cuenta
-- [ ] T021 [P] [US1] Integración `verify-email.test.ts`: token válido verifica y queda consumido; vencido, usado o inexistente → 422 `TOKEN_INVALID`; reenvío con rate limit
-- [ ] T022 [P] [US1] Web `apps/web/test/register.test.tsx`: validación de formulario con el esquema compartido y mensaje genérico tras enviar
+- [X] T020 [P] [US1] Integración `apps/api/test/integration/register.test.ts`: registro crea usuario, organización personal y membresía owner; email existente → misma respuesta y correo de aviso (leído vía API de Mailpit); contraseña inválida → 422 con `errors[]`; registros simultáneos con el mismo email → una cuenta
+- [X] T021 [P] [US1] Integración `verify-email.test.ts`: token válido verifica y queda consumido; vencido, usado o inexistente → 422 `TOKEN_INVALID`; reenvío con rate limit
+- [X] T022 [P] [US1] Web `apps/web/test/register.test.tsx`: validación de formulario con el esquema compartido y mensaje genérico tras enviar
 
 ### Implementation
 
-- [ ] T023 [US1] `apps/api/src/auth/registration.service.ts` y controlador (`/auth/register`, `/auth/verify-email`, `/auth/verify-email/resend`) según contrato, con ids previos `SELECT uuidv7()` y contexto RLS de `data-model.md`
-- [ ] T024 [US1] Tokens de un solo uso: 32 bytes, base64url, `SHA-256` en base de datos, vencimiento 24 h, los anteriores se consumen al emitir uno nuevo
-- [ ] T025 [US1] Web: rutas `/register`, `/verify-email?token=` (el token se envía en el cuerpo y se borra de la barra de direcciones) y reenvío
-- [ ] T026 [US1] Eventos `user.registered` y `user.email_verified`
+- [X] T023 [US1] `apps/api/src/auth/registration.service.ts` y controlador (`/auth/register`, `/auth/verify-email`, `/auth/verify-email/resend`) según contrato, con ids previos `SELECT uuidv7()` y contexto RLS de `data-model.md`
+- [X] T024 [US1] Tokens de un solo uso: 32 bytes, base64url, `SHA-256` en base de datos, vencimiento 24 h, los anteriores se consumen al emitir uno nuevo
+- [X] T025 [US1] Web: rutas `/register`, `/verify-email?token=` (el token se envía en el cuerpo y se borra de la barra de direcciones) y reenvío
+- [X] T026 [US1] Eventos `user.registered` y `user.email_verified`
 
 ---
 
