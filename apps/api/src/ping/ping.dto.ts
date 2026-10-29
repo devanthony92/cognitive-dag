@@ -16,3 +16,7 @@ export const CreatePingHeadersSchema = z.object({
 });
 
 export class PingParamsDto extends createZodDto(z.object({ pingId: PingIdSchema })) {}
+
+export class OrganizationPingParamsDto extends createZodDto(
+  z.object({ organizationId: z.uuid(), pingId: PingIdSchema }),
+) {}

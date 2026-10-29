@@ -24,9 +24,16 @@ import {
 } from '@cognitive-dag/contracts';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
-import { DomainException, ServiceUnavailableException } from '../common/errors/domain.exception';
+import {
+  DomainException,
+  ResourceNotFoundException,
+  ServiceUnavailableException,
+} from '../common/errors/domain.exception';
 import { hasCompletedWorkflowTask } from './ping-status';
 import { TEMPORAL_CLIENT } from '../temporal/temporal.module';
+
+/** Memo key that records which organization a ping belongs to (F1, FR-017). */
+const ORGANIZATION_MEMO_KEY = 'organizationId';
 
 const CORRELATION_ID_KEY = defineSearchAttributeKey(
   CORRELATION_ID_SEARCH_ATTRIBUTE,
@@ -55,6 +62,8 @@ export class PingService {
     correlationId: string;
     message?: string;
     idempotencyKey?: string;
+    /** Set under /organizations/{id}/pings: the ping is stored with its owner. */
+    organizationId?: string;
   }): Promise<PingExecution> {
     const workflowId = `ping-${(input.idempotencyKey ?? randomUUID()).toLowerCase()}`;
     const args: PingWorkflowInput = {
@@ -73,39 +82,50 @@ export class PingService {
           typedSearchAttributes: new TypedSearchAttributes([
             { key: CORRELATION_ID_KEY, value: input.correlationId },
           ]),
+          ...(input.organizationId === undefined
+            ? {}
+            : { memo: { [ORGANIZATION_MEMO_KEY]: input.organizationId } }),
         }),
       );
     } catch (error) {
       if (!(error instanceof WorkflowExecutionAlreadyStartedError)) throw this.translate(error);
     }
-    return this.get(workflowId);
+    return this.get(workflowId, input.organizationId);
   }
 
-  async get(pingId: string): Promise<PingExecution> {
+  /**
+   * With `organizationId` the ping must belong to that organization; a ping of another one, or a
+   * F0 ping that has no owner, is indistinguishable from a missing one (FR-018). Without it only
+   * ownerless F0 pings are visible.
+   */
+  async get(pingId: string, organizationId?: string): Promise<PingExecution> {
     const handle = this.client.workflow.getHandle(pingId);
     let description: WorkflowExecutionDescription;
     try {
       description = await this.withDeadline(() => handle.describe());
     } catch (error) {
-      throw this.translate(error);
+      throw this.translate(error, organizationId);
     }
-    if (description.type !== PING_WORKFLOW_NAME) throw pingNotFound();
+    if (description.type !== PING_WORKFLOW_NAME) throw pingNotFound(organizationId);
+    if (description.memo?.[ORGANIZATION_MEMO_KEY] !== organizationId) {
+      throw pingNotFound(organizationId);
+    }
 
     let status: PingStatus;
     try {
       status = await this.withDeadline(() => this.toPingStatus(handle, description));
     } catch (error) {
-      throw this.translate(error);
+      throw this.translate(error, organizationId);
     }
     const correlationId = description.typedSearchAttributes.get(CORRELATION_ID_KEY);
-    if (correlationId === undefined) throw pingNotFound();
+    if (correlationId === undefined) throw pingNotFound(organizationId);
 
     let result: unknown;
     if (status === 'completed') {
       try {
         result = await this.withDeadline(() => handle.result());
       } catch (error) {
-        throw this.translate(error);
+        throw this.translate(error, organizationId);
       }
     }
 
@@ -145,14 +165,16 @@ export class PingService {
     return this.client.connection.withDeadline(Date.now() + TEMPORAL_CALL_DEADLINE_MS, call);
   }
 
-  private translate(error: unknown): Error {
-    if (error instanceof WorkflowNotFoundError) return pingNotFound();
+  private translate(error: unknown, organizationId?: string): Error {
+    if (error instanceof WorkflowNotFoundError) return pingNotFound(organizationId);
     if (isTemporalUnavailable(error)) return new ServiceUnavailableException();
     return error instanceof Error ? error : new Error('Unknown Temporal error');
   }
 }
 
-function pingNotFound(): DomainException {
+function pingNotFound(organizationId?: string): DomainException {
+  // Under an organization every miss has the one generic answer of the tenancy layer.
+  if (organizationId !== undefined) return new ResourceNotFoundException();
   return new DomainException(
     404,
     'PING_NOT_FOUND',
