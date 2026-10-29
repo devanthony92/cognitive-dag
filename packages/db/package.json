@@ -1,0 +1,36 @@
+{
+  "name": "@cognitive-dag/db",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "dist",
+    "src",
+    "migrations"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@cognitive-dag/source": "./src/index.ts",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "generate": "drizzle-kit generate",
+    "migrate": "drizzle-kit migrate",
+    "test:integration": "vitest run",
+    "test:rls": "vitest run test/rls.test.ts"
+  },
+  "dependencies": {
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@cognitive-dag/config": "workspace:*",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11"
+  }
+}
