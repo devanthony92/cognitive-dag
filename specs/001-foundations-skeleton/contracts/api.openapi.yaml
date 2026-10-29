@@ -1,0 +1,197 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F0
+  version: 0.1.0
+  description: >
+    Contrato del walking skeleton. Toda respuesta incluye el header X-Correlation-Id.
+    Todo error usa application/problem+json (RFC 9457) sin type ni instance.
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/v1/pings:
+    post:
+      operationId: createPing
+      summary: Inicia una ejecución de ping
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                message: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '202':
+          description: Ejecución creada o existente para la misma Idempotency-Key
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+            Location:
+              schema: { type: string, example: /api/v1/pings/ping-3f2b0c1e-0000-4000-8000-000000000000 }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PingExecution' }
+        '404': { $ref: '#/components/responses/FeatureNotAvailable' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503': { $ref: '#/components/responses/Problem' }
+        '500': { $ref: '#/components/responses/Problem' }
+  /api/v1/pings/{pingId}:
+    get:
+      operationId: getPing
+      summary: Consulta el estado de una ejecución de ping
+      parameters:
+        - $ref: '#/components/parameters/CorrelationIdHeader'
+        - name: pingId
+          in: path
+          required: true
+          schema: { type: string, pattern: '^ping-[0-9a-f-]{36}$' }
+      responses:
+        '200':
+          description: Estado actual
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PingExecution' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/ValidationFailed' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/v1/features:
+    get:
+      operationId: getPublicFeatures
+      summary: Flags públicos para la interfaz web
+      responses:
+        '200':
+          description: Mapa de flags públicos
+          headers:
+            X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: { type: boolean }
+                example: { ping-enabled: true }
+  /health/live:
+    get:
+      operationId: liveness
+      responses:
+        '200': { $ref: '#/components/responses/Health' }
+  /health/ready:
+    get:
+      operationId: readiness
+      responses:
+        '200': { $ref: '#/components/responses/Health' }
+        '503': { $ref: '#/components/responses/Health' }
+components:
+  parameters:
+    CorrelationIdHeader:
+      name: X-Correlation-Id
+      in: header
+      required: false
+      description: Se acepta solo si es un UUID válido; si no, el servidor genera uno.
+      schema: { type: string, maxLength: 36 }
+  headers:
+    CorrelationId:
+      schema: { type: string, format: uuid }
+  schemas:
+    PingExecution:
+      type: object
+      required: [pingId, correlationId, status, startedAt]
+      properties:
+        pingId: { type: string }
+        correlationId: { type: string, format: uuid }
+        status: { type: string, enum: [pending, running, completed, failed, timed_out] }
+        result:
+          type: object
+          properties:
+            pong: { type: string }
+            workerId: { type: string }
+            attempts: { type: integer, minimum: 1 }
+        startedAt: { type: string, format: date-time }
+        finishedAt: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [status, title, detail, code, correlationId]
+      properties:
+        status: { type: integer }
+        title: { type: string }
+        detail: { type: string }
+        code:
+          type: string
+          enum:
+            - VALIDATION_FAILED
+            - PAYLOAD_TOO_LARGE
+            - ROUTE_NOT_FOUND
+            - PING_NOT_FOUND
+            - FEATURE_NOT_AVAILABLE
+            - SERVICE_UNAVAILABLE
+            - INTERNAL_ERROR
+        correlationId: { type: string, format: uuid }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+    HealthReport:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [ok, error] }
+        checks:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status: { type: string, enum: [up, down] }
+  responses:
+    Problem:
+      description: Error RFC 9457
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    ValidationFailed:
+      description: Entrada inválida (incluye errors[])
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 422
+            title: Unprocessable Content
+            detail: La solicitud contiene datos inválidos.
+            code: VALIDATION_FAILED
+            correlationId: 3f2b0c1e-0000-4000-8000-000000000000
+            errors:
+              - field: message
+                message: Debe tener entre 1 y 100 caracteres.
+    FeatureNotAvailable:
+      description: Funcionalidad desactivada por feature flag
+      headers:
+        X-Correlation-Id: { $ref: '#/components/headers/CorrelationId' }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+          example:
+            status: 404
+            title: Not Found
+            detail: Esta funcionalidad no está disponible.
+            code: FEATURE_NOT_AVAILABLE
+            correlationId: 3f2b0c1e-0000-4000-8000-000000000000
+    Health:
+      description: Estado de salud
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/HealthReport' }
