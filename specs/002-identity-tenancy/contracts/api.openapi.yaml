@@ -1,0 +1,479 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F1 identity and multi-tenancy
+  version: 0.2.0
+  description: >
+    Extiende el contrato de F0. Toda respuesta incluye X-Correlation-Id y todo error usa
+    application/problem+json (RFC 9457, sin type ni instance). Las peticiones que cambian estado con
+    sesión exigen el header X-CSRF-Token. Con el flag identity-enabled apagado, estos endpoints
+    responden 404 FEATURE_NOT_AVAILABLE.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/auth/register:
+    post:
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/verify-email:
+    post:
+      operationId: verifyEmail
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '204': { description: Email verificado }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/auth/verify-email/resend:
+    post:
+      operationId: resendVerification
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/login:
+    post:
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Sesión creada; la cookie __Host-session viaja en Set-Cookie
+          headers:
+            Set-Cookie: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionInfo' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/logout:
+    post:
+      operationId: logout
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '204': { description: Sesión revocada; la cookie se elimina }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/auth/session:
+    get:
+      operationId: getSession
+      responses:
+        '200':
+          description: Sesión actual, organizaciones del usuario y token CSRF
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionInfo' }
+        '401': { $ref: '#/components/responses/Problem' }
+  /api/v1/auth/password-reset/request:
+    post:
+      operationId: requestPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailRequest' }
+      responses:
+        '202': { $ref: '#/components/responses/Accepted' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/auth/password-reset/confirm:
+    post:
+      operationId: confirmPasswordReset
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [token, password]
+              properties:
+                token: { type: string, minLength: 43, maxLength: 43 }
+                password: { $ref: '#/components/schemas/Password' }
+      responses:
+        '204': { description: Contraseña cambiada; todas las sesiones revocadas }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/auth/password/change:
+    post:
+      operationId: changePassword
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [currentPassword, newPassword]
+              properties:
+                currentPassword: { type: string, maxLength: 128 }
+                newPassword: { $ref: '#/components/schemas/Password' }
+      responses:
+        '204': { description: Contraseña cambiada; las demás sesiones revocadas }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/organizations:
+    post:
+      operationId: createOrganization
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '201':
+          description: Organización creada; el usuario queda como owner
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationSummary' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/members:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    get:
+      operationId: listMembers
+      responses:
+        '200':
+          description: Miembros activos (cualquier rol)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Member' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/members/{membershipId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - { name: membershipId, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: changeMemberRole
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [role]
+              properties:
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '200':
+          description: Rol cambiado (solo owner)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Member' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removeMember
+      description: Borrado lógico de la membresía (solo owner).
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '204': { description: Miembro quitado }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/invitations:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    get:
+      operationId: listInvitations
+      responses:
+        '200':
+          description: Invitaciones pendientes (solo owner)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Invitation' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInvitation
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email, role]
+              properties:
+                email: { type: string, format: email, maxLength: 254 }
+                role: { $ref: '#/components/schemas/Role' }
+      responses:
+        '201':
+          description: Invitación enviada (solo owner)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invitation' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+  /api/v1/organizations/{organizationId}/invitations/{invitationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - { name: invitationId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: revokeInvitation
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '204': { description: Invitación revocada (solo owner) }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/invitations/preview:
+    post:
+      operationId: previewInvitation
+      description: El token viaja en el cuerpo, nunca en la URL, para que no quede en logs de acceso.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200':
+          description: Datos mínimos para mostrar la invitación
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [organizationName, email, role]
+                properties:
+                  organizationName: { type: string }
+                  email: { type: string }
+                  role: { $ref: '#/components/schemas/Role' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/invitations/accept:
+    post:
+      operationId: acceptInvitation
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200':
+          description: Membresía creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationSummary' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/pings:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    post:
+      operationId: createPing
+      description: Reemplaza POST /api/v1/pings de F0. Mismo cuerpo, Idempotency-Key y respuesta.
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '202': { description: Igual que en F0 }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/pings/{pingId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - { name: pingId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getPing
+      description: Reemplaza GET /api/v1/pings/{pingId} de F0. Un ping de otra organización responde 404.
+      responses:
+        '200': { description: Igual que en F0 }
+        '401': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: __Host-session
+  parameters:
+    OrganizationId:
+      name: organizationId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    CsrfHeader:
+      name: X-CSRF-Token
+      in: header
+      required: true
+      schema: { type: string, minLength: 43, maxLength: 43 }
+  schemas:
+    Password:
+      type: string
+      minLength: 15
+      maxLength: 128
+      description: Cualquier carácter Unicode; sin reglas de composición; se rechazan contraseñas comunes.
+    Role:
+      type: string
+      enum: [owner, editor, viewer]
+    RegisterRequest:
+      type: object
+      additionalProperties: false
+      required: [name, email, password]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 254 }
+        password: { $ref: '#/components/schemas/Password' }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { type: string, maxLength: 254 }
+        password: { type: string, maxLength: 128 }
+    EmailRequest:
+      type: object
+      additionalProperties: false
+      required: [email]
+      properties:
+        email: { type: string, format: email, maxLength: 254 }
+    TokenRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token:
+          type: string
+          minLength: 43
+          maxLength: 43
+          description: 32 bytes aleatorios en base64url sin relleno
+    OrganizationSummary:
+      type: object
+      required: [id, name, role, isPersonal]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        isPersonal: { type: boolean }
+    SessionInfo:
+      type: object
+      required: [user, organizations, csrfToken]
+      properties:
+        user:
+          type: object
+          required: [id, name, email]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            email: { type: string }
+        organizations:
+          type: array
+          items: { $ref: '#/components/schemas/OrganizationSummary' }
+        csrfToken: { type: string, minLength: 43, maxLength: 43 }
+    Member:
+      type: object
+      required: [membershipId, userId, name, email, role]
+      properties:
+        membershipId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+    Invitation:
+      type: object
+      required: [id, email, role, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { $ref: '#/components/schemas/Role' }
+        expiresAt: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [status, title, detail, code, correlationId]
+      properties:
+        status: { type: integer }
+        title: { type: string }
+        detail: { type: string }
+        code:
+          type: string
+          description: Códigos de F0 más los nuevos de F1.
+          enum:
+            - VALIDATION_FAILED
+            - PAYLOAD_TOO_LARGE
+            - ROUTE_NOT_FOUND
+            - PING_NOT_FOUND
+            - FEATURE_NOT_AVAILABLE
+            - SERVICE_UNAVAILABLE
+            - INTERNAL_ERROR
+            - UNAUTHENTICATED
+            - INVALID_CREDENTIALS
+            - CSRF_REJECTED
+            - FORBIDDEN
+            - NOT_FOUND
+            - RATE_LIMITED
+            - TOKEN_INVALID
+            - ALREADY_MEMBER
+            - LAST_OWNER
+        correlationId: { type: string, format: uuid }
+        retryAfterSeconds: { type: integer, minimum: 1, description: Solo en RATE_LIMITED }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [field, message]
+            properties:
+              field: { type: string }
+              message: { type: string }
+  responses:
+    Accepted:
+      description: >
+        Respuesta genérica idéntica exista o no la cuenta (anti-enumeración).
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message: { type: string, example: Si los datos son correctos, recibirás un correo en breve. }
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    RateLimited:
+      description: Demasiados intentos; incluye Retry-After
+      headers:
+        Retry-After: { schema: { type: integer } }
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
