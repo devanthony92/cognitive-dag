@@ -134,16 +134,16 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Tests for User Story 3
 
-- [ ] T045 [P] [US3] Pruebas de correlación en `apps/api/test/integration/correlation.test.ts`: sin header → UUID nuevo; UUID válido → reutilizado; no UUID, > 36 caracteres o con caracteres de control → reemplazado
-- [ ] T046 [P] [US3] Pruebas del filtro en `apps/api/test/integration/problem-details.test.ts`: 422 con `errors[]`, 413, 404 `ROUTE_NOT_FOUND`, 503 con Temporal detenido, 500 sin stack trace ni nombres internos; todas con `correlationId` y `Content-Type: application/problem+json`
-- [ ] T047 [P] [US3] Prueba de propagación en `apps/worker/test/integration/correlation.test.ts`: el `correlationId` del `POST` aparece en el search attribute de la ejecución y en los logs del worker
+- [X] T045 [P] [US3] Pruebas de correlación en `apps/api/test/integration/correlation.test.ts`: sin header → UUID nuevo; UUID válido → reutilizado; no UUID, > 36 caracteres o con caracteres de control → reemplazado
+- [X] T046 [P] [US3] Pruebas del filtro en `apps/api/test/integration/problem-details.test.ts`: 422 con `errors[]`, 413, 404 `ROUTE_NOT_FOUND`, 503 con Temporal detenido, 500 sin stack trace ni nombres internos; todas con `correlationId` y `Content-Type: application/problem+json`
+- [X] T047 [P] [US3] Prueba de propagación en `apps/worker/test/integration/correlation.test.ts`: el `correlationId` del `POST` aparece en el search attribute de la ejecución y en los logs del worker
 
 ### Implementation for User Story 3
 
-- [ ] T048 [US3] Completar en `problem-details.filter.ts` el registro del error completo en logs para 5xx con `correlationId` y `detail` genérico en la respuesta
-- [ ] T049 [US3] Propagar `correlationId` en `apps/worker/src/logging/logger.ts` (child logger por activity desde la entrada)
-- [ ] T050 [US3] Asegurar header `X-Correlation-Id` también en respuestas de error y de health en `correlation.middleware.ts`
-- [ ] T051 [US3] Enviar `X-Correlation-Id` desde la web en `apps/web/src/api/client.ts` y mostrar `detail` de errores problem+json en la interfaz
+- [X] T048 [US3] Completar en `problem-details.filter.ts` el registro del error completo en logs para 5xx con `correlationId` y `detail` genérico en la respuesta
+- [X] T049 [US3] Propagar `correlationId` en `apps/worker/src/logging/logger.ts` (child logger por activity desde la entrada)
+- [X] T050 [US3] Asegurar header `X-Correlation-Id` también en respuestas de error y de health en `correlation.middleware.ts`
+- [X] T051 [US3] Enviar `X-Correlation-Id` desde la web en `apps/web/src/api/client.ts` y mostrar `detail` de errores problem+json en la interfaz
 
 **Checkpoint**: SC-004 y SC-005 verificables
 
