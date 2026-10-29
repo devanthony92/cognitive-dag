@@ -73,6 +73,8 @@ jobs:
       - run: cp .env.example .env
       - name: Start infrastructure
         run: docker compose up -d --wait
+      - name: Apply database migrations (as app_migrator)
+        run: pnpm db:migrate
       - run: pnpm test
       - run: pnpm test:integration
       - name: Infrastructure logs on failure
