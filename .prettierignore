@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+pnpm-lock.yaml
+.specify/
+.turbo/
+apps/worker/test/histories/
+specs/
