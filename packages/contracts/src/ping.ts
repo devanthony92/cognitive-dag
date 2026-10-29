@@ -52,3 +52,10 @@ export const PingWorkflowInputSchema = z.object({
 });
 
 export type PingWorkflowInput = z.infer<typeof PingWorkflowInputSchema>;
+
+export const PING_WORKFLOW_NAME = 'pingWorkflow';
+
+/** Global limit for a ping execution; leaves room for a worker to come back after a crash. */
+export const PING_EXECUTION_TIMEOUT = '10 minutes';
+
+export const CORRELATION_ID_SEARCH_ATTRIBUTE = 'CorrelationId';
