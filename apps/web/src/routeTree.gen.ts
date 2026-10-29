@@ -10,12 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
+import { Route as OrgsOrganizationIdRouteImport } from './routes/orgs.$organizationId'
+import { Route as OrgsOrganizationIdIndexRouteImport } from './routes/orgs.$organizationId.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RegisterRoute = RegisterRouteImport.update({
@@ -28,35 +36,68 @@ const VerifyEmailRoute = VerifyEmailRouteImport.update({
   path: '/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrgsOrganizationIdRoute = OrgsOrganizationIdRouteImport.update({
+  id: '/orgs/$organizationId',
+  path: '/orgs/$organizationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrgsOrganizationIdIndexRoute = OrgsOrganizationIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OrgsOrganizationIdRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/orgs/$organizationId': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/register' | '/verify-email'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/verify-email'
+    | '/orgs/$organizationId'
+    | '/orgs/$organizationId/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/register' | '/verify-email'
-  id: '__root__' | '/' | '/register' | '/verify-email'
+  to: '/' | '/login' | '/register' | '/verify-email' | '/orgs/$organizationId'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/register'
+    | '/verify-email'
+    | '/orgs/$organizationId'
+    | '/orgs/$organizationId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
+  OrgsOrganizationIdRoute: typeof OrgsOrganizationIdRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -66,6 +107,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/register': {
@@ -82,13 +130,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orgs/$organizationId': {
+      id: '/orgs/$organizationId'
+      path: '/orgs/$organizationId'
+      fullPath: '/orgs/$organizationId'
+      preLoaderRoute: typeof OrgsOrganizationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orgs/$organizationId/': {
+      id: '/orgs/$organizationId/'
+      path: '/'
+      fullPath: '/orgs/$organizationId/'
+      preLoaderRoute: typeof OrgsOrganizationIdIndexRouteImport
+      parentRoute: typeof OrgsOrganizationIdRoute
+    }
   }
 }
 
+interface OrgsOrganizationIdRouteChildren {
+  OrgsOrganizationIdIndexRoute: typeof OrgsOrganizationIdIndexRoute
+}
+
+const OrgsOrganizationIdRouteChildren: OrgsOrganizationIdRouteChildren = {
+  OrgsOrganizationIdIndexRoute: OrgsOrganizationIdIndexRoute,
+}
+
+const OrgsOrganizationIdRouteWithChildren =
+  OrgsOrganizationIdRoute._addFileChildren(OrgsOrganizationIdRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   VerifyEmailRoute: VerifyEmailRoute,
+  OrgsOrganizationIdRoute: OrgsOrganizationIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

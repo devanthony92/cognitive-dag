@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { Link, Outlet, createRootRouteWithContext } from '@tanstack/react-router';
+import { Outlet, createRootRouteWithContext } from '@tanstack/react-router';
+import { AppHeader } from '../features/session/AppHeader';
 
 export interface RouterContext {
   queryClient: QueryClient;
@@ -12,13 +13,7 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 function RootLayout() {
   return (
     <div className="min-h-screen">
-      <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-3xl items-center px-4 py-3">
-          <Link to="/" className="font-semibold tracking-tight">
-            CognitiveDAG
-          </Link>
-        </div>
-      </header>
+      <AppHeader />
       <main className="mx-auto flex max-w-3xl flex-col items-center px-4 py-10">
         <Outlet />
       </main>
