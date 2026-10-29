@@ -105,22 +105,22 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Tests for User Story 2
 
-- [ ] T032 [P] [US2] Prueba de workflow en `apps/worker/test/unit/ping.workflow.test.ts` con `TestWorkflowEnvironment`: completa con `{ pong, workerId, attempts }`; reintenta hasta 3 intentos; `timed_out` al superar 10 min
-- [ ] T033 [P] [US2] Prueba de contrato en `apps/api/test/integration/pings.contract.test.ts`: `POST /api/v1/pings` → 202 con `Location`; `GET /api/v1/pings/{pingId}` → `PingExecution` válido; `pingId` con patrón `^ping-[0-9a-f-]{36}$`
-- [ ] T034 [P] [US2] Prueba de idempotencia en `apps/api/test/integration/pings.idempotency.test.ts`: misma `Idempotency-Key` → mismo `pingId`
-- [ ] T035 [P] [US2] Prueba de caos en `apps/worker/test/integration/ping.chaos.test.ts`: detener el worker durante el retardo de la activity, iniciar otro, un único resultado
-- [ ] T036 [P] [US2] Prueba de estado `pending` en `apps/api/test/integration/pings.pending.test.ts`: sin worker activo el estado es `pending`
+- [X] T032 [P] [US2] Prueba de workflow en `apps/worker/test/unit/ping.workflow.test.ts` con `TestWorkflowEnvironment`: completa con `{ pong, workerId, attempts }`; reintenta hasta 3 intentos; `timed_out` al superar 10 min
+- [X] T033 [P] [US2] Prueba de contrato en `apps/api/test/integration/pings.contract.test.ts`: `POST /api/v1/pings` → 202 con `Location`; `GET /api/v1/pings/{pingId}` → `PingExecution` válido; `pingId` con patrón `^ping-[0-9a-f-]{36}$`
+- [X] T034 [P] [US2] Prueba de idempotencia en `apps/api/test/integration/pings.idempotency.test.ts`: misma `Idempotency-Key` → mismo `pingId`
+- [X] T035 [P] [US2] Prueba de caos en `apps/worker/test/integration/ping.chaos.test.ts`: detener el worker durante el retardo de la activity, iniciar otro, un único resultado
+- [X] T036 [P] [US2] Prueba de estado `pending` en `apps/api/test/integration/pings.pending.test.ts`: sin worker activo el estado es `pending`
 
 ### Implementation for User Story 2
 
-- [ ] T037 [P] [US2] Crear `apps/worker/src/activities/ping.activities.ts`: `pong(input)` con retardo configurable solo fuera de producción y log con `correlationId`
-- [ ] T038 [US2] Crear `apps/worker/src/workflows/ping.workflow.ts`: activity con `startToCloseTimeout` 5 s, reintentos inicial 1 s, coeficiente 2, máximo 3 intentos; sin E/S ni flags en el workflow
-- [ ] T039 [US2] Registrar workflow y activities en `apps/worker/src/main.ts` (task queue `TEMPORAL_TASK_QUEUE`)
-- [ ] T040 [US2] Crear `apps/api/src/temporal/temporal.module.ts` (cliente compartido, conexión perezosa; Temporal caído → `SERVICE_UNAVAILABLE`)
-- [ ] T041 [US2] Crear `apps/api/src/ping/ping.service.ts`: `workflowId = ping-<idempotencyKey>`, `WorkflowIdReusePolicy.REJECT_DUPLICATE`, `workflowExecutionTimeout` 10 min, search attribute `CorrelationId`; ante `WorkflowExecutionAlreadyStartedError` devolver la existente; estado derivado de `describe()` según research.md R8
-- [ ] T042 [US2] Crear `apps/api/src/ping/ping.controller.ts` según `contracts/api.openapi.yaml` (validación con DTOs de `packages/contracts`, `PING_NOT_FOUND` si no existe)
-- [ ] T043 [US2] Crear `apps/web/src/features/ping/PingPanel.tsx`: botón "Ejecutar ping", polling cada 1 s con TanStack Query hasta estado terminal, muestra estado, resultado y `correlationId`
-- [ ] T044 [US2] Guardar un historial del workflow en `apps/worker/test/histories/ping-completed.json` y crear prueba de replay en `apps/worker/test/unit/ping.replay.test.ts`
+- [X] T037 [P] [US2] Crear `apps/worker/src/activities/ping.activities.ts`: `pong(input)` con retardo configurable solo fuera de producción y log con `correlationId`
+- [X] T038 [US2] Crear `apps/worker/src/workflows/ping.workflow.ts`: activity con `startToCloseTimeout` 5 s, reintentos inicial 1 s, coeficiente 2, máximo 3 intentos; sin E/S ni flags en el workflow
+- [X] T039 [US2] Registrar workflow y activities en `apps/worker/src/main.ts` (task queue `TEMPORAL_TASK_QUEUE`)
+- [X] T040 [US2] Crear `apps/api/src/temporal/temporal.module.ts` (cliente compartido, conexión perezosa; Temporal caído → `SERVICE_UNAVAILABLE`)
+- [X] T041 [US2] Crear `apps/api/src/ping/ping.service.ts`: `workflowId = ping-<idempotencyKey>`, `WorkflowIdReusePolicy.REJECT_DUPLICATE`, `workflowExecutionTimeout` 10 min, search attribute `CorrelationId`; ante `WorkflowExecutionAlreadyStartedError` devolver la existente; estado derivado de `describe()` según research.md R8
+- [X] T042 [US2] Crear `apps/api/src/ping/ping.controller.ts` según `contracts/api.openapi.yaml` (validación con DTOs de `packages/contracts`, `PING_NOT_FOUND` si no existe)
+- [X] T043 [US2] Crear `apps/web/src/features/ping/PingPanel.tsx`: botón "Ejecutar ping", polling cada 1 s con TanStack Query hasta estado terminal, muestra estado, resultado y `correlationId`
+- [X] T044 [US2] Guardar un historial del workflow en `apps/worker/test/histories/ping-completed.json` y crear prueba de replay en `apps/worker/test/unit/ping.replay.test.ts`
 
 **Checkpoint**: walking skeleton funcional de punta a punta
 
@@ -161,8 +161,8 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 - [X] T053 [P] [US4] Crear `.github/renovate.json`: `minimumReleaseAge` 3 días, `pinDigests`, agrupación por ecosistema
 - [X] T054 [P] [US4] Crear `.gitleaks.toml` con la configuración por defecto y allowlist solo para `.env.example`
 - [X] T055 [US4] Crear `.github/workflows/ci.yml`: acciones fijadas por SHA, `permissions: contents: read`; jobs `quality` (format, lint, typecheck, unit), `security` (`pnpm audit --audit-level high`, gitleaks), `integration` y `images` en matriz `ubuntu-24.04` / `ubuntu-24.04-arm` (`docker compose up --wait`, integración, replay, caos; `docker buildx build` sin push)
-- [ ] T056 [US4] Subir la rama, abrir la PR de F0 y verificar que los cuatro jobs pasan en ambas arquitecturas y que CI dura < 15 min
-- [ ] T057 [US4] Configurar protección de `main` en GitHub: PR obligatoria y checks `quality`, `security`, `integration`, `images` requeridos (requiere confirmación del autor)
+- [X] T056 [US4] Subir la rama, abrir la PR de F0 y verificar que los cuatro jobs pasan en ambas arquitecturas y que CI dura < 15 min
+- [X] T057 [US4] Configurar protección de `main` en GitHub: PR obligatoria y checks `quality`, `security`, `integration`, `images` requeridos (requiere confirmación del autor)
 - [ ] T058 [US4] Verificar cada control con una PR de prueba descartable (estilo, tipos, prueba fallida, dependencia vulnerable, secreto de prueba) y registrar la evidencia en `specs/001-foundations-skeleton/checklists/ci-evidence.md`
 
 **Checkpoint**: SC-006 y SC-007 verificados
@@ -177,15 +177,15 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 
 ### Tests for User Story 5
 
-- [ ] T059 [P] [US5] Pruebas en `apps/api/test/integration/flags.test.ts`: flag `false` → `POST` 404 `FEATURE_NOT_AVAILABLE`; flag `true` → 202; `FEATURE_FLAGS` inválido o flag ausente → valor `false`; `/api/v1/features` solo expone flags públicos
-- [ ] T060 [P] [US5] Prueba en `apps/web/test/PingPanel.test.tsx`: con `ping-enabled` `false` el botón no se muestra
+- [X] T059 [P] [US5] Pruebas en `apps/api/test/integration/flags.test.ts`: flag `false` → `POST` 404 `FEATURE_NOT_AVAILABLE`; flag `true` → 202; `FEATURE_FLAGS` inválido o flag ausente → valor `false`; `/api/v1/features` solo expone flags públicos
+- [X] T060 [P] [US5] Prueba en `apps/web/test/PingPanel.test.tsx`: con `ping-enabled` `false` el botón no se muestra
 
 ### Implementation for User Story 5
 
-- [ ] T061 [US5] Crear `apps/api/src/flags/flags.module.ts` con `@openfeature/nestjs-sdk` e `InMemoryProvider` cargado desde `FEATURE_FLAGS` (validado con Zod); default seguro `false`
-- [ ] T062 [US5] Crear `apps/api/src/flags/features.controller.ts` (`GET /api/v1/features`) y proteger `POST /api/v1/pings` con el flag `ping-enabled` antes de iniciar el workflow
-- [ ] T063 [US5] Consultar `/api/v1/features` en `apps/web/src/features/ping/PingPanel.tsx` y ocultar la acción si el flag está desactivado
-- [ ] T064 [US5] Crear el issue de eliminación del flag `ping-enabled` en GitHub y registrar dueño y URL en `apps/api/src/flags/flags.catalog.ts`
+- [X] T061 [US5] Crear `apps/api/src/flags/flags.module.ts` con `@openfeature/nestjs-sdk` e `InMemoryProvider` cargado desde `FEATURE_FLAGS` (validado con Zod); default seguro `false`
+- [X] T062 [US5] Crear `apps/api/src/flags/features.controller.ts` (`GET /api/v1/features`) y proteger `POST /api/v1/pings` con el flag `ping-enabled` antes de iniciar el workflow
+- [X] T063 [US5] Consultar `/api/v1/features` en `apps/web/src/features/ping/PingPanel.tsx` y ocultar la acción si el flag está desactivado
+- [X] T064 [US5] Crear el issue de eliminación del flag `ping-enabled` en GitHub y registrar dueño y URL en `apps/api/src/flags/flags.catalog.ts`
 
 **Checkpoint**: principio VIII operativo
 
