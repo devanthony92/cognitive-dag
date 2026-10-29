@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { NativeConnection, type Worker } from '@temporalio/worker';
 import { createPingWorker } from '../../../worker/src/worker';
+import type { Logger } from '@cognitive-dag/logger';
 import { startTestApp, testConfig } from './helpers';
 
 /** Task queue unique per test, so tests sharing the Compose Temporal never see each other's work. */
@@ -24,7 +25,7 @@ export interface RunningWorker {
 /** Runs a real ping worker in-process on the given task queue. */
 export async function startPingWorker(
   taskQueue: string,
-  options: { workerId?: string; delayMs?: number } = {},
+  options: { workerId?: string; delayMs?: number; logger?: Logger } = {},
 ): Promise<RunningWorker> {
   const config = testConfig();
   const connection = await NativeConnection.connect({ address: config.TEMPORAL_ADDRESS });
@@ -36,6 +37,7 @@ export async function startPingWorker(
     activityDelayMs: options.delayMs ?? 0,
     nodeEnv: 'test',
     shutdownGraceTime: '1s',
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
   });
   const done = worker.run().finally(() => connection.close());
   return {
