@@ -41,3 +41,36 @@ export class TokenInvalidException extends DomainException {
     super(422, 'TOKEN_INVALID', 'El enlace no es válido, ya fue usado o está vencido.');
   }
 }
+
+export class UnauthenticatedException extends DomainException {
+  constructor() {
+    super(401, 'UNAUTHENTICATED', 'Inicia sesión para continuar.');
+  }
+}
+
+/** One body for a wrong password, an unknown email and an unverified account (FR-014). */
+export class InvalidCredentialsException extends DomainException {
+  constructor() {
+    super(401, 'INVALID_CREDENTIALS', 'Las credenciales no son válidas.');
+  }
+}
+
+export class CsrfRejectedException extends DomainException {
+  constructor() {
+    super(403, 'CSRF_REJECTED', 'La solicitud fue rechazada por seguridad. Recarga la página.');
+  }
+}
+
+/** A member whose role does not allow the action. Non-members get NotFound instead (FR-018). */
+export class ForbiddenRoleException extends DomainException {
+  constructor() {
+    super(403, 'FORBIDDEN', 'Tu rol no permite realizar esta acción.');
+  }
+}
+
+/** Also what a resource of another organization looks like: nothing says it exists (FR-018). */
+export class ResourceNotFoundException extends DomainException {
+  constructor() {
+    super(404, 'NOT_FOUND', 'No se encontró el recurso solicitado.');
+  }
+}

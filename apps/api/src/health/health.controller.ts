@@ -2,8 +2,10 @@ import { Controller, Get, Res } from '@nestjs/common';
 import type { HealthIndicatorResult } from '@nestjs/terminus';
 import type { Response } from 'express';
 import type { HealthReport } from '@cognitive-dag/contracts';
+import { Public } from '../auth/public.decorator';
 import { DependencyIndicators } from './dependency.indicators';
 
+@Public()
 @Controller('health')
 export class HealthController {
   constructor(private readonly indicators: DependencyIndicators) {}

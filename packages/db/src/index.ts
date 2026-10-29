@@ -3,4 +3,4 @@ export * from './client.js';
 export * from './schema/index.js';
 export * from './tenant.js';
 
-export { and, eq, gt, isNull, sql } from 'drizzle-orm';
+export { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { EmailSchema, OpaqueTokenSchema } from './primitives.js';
+import { EMAIL_MAX_LENGTH, EmailSchema, OpaqueTokenSchema } from './primitives.js';
 import { OrganizationSummarySchema } from './organizations.js';
 
 export const CSRF_HEADER = 'X-CSRF-Token';
@@ -37,6 +37,21 @@ export const RegisterRequestSchema = z.strictObject({
 });
 
 export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;
+
+/**
+ * Login takes the email as typed: a malformed address is just another wrong credential, so it
+ * gets the same 401 as an unknown one instead of a 422 that tells formats apart (FR-014).
+ */
+export const LoginRequestSchema = z.strictObject({
+  email: z.string().trim().toLowerCase().min(1).max(EMAIL_MAX_LENGTH),
+  // UTF-16 units: 128 code points can take twice as many.
+  password: z
+    .string()
+    .min(1)
+    .max(PASSWORD_MAX_LENGTH * 2),
+});
+
+export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
 export const EmailRequestSchema = z.strictObject({ email: EmailSchema });
 
