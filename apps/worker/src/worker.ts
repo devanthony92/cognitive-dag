@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { Duration } from '@temporalio/common';
 import { Worker, type NativeConnection } from '@temporalio/worker';
-import { createLogger } from '@cognitive-dag/logger';
+import { createLogger, type Logger } from '@cognitive-dag/logger';
 import { createPingActivities } from './activities/ping.activities';
 
 /** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
@@ -18,12 +18,15 @@ export interface PingWorkerOptions {
   activityDelayMs: number;
   nodeEnv: string;
   logLevel?: string;
+  /** Overrides the default stdout logger (tests capture activity logs with it). */
+  logger?: Logger;
   shutdownGraceTime?: Duration;
 }
 
 /** Builds the worker; shared by main.ts and the integration tests. */
 export function createPingWorker(options: PingWorkerOptions): Promise<Worker> {
-  const logger = createLogger({ component: 'worker', level: options.logLevel ?? 'warn' });
+  const logger =
+    options.logger ?? createLogger({ component: 'worker', level: options.logLevel ?? 'warn' });
   return Worker.create({
     connection: options.connection,
     namespace: options.namespace,
