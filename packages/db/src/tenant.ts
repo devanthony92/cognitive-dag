@@ -55,3 +55,11 @@ export function createWithContext(db: Database) {
 }
 
 export type WithContext = ReturnType<typeof createWithContext>;
+
+/** Generates an id before the INSERT, so a row can be referenced by the context it needs (R8). */
+export async function newId(tx: Tx): Promise<string> {
+  const result = await tx.execute<{ id: string }>(sql`SELECT uuidv7() AS id`);
+  const id = result.rows[0]?.id;
+  if (id === undefined) throw new Error('uuidv7() returned no row');
+  return id;
+}

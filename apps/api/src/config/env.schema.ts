@@ -14,6 +14,11 @@ export const EnvSchema = z.object({
   TEMPORAL_ADDRESS: z.string().regex(/^[\w.-]+:\d+$/),
   TEMPORAL_NAMESPACE: z.string().min(1).default('default'),
   TEMPORAL_TASK_QUEUE: z.string().min(1),
+  SMTP_HOST: z.string().min(1).default('127.0.0.1'),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+  MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),
+  // Origin of the web app: base of the links inside emails. Defaults to WEB_ORIGIN.
+  APP_BASE_URL: z.url().optional(),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });
