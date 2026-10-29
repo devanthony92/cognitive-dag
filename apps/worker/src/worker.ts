@@ -1,8 +1,14 @@
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import type { Duration } from '@temporalio/common';
 import { Worker, type NativeConnection } from '@temporalio/worker';
 import { createLogger } from '@cognitive-dag/logger';
 import { createPingActivities } from './activities/ping.activities';
+
+/** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
+export function createWorkerId(): string {
+  return `worker-${randomUUID()}`;
+}
 
 export interface PingWorkerOptions {
   connection: NativeConnection;
@@ -29,6 +35,8 @@ export function createPingWorker(options: PingWorkerOptions): Promise<Worker> {
       nodeEnv: options.nodeEnv,
       logger,
     }),
-    shutdownGraceTime: options.shutdownGraceTime,
+    ...(options.shutdownGraceTime === undefined
+      ? {}
+      : { shutdownGraceTime: options.shutdownGraceTime }),
   });
 }
