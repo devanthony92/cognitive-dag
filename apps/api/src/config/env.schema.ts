@@ -14,7 +14,12 @@ export const EnvSchema = z.object({
   TEMPORAL_ADDRESS: z.string().regex(/^[\w.-]+:\d+$/),
   TEMPORAL_NAMESPACE: z.string().min(1).default('default'),
   TEMPORAL_TASK_QUEUE: z.string().min(1),
+  // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
+  FEATURE_FLAGS: z.string().default('{}'),
 });
+
+/** Shape of FEATURE_FLAGS: flag key to boolean value. */
+export const FeatureFlagsSchema = z.record(z.string().min(1), z.boolean());
 
 export type AppConfig = z.infer<typeof EnvSchema>;
 
