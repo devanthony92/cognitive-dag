@@ -6,3 +6,4 @@ pnpm-lock.yaml
 .turbo/
 apps/worker/test/histories/
 specs/
+apps/web/src/routeTree.gen.ts

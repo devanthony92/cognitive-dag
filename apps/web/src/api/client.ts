@@ -36,7 +36,8 @@ export async function request<T>(
 
   const response = await fetch(`${API_URL}${path}`, { ...init, headers });
   const correlationId = response.headers.get(CORRELATION_ID_HEADER);
-  const body: unknown = await response.json();
+  // 204 answers carry no body.
+  const body: unknown = response.status === 204 ? undefined : await response.json();
 
   if (!response.ok) {
     const contentType = response.headers.get('Content-Type') ?? '';
