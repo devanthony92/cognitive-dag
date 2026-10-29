@@ -7,5 +7,5 @@ allowBuilds:
   lefthook: false
   protobufjs: false
 overrides:
-  # GHSA-q7qp-rjg7-q26m: @nestjs/platform-express 11.2.8 pins multer 2.4.0. Remove once Nest ships >=2.5.0.
+  # GHSA-q7qp-rjg7-q26m: @nestjs/platform-express 11.2.8 pins multer 2.4.0. Remove once Nest ships >=2.5.0 (ADR-0019, issue #11).
   multer: 2.5.0

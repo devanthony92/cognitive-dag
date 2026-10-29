@@ -31,7 +31,7 @@
       "matchManagers": ["dockerfile", "docker-compose"]
     },
     {
-      "description": "NestJS 12 is blocked until nestjs-zod and @openfeature/nestjs-sdk support it (ADR-0013)",
+      "description": "NestJS 12 is blocked until nestjs-zod and @openfeature/nestjs-sdk support it (ADR-0013, issue #10)",
       "matchPackageNames": ["@nestjs/**"],
       "allowedVersions": "<12"
     },
