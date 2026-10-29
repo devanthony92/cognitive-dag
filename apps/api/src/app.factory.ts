@@ -4,7 +4,11 @@ import { NestFactory } from '@nestjs/core';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
 import { z } from 'zod';
-import { CORRELATION_ID_HEADER, IDEMPOTENCY_KEY_HEADER } from '@cognitive-dag/contracts';
+import {
+  CORRELATION_ID_HEADER,
+  CSRF_HEADER,
+  IDEMPOTENCY_KEY_HEADER,
+} from '@cognitive-dag/contracts';
 import { AppModule } from './app.module';
 import type { AppConfig } from './config/env.schema';
 
@@ -20,7 +24,9 @@ export async function createApp(config: AppConfig): Promise<INestApplication> {
   app.use(helmet());
   app.enableCors({
     origin: config.WEB_ORIGIN,
-    allowedHeaders: ['Content-Type', CORRELATION_ID_HEADER, IDEMPOTENCY_KEY_HEADER],
+    // Cookies cross from the web origin only; the session cookie never goes to another origin (R6).
+    credentials: true,
+    allowedHeaders: ['Content-Type', CORRELATION_ID_HEADER, IDEMPOTENCY_KEY_HEADER, CSRF_HEADER],
     exposedHeaders: [CORRELATION_ID_HEADER, 'Location'],
   });
   app.enableShutdownHooks();
