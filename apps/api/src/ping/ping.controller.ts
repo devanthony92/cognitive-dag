@@ -1,14 +1,28 @@
-import { Body, Controller, Get, Headers, HttpCode, Param, Post, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { ClsService } from 'nestjs-cls';
-import { ZodValidationException } from 'nestjs-zod';
-import { FEATURE_FLAGS, resolveCorrelationId, type PingExecution } from '@cognitive-dag/contracts';
-import { DomainException } from '../common/errors/domain.exception';
+import type { PingExecution } from '@cognitive-dag/contracts';
+import { Public } from '../auth/public.decorator';
 import { FlagsService } from '../flags/flags.service';
-import { CreatePingDto, CreatePingHeadersSchema, PingParamsDto } from './ping.dto';
+import { LegacyPingGuard } from './legacy-ping.guard';
+import { createPing } from './ping-create';
+import { CreatePingDto, PingParamsDto } from './ping.dto';
 import { PingService } from './ping.service';
 
+/** F0 route, available only with `identity-enabled` off (see LegacyPingGuard). */
 @Controller('api/v1/pings')
+@Public()
+@UseGuards(LegacyPingGuard)
 export class PingController {
   constructor(
     private readonly pings: PingService,
@@ -23,22 +37,10 @@ export class PingController {
     @Headers() rawHeaders: Record<string, unknown>,
     @Res({ passthrough: true }) res: Response,
   ): Promise<PingExecution> {
-    // Nest pipes skip @Headers(), so the header is validated here and reported as 422.
-    const headers = CreatePingHeadersSchema.safeParse(rawHeaders);
-    if (!headers.success) throw new ZodValidationException(headers.error);
-    // The flag gates the feature before any workflow starts (constitution, principle VIII).
-    if (!(await this.flags.isEnabled(FEATURE_FLAGS.pingEnabled))) {
-      throw new DomainException(
-        404,
-        'FEATURE_NOT_AVAILABLE',
-        'Esta funcionalidad no está disponible.',
-      );
-    }
-    const ping = await this.pings.create({
-      correlationId: resolveCorrelationId(this.cls.getId()),
-      message: body.message,
-      idempotencyKey: headers.data['idempotency-key'],
-    });
+    const ping = await createPing(
+      { pings: this.pings, flags: this.flags, cls: this.cls },
+      { rawHeaders, message: body.message },
+    );
     res.location(`/api/v1/pings/${ping.pingId}`);
     return ping;
   }
