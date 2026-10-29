@@ -1,0 +1,137 @@
+import { describe, expect, it } from 'vitest';
+import {
+  EmailRequestSchema,
+  PasswordSchema,
+  ProblemCodeSchema,
+  ProblemDetailsSchema,
+  RegisterRequestSchema,
+  TokenRequestSchema,
+  normalizeEmail,
+} from '../src/index.js';
+
+const VALID_UUID = '3f2b0c1e-5d6a-4b7c-8d9e-0f1a2b3c4d5e';
+const TOKEN = 'A'.repeat(43);
+
+describe('PasswordSchema', () => {
+  it('rejects 14 characters and accepts 15', () => {
+    expect(PasswordSchema.safeParse('a'.repeat(14)).success).toBe(false);
+    expect(PasswordSchema.safeParse('a'.repeat(15)).success).toBe(true);
+  });
+
+  it('accepts 128 characters and rejects 129', () => {
+    expect(PasswordSchema.safeParse('a'.repeat(128)).success).toBe(true);
+    expect(PasswordSchema.safeParse('a'.repeat(129)).success).toBe(false);
+  });
+
+  it('counts Unicode characters, not UTF-16 units', () => {
+    const emoji = '\u{1F600}';
+    expect(PasswordSchema.safeParse(emoji.repeat(15)).success).toBe(true);
+    expect(PasswordSchema.safeParse(emoji.repeat(14)).success).toBe(false);
+    expect(PasswordSchema.safeParse(emoji.repeat(128)).success).toBe(true);
+    expect(PasswordSchema.safeParse(emoji.repeat(129)).success).toBe(false);
+  });
+
+  it('accepts spaces and does not require composition rules', () => {
+    expect(PasswordSchema.safeParse(' '.repeat(15)).success).toBe(true);
+    expect(PasswordSchema.safeParse('todo en minusculas ok').success).toBe(true);
+  });
+});
+
+describe('email normalization', () => {
+  it('lowercases and trims', () => {
+    expect(normalizeEmail('  Ana.Perez@Example.COM ')).toBe('ana.perez@example.com');
+  });
+
+  it('is applied by the request schemas', () => {
+    const parsed = EmailRequestSchema.parse({ email: ' Ana@Example.com ' });
+    expect(parsed.email).toBe('ana@example.com');
+  });
+
+  it('rejects emails longer than 254 characters', () => {
+    const tooLong = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(63)}.com`;
+    expect(tooLong.length).toBeGreaterThan(254);
+    expect(EmailRequestSchema.safeParse({ email: tooLong }).success).toBe(false);
+    const edge = `${'a'.repeat(64)}@${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(57)}.com`;
+    expect(edge.length).toBeLessThanOrEqual(254);
+    expect(EmailRequestSchema.safeParse({ email: edge }).success).toBe(true);
+  });
+
+  it('rejects malformed emails', () => {
+    expect(EmailRequestSchema.safeParse({ email: 'no-es-un-email' }).success).toBe(false);
+  });
+});
+
+describe('TokenRequestSchema', () => {
+  it('accepts exactly 43 base64url characters', () => {
+    expect(TokenRequestSchema.safeParse({ token: TOKEN }).success).toBe(true);
+    expect(TokenRequestSchema.safeParse({ token: `${'a-_Z9'.repeat(8)}abc` }).success).toBe(true);
+  });
+
+  it.each([
+    ['42 characters', 'A'.repeat(42)],
+    ['44 characters', 'A'.repeat(44)],
+    ['padding', `${'A'.repeat(42)}=`],
+    ['standard base64 alphabet', `${'A'.repeat(41)}+/`],
+    ['whitespace', `${'A'.repeat(42)} `],
+  ])('rejects %s', (_case, token) => {
+    expect(TokenRequestSchema.safeParse({ token }).success).toBe(false);
+  });
+
+  it('rejects unknown properties', () => {
+    expect(TokenRequestSchema.safeParse({ token: TOKEN, extra: 1 }).success).toBe(false);
+  });
+});
+
+describe('RegisterRequestSchema', () => {
+  const valid = { name: 'Ana', email: 'ana@example.com', password: 'una contrasena larga' };
+
+  it('accepts valid data', () => {
+    expect(RegisterRequestSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it.each([
+    ['empty name', { name: '' }],
+    ['name over 100 characters', { name: 'n'.repeat(101) }],
+    ['short password', { password: 'corta' }],
+    ['unknown property', { admin: true }],
+  ])('rejects %s', (_case, patch) => {
+    expect(RegisterRequestSchema.safeParse({ ...valid, ...patch }).success).toBe(false);
+  });
+});
+
+describe('problem codes of F1', () => {
+  it.each([
+    'UNAUTHENTICATED',
+    'INVALID_CREDENTIALS',
+    'CSRF_REJECTED',
+    'FORBIDDEN',
+    'NOT_FOUND',
+    'RATE_LIMITED',
+    'TOKEN_INVALID',
+    'ALREADY_MEMBER',
+    'LAST_OWNER',
+  ])('knows %s', (code) => {
+    expect(ProblemCodeSchema.safeParse(code).success).toBe(true);
+  });
+
+  const base = {
+    status: 429,
+    title: 'Too Many Requests',
+    detail: 'Demasiados intentos.',
+    code: 'RATE_LIMITED',
+    correlationId: VALID_UUID,
+  };
+
+  it('accepts retryAfterSeconds with RATE_LIMITED', () => {
+    expect(ProblemDetailsSchema.safeParse({ ...base, retryAfterSeconds: 30 }).success).toBe(true);
+  });
+
+  it('rejects retryAfterSeconds with any other code', () => {
+    const other = { ...base, status: 404, code: 'NOT_FOUND', retryAfterSeconds: 30 };
+    expect(ProblemDetailsSchema.safeParse(other).success).toBe(false);
+  });
+
+  it('rejects a non-positive retryAfterSeconds', () => {
+    expect(ProblemDetailsSchema.safeParse({ ...base, retryAfterSeconds: 0 }).success).toBe(false);
+  });
+});
