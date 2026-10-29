@@ -37,6 +37,9 @@ const CORRELATION_ID_KEY = defineSearchAttributeKey(
 const GRPC_UNAVAILABLE = 14;
 const GRPC_DEADLINE_EXCEEDED = 4;
 
+// A lazy connection to an unreachable Temporal would otherwise block the request indefinitely.
+const TEMPORAL_CALL_DEADLINE_MS = 5_000;
+
 @Injectable()
 export class PingService {
   constructor(
@@ -60,16 +63,18 @@ export class PingService {
     };
 
     try {
-      await this.client.workflow.start(PING_WORKFLOW_NAME, {
-        taskQueue: this.config.TEMPORAL_TASK_QUEUE,
-        workflowId,
-        args: [args],
-        workflowIdReusePolicy: WorkflowIdReusePolicy.REJECT_DUPLICATE,
-        workflowExecutionTimeout: PING_EXECUTION_TIMEOUT,
-        typedSearchAttributes: new TypedSearchAttributes([
-          { key: CORRELATION_ID_KEY, value: input.correlationId },
-        ]),
-      });
+      await this.withDeadline(() =>
+        this.client.workflow.start(PING_WORKFLOW_NAME, {
+          taskQueue: this.config.TEMPORAL_TASK_QUEUE,
+          workflowId,
+          args: [args],
+          workflowIdReusePolicy: WorkflowIdReusePolicy.REJECT_DUPLICATE,
+          workflowExecutionTimeout: PING_EXECUTION_TIMEOUT,
+          typedSearchAttributes: new TypedSearchAttributes([
+            { key: CORRELATION_ID_KEY, value: input.correlationId },
+          ]),
+        }),
+      );
     } catch (error) {
       if (!(error instanceof WorkflowExecutionAlreadyStartedError)) throw this.translate(error);
     }
@@ -80,7 +85,7 @@ export class PingService {
     const handle = this.client.workflow.getHandle(pingId);
     let description: WorkflowExecutionDescription;
     try {
-      description = await handle.describe();
+      description = await this.withDeadline(() => handle.describe());
     } catch (error) {
       throw this.translate(error);
     }
@@ -88,7 +93,7 @@ export class PingService {
 
     let status: PingStatus;
     try {
-      status = await this.toPingStatus(handle, description);
+      status = await this.withDeadline(() => this.toPingStatus(handle, description));
     } catch (error) {
       throw this.translate(error);
     }
@@ -98,7 +103,7 @@ export class PingService {
     let result: unknown;
     if (status === 'completed') {
       try {
-        result = await handle.result();
+        result = await this.withDeadline(() => handle.result());
       } catch (error) {
         throw this.translate(error);
       }
@@ -134,6 +139,10 @@ export class PingService {
       default:
         return 'failed';
     }
+  }
+
+  private withDeadline<T>(call: () => Promise<T>): Promise<T> {
+    return this.client.connection.withDeadline(Date.now() + TEMPORAL_CALL_DEADLINE_MS, call);
   }
 
   private translate(error: unknown): Error {
