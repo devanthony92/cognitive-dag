@@ -5,7 +5,14 @@ import tseslint from 'typescript-eslint';
 
 export default defineConfig(
   {
-    ignores: ['**/node_modules/**', '**/dist/**', '**/coverage/**', '.specify/**', '**/*.config.*'],
+    ignores: [
+      '**/routeTree.gen.ts',
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '.specify/**',
+      '**/*.config.*',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -32,6 +39,13 @@ export default defineConfig(
   {
     files: ['apps/web/**/*.{ts,tsx}'],
     languageOptions: { globals: { ...globals.browser } },
+  },
+  {
+    files: ['apps/web/src/routes/**/*.{ts,tsx}'],
+    rules: {
+      // TanStack Router redirects are thrown by design.
+      '@typescript-eslint/only-throw-error': 'off',
+    },
   },
   {
     files: ['apps/api/**/*.ts'],
