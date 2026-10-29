@@ -4,6 +4,7 @@ import {
   Client,
   WorkflowExecutionAlreadyStartedError,
   WorkflowIdReusePolicy,
+  type WorkflowHandle,
   type WorkflowExecutionDescription,
 } from '@temporalio/client';
 import {
@@ -24,15 +25,13 @@ import {
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
 import { DomainException, ServiceUnavailableException } from '../common/errors/domain.exception';
+import { hasCompletedWorkflowTask } from './ping-status';
 import { TEMPORAL_CLIENT } from '../temporal/temporal.module';
 
 const CORRELATION_ID_KEY = defineSearchAttributeKey(
   CORRELATION_ID_SEARCH_ATTRIBUTE,
   SearchAttributeType.KEYWORD,
 );
-
-/** Workflow history events before the first workflow task completes: started, scheduled, started. */
-const EVENTS_BEFORE_FIRST_WORKFLOW_TASK_COMPLETED = 3;
 
 // gRPC status codes that mean "Temporal is not reachable" rather than "the request is wrong".
 const GRPC_UNAVAILABLE = 14;
@@ -87,7 +86,12 @@ export class PingService {
     }
     if (description.type !== PING_WORKFLOW_NAME) throw pingNotFound();
 
-    const status = toPingStatus(description);
+    let status: PingStatus;
+    try {
+      status = await this.toPingStatus(handle, description);
+    } catch (error) {
+      throw this.translate(error);
+    }
     const correlationId = description.typedSearchAttributes.get(CORRELATION_ID_KEY);
     if (correlationId === undefined) throw pingNotFound();
 
@@ -110,6 +114,28 @@ export class PingService {
     };
   }
 
+  /**
+   * The overall status comes from describe() (queries need a live worker). A RUNNING execution
+   * is pending until some workflow task has completed; that needs the (tiny) history.
+   */
+  private async toPingStatus(
+    handle: WorkflowHandle,
+    description: WorkflowExecutionDescription,
+  ): Promise<PingStatus> {
+    switch (description.status.name) {
+      case 'RUNNING': {
+        const { events } = await handle.fetchHistory();
+        return hasCompletedWorkflowTask(events ?? []) ? 'running' : 'pending';
+      }
+      case 'COMPLETED':
+        return 'completed';
+      case 'TIMED_OUT':
+        return 'timed_out';
+      default:
+        return 'failed';
+    }
+  }
+
   private translate(error: unknown): Error {
     if (error instanceof WorkflowNotFoundError) return pingNotFound();
     if (isTemporalUnavailable(error)) return new ServiceUnavailableException();
@@ -123,25 +149,6 @@ function pingNotFound(): DomainException {
     'PING_NOT_FOUND',
     'No existe una ejecución de ping con ese identificador.',
   );
-}
-
-/**
- * Status comes from describe() (queries need a live worker): a RUNNING execution whose first
- * workflow task has not completed is still pending.
- */
-function toPingStatus(description: WorkflowExecutionDescription): PingStatus {
-  switch (description.status.name) {
-    case 'RUNNING':
-      return description.historyLength <= EVENTS_BEFORE_FIRST_WORKFLOW_TASK_COMPLETED
-        ? 'pending'
-        : 'running';
-    case 'COMPLETED':
-      return 'completed';
-    case 'TIMED_OUT':
-      return 'timed_out';
-    default:
-      return 'failed';
-  }
 }
 
 function isTemporalUnavailable(error: unknown): boolean {
