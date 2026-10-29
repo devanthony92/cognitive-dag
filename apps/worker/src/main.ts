@@ -1,10 +1,11 @@
+import { hostname } from 'node:os';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { NativeConnection, Runtime, Worker } from '@temporalio/worker';
-import { createActivities } from './activities';
+import { NativeConnection, Runtime, type Worker } from '@temporalio/worker';
 import { InvalidConfigError, parseEnv, type WorkerConfig } from './config/env.schema';
 import { loadLocalEnv } from './config/load-env';
 import { startHealthServer } from './health/server';
 import { createWorkerLogger, PinoTemporalLogger } from './logging/logger';
+import { createPingWorker } from './worker';
 
 const MAX_CONNECT_BACKOFF_MS = 10_000;
 
@@ -46,12 +47,14 @@ async function run(): Promise<void> {
   }
 
   try {
-    worker = await Worker.create({
+    worker = await createPingWorker({
       connection,
       namespace: config.TEMPORAL_NAMESPACE,
       taskQueue: config.TEMPORAL_TASK_QUEUE,
-      workflowsPath: require.resolve('./workflows'),
-      activities: createActivities(config),
+      workerId: `${hostname()}-${process.pid}`,
+      activityDelayMs: config.PING_ACTIVITY_DELAY_MS,
+      nodeEnv: config.NODE_ENV,
+      logLevel: config.LOG_LEVEL,
     });
     logger.info({ taskQueue: config.TEMPORAL_TASK_QUEUE }, 'Worker started');
     await worker.run();

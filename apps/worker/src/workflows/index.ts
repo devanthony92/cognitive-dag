@@ -1,2 +1,2 @@
 // Workflow registry: every workflow exported here is loaded by the worker bundle.
-export {};
+export { pingWorkflow } from './ping.workflow';
