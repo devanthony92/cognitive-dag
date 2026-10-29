@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  argon2: false
   '@swc/core': false
   esbuild: false
   lefthook: false
