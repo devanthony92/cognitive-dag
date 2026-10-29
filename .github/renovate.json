@@ -1,0 +1,44 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":semanticCommits", "helpers:pinGitHubActionDigests"],
+  "minimumReleaseAge": "3 days",
+  "pinDigests": true,
+  "rangeStrategy": "pin",
+  "dependencyDashboard": true,
+  "packageRules": [
+    {
+      "groupName": "NestJS",
+      "matchPackageNames": ["@nestjs/**", "nestjs-*"]
+    },
+    {
+      "groupName": "Temporal",
+      "matchPackageNames": ["@temporalio/**"]
+    },
+    {
+      "groupName": "React",
+      "matchPackageNames": ["react", "react-dom", "@types/react", "@types/react-dom"]
+    },
+    {
+      "groupName": "Lint and format",
+      "matchPackageNames": ["eslint", "@eslint/**", "typescript-eslint", "prettier", "globals"]
+    },
+    {
+      "groupName": "GitHub Actions",
+      "matchManagers": ["github-actions"]
+    },
+    {
+      "groupName": "Container images",
+      "matchManagers": ["dockerfile", "docker-compose"]
+    },
+    {
+      "description": "NestJS 12 is blocked until nestjs-zod and @openfeature/nestjs-sdk support it (ADR-0013)",
+      "matchPackageNames": ["@nestjs/**"],
+      "allowedVersions": "<12"
+    },
+    {
+      "description": "TypeScript 7 is blocked until typescript-eslint supports it (ADR-0012)",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<6.1"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+title = "CognitiveDAG gitleaks configuration"
+
+[extend]
+useDefault = true
+
+# .env.example holds local-only development defaults, never real credentials.
+[[allowlists]]
+description = "Local development defaults"
+paths = ['''^\.env\.example$''']
