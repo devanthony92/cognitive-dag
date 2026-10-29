@@ -19,6 +19,7 @@ interface MappedProblem {
   code: ProblemCode;
   detail: string;
   errors?: FieldError[];
+  retryAfterSeconds?: number;
 }
 
 /** Body-parser errors carry a `type` instead of being HttpExceptions. */
@@ -56,14 +57,21 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code: mapped.code,
       correlationId,
       ...(mapped.errors ? { errors: mapped.errors } : {}),
+      ...(mapped.retryAfterSeconds ? { retryAfterSeconds: mapped.retryAfterSeconds } : {}),
     };
 
+    if (mapped.retryAfterSeconds) response.setHeader('Retry-After', mapped.retryAfterSeconds);
     response.status(mapped.status).type(PROBLEM_CONTENT_TYPE).json(body);
   }
 
   private map(exception: unknown): MappedProblem {
     if (exception instanceof DomainException) {
-      return { status: exception.status, code: exception.code, detail: exception.detail };
+      return {
+        status: exception.status,
+        code: exception.code,
+        detail: exception.detail,
+        ...exception.options,
+      };
     }
     if (exception instanceof ZodValidationException) {
       return {

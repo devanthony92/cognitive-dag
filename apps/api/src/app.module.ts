@@ -10,13 +10,19 @@ import { ZodValidationPipe } from 'nestjs-zod';
 import { CorrelationModule } from './common/correlation/correlation.module';
 import { ProblemDetailsFilter } from './common/errors/problem-details.filter';
 import { JsonBodyMiddleware } from './common/http/json-body.middleware';
+import { AuthModule } from './auth/auth.module';
 import { LoggingModule } from './common/logging/logging.module';
 import { AppConfigModule } from './config/config.module';
 import type { AppConfig } from './config/env.schema';
+import { DatabaseModule } from './database/database.module';
 import { FlagsModule } from './flags/flags.module';
 import { HealthModule } from './health/health.module';
+import { MailModule } from './mail/mail.module';
 import { PingModule } from './ping/ping.module';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { SecurityEventsModule } from './security-events/security-events.module';
 import { TemporalModule } from './temporal/temporal.module';
+import { ValkeyModule } from './valkey/valkey.module';
 
 @Module({})
 export class AppModule implements NestModule {
@@ -29,9 +35,15 @@ export class AppModule implements NestModule {
         CorrelationModule,
         LoggingModule,
         TemporalModule,
+        DatabaseModule,
+        ValkeyModule,
+        SecurityEventsModule,
+        RateLimitModule,
+        MailModule,
         FlagsModule.forRoot(config.FEATURE_FLAGS),
         HealthModule,
         PingModule,
+        AuthModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },

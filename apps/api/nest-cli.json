@@ -11,6 +11,12 @@
     },
     "typeCheck": false,
     "tsConfigPath": "tsconfig.build.json",
-    "deleteOutDir": true
+    "deleteOutDir": true,
+    "assets": [
+      {
+        "include": "auth/common-passwords.txt",
+        "outDir": "dist"
+      }
+    ]
   }
 }
