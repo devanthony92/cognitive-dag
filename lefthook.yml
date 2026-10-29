@@ -3,7 +3,7 @@ pre-commit:
   commands:
     lint:
       glob: '*.{ts,tsx,mjs}'
-      run: pnpm exec eslint {staged_files}
+      run: pnpm exec eslint --no-warn-ignored {staged_files}
     format:
       glob: '*.{ts,tsx,mjs,json,yml,yaml,md}'
       exclude:
