@@ -163,7 +163,7 @@ Monorepo: `apps/api`, `apps/worker`, `apps/web`, `packages/*`, `docs/`, raíz de
 - [X] T055 [US4] Crear `.github/workflows/ci.yml`: acciones fijadas por SHA, `permissions: contents: read`; jobs `quality` (format, lint, typecheck, unit), `security` (`pnpm audit --audit-level high`, gitleaks), `integration` y `images` en matriz `ubuntu-24.04` / `ubuntu-24.04-arm` (`docker compose up --wait`, integración, replay, caos; `docker buildx build` sin push)
 - [X] T056 [US4] Subir la rama, abrir la PR de F0 y verificar que los cuatro jobs pasan en ambas arquitecturas y que CI dura < 15 min
 - [X] T057 [US4] Configurar protección de `main` en GitHub: PR obligatoria y checks `quality`, `security`, `integration`, `images` requeridos (requiere confirmación del autor)
-- [ ] T058 [US4] Verificar cada control con una PR de prueba descartable (estilo, tipos, prueba fallida, dependencia vulnerable, secreto de prueba) y registrar la evidencia en `specs/001-foundations-skeleton/checklists/ci-evidence.md`
+- [X] T058 [US4] Verificar cada control con una PR de prueba descartable (estilo, tipos, prueba fallida, dependencia vulnerable, secreto de prueba) y registrar la evidencia en `specs/001-foundations-skeleton/checklists/ci-evidence.md`
 
 **Checkpoint**: SC-006 y SC-007 verificados
 
