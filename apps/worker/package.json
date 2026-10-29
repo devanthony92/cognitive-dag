@@ -1,0 +1,32 @@
+{
+  "name": "@cognitive-dag/worker",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "type": "commonjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch --clear-screen=false src/main.ts",
+    "start": "node dist/main.js",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --dir test/unit",
+    "test:integration": "vitest run --dir test/integration"
+  },
+  "dependencies": {
+    "@cognitive-dag/contracts": "workspace:*",
+    "@cognitive-dag/logger": "workspace:*",
+    "@temporalio/activity": "1.25.0",
+    "@temporalio/common": "1.25.0",
+    "@temporalio/worker": "1.25.0",
+    "@temporalio/workflow": "1.25.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cognitive-dag/config": "workspace:*",
+    "@temporalio/client": "1.25.0",
+    "@temporalio/testing": "1.25.0",
+    "tsx": "4.23.15"
+  }
+}
