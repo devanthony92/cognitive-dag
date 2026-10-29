@@ -5,7 +5,7 @@ import { InvalidConfigError, parseEnv, type WorkerConfig } from './config/env.sc
 import { loadLocalEnv } from './config/load-env';
 import { startHealthServer } from './health/server';
 import { createWorkerLogger, PinoTemporalLogger } from './logging/logger';
-import { createPingWorker } from './worker';
+import { createPingWorker, createWorkerId } from './worker';
 
 const MAX_CONNECT_BACKOFF_MS = 10_000;
 
@@ -27,6 +27,9 @@ async function run(): Promise<void> {
   const config = loadConfig();
   const logger = createWorkerLogger(config.LOG_LEVEL);
   Runtime.install({ logger: new PinoTemporalLogger(logger) });
+
+  const workerId = createWorkerId();
+  logger.info({ workerId, hostname: hostname(), pid: process.pid }, 'Worker identity');
 
   let worker: Worker | undefined;
   const health = await startHealthServer(
@@ -51,7 +54,7 @@ async function run(): Promise<void> {
       connection,
       namespace: config.TEMPORAL_NAMESPACE,
       taskQueue: config.TEMPORAL_TASK_QUEUE,
-      workerId: `${hostname()}-${process.pid}`,
+      workerId,
       activityDelayMs: config.PING_ACTIVITY_DELAY_MS,
       nodeEnv: config.NODE_ENV,
       logLevel: config.LOG_LEVEL,
