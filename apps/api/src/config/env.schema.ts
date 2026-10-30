@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import { ABSOLUTE_LIMITS } from '@cognitive-dag/dag-schema';
+
+/** A ceiling can only lower the absolute maximum of the platform (research R12). */
+const ceiling = (absolute: number, minimum: number) =>
+  z.coerce.number().int().min(minimum).max(absolute).default(absolute);
 
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -19,6 +24,10 @@ export const EnvSchema = z.object({
   MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),
   // Origin of the web app: base of the links inside emails. Defaults to WEB_ORIGIN.
   APP_BASE_URL: z.url().optional(),
+  // Ceilings for the DAG limits of every organization (FR-020); they cannot exceed the platform maximum.
+  DAG_MAX_NODES_CEILING: ceiling(ABSOLUTE_LIMITS.maxNodes, 1),
+  DAG_MAX_EDGES_CEILING: ceiling(ABSOLUTE_LIMITS.maxEdges, 0),
+  DAG_MAX_DEFINITION_BYTES_CEILING: ceiling(ABSOLUTE_LIMITS.maxDefinitionBytes, 1024),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });

@@ -23,6 +23,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { SecurityEventsModule } from './security-events/security-events.module';
 import { TemporalModule } from './temporal/temporal.module';
 import { ValkeyModule } from './valkey/valkey.module';
+import { WorkflowsModule } from './workflows/workflows.module';
 
 @Module({})
 export class AppModule implements NestModule {
@@ -44,6 +45,7 @@ export class AppModule implements NestModule {
         HealthModule,
         PingModule,
         AuthModule,
+        WorkflowsModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },

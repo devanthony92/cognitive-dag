@@ -12,7 +12,6 @@ import {
   authHeaders,
   createVerifiedUser,
   emailsTo,
-  IDENTITY_FLAGS,
   loginAs,
   openDatabase,
   resetRateLimits,
@@ -25,6 +24,7 @@ import {
 } from './identity-helpers';
 import { createOrganization, invite, joinAs } from './members-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
+import { DAG_FLAGS, validDefinition } from './workflows-helpers';
 
 const ALLOWED_KEYS = new Set(['event', 'outcome', 'userId', 'organizationId', 'ip']);
 
@@ -33,7 +33,7 @@ describe('security events (requires docker compose up and pnpm db:migrate)', () 
   let database: DatabaseClient;
 
   beforeAll(async () => {
-    app = await startIdentityApp(IDENTITY_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
+    app = await startIdentityApp(DAG_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
     database = openDatabase();
   });
 
@@ -127,6 +127,31 @@ describe('security events (requires docker compose up and pnpm db:migrate)', () 
       .delete(`/api/v1/organizations/${organization.id}/members/${member.membershipId}`)
       .set(authHeaders(ownerSession))
       .expect(204);
+
+    // workflow.created, workflow.published, workflow.version_activated, workflow.archived
+    const workflowsUrl = `/api/v1/organizations/${organization.id}/workflows`;
+    const workflow = await api()
+      .post(workflowsUrl)
+      .set(authHeaders(ownerSession))
+      .send({ name: 'Eventos de workflow' })
+      .expect(201);
+    const workflowId = (workflow.body as { id: string }).id;
+    await api()
+      .put(`${workflowsUrl}/${workflowId}/draft`)
+      .set(authHeaders(ownerSession))
+      .set('If-Match', '"1"')
+      .send({ definition: validDefinition() })
+      .expect(200);
+    await api()
+      .post(`${workflowsUrl}/${workflowId}/versions`)
+      .set(authHeaders(ownerSession))
+      .set('If-Match', '"2"')
+      .expect(201);
+    await api()
+      .post(`${workflowsUrl}/${workflowId}/versions/1/activate`)
+      .set(authHeaders(ownerSession))
+      .expect(200);
+    await api().delete(`${workflowsUrl}/${workflowId}`).set(authHeaders(ownerSession)).expect(204);
 
     // auth.rate_limited
     for (let i = 0; i < 5; i += 1) {

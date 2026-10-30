@@ -26,8 +26,14 @@ export async function createApp(config: AppConfig): Promise<INestApplication> {
     origin: config.WEB_ORIGIN,
     // Cookies cross from the web origin only; the session cookie never goes to another origin (R6).
     credentials: true,
-    allowedHeaders: ['Content-Type', CORRELATION_ID_HEADER, IDEMPOTENCY_KEY_HEADER, CSRF_HEADER],
-    exposedHeaders: [CORRELATION_ID_HEADER, 'Location'],
+    allowedHeaders: [
+      'Content-Type',
+      'If-Match',
+      CORRELATION_ID_HEADER,
+      IDEMPOTENCY_KEY_HEADER,
+      CSRF_HEADER,
+    ],
+    exposedHeaders: [CORRELATION_ID_HEADER, 'Location', 'ETag'],
   });
   app.enableShutdownHooks();
   return app;

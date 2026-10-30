@@ -211,6 +211,9 @@ importers:
       '@cognitive-dag/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@cognitive-dag/dag-schema':
+        specifier: workspace:*
+        version: link:../../packages/dag-schema
       '@cognitive-dag/db':
         specifier: workspace:*
         version: link:../../packages/db
