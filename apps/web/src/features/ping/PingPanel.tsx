@@ -8,6 +8,15 @@ import {
   type PingExecution,
 } from '@cognitive-dag/contracts';
 import { ApiProblemError, request } from '../../api/client';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '../../components/ui/card';
 
 const STATUS_LABELS: Record<PingExecution['status'], string> = {
   pending: 'Pendiente',
@@ -63,39 +72,72 @@ export function PingPanel({ organizationId }: { organizationId?: string } = {}) 
   const error = start.error ?? status.error;
 
   return (
-    <section aria-labelledby="ping-title">
-      <h2 id="ping-title">Ping de extremo a extremo</h2>
-      <button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
-        Ejecutar ping
-      </button>
-      {error && (
-        <p role="alert">
-          {error instanceof ApiProblemError
-            ? error.problem.detail
-            : 'No se pudo completar la solicitud.'}
-          {error instanceof ApiProblemError && (
-            <small> (correlationId: {error.problem.correlationId})</small>
-          )}
-        </p>
-      )}
-      {ping && (
-        <dl>
-          <dt>Estado</dt>
-          <dd>{STATUS_LABELS[ping.status]}</dd>
-          {ping.result && (
-            <>
-              <dt>Resultado</dt>
-              <dd>
-                {ping.result.pong} (worker {ping.result.workerId}, intentos {ping.result.attempts})
-              </dd>
-            </>
-          )}
-          <dt>correlationId</dt>
-          <dd>
-            <code>{ping.correlationId}</code>
-          </dd>
-        </dl>
-      )}
-    </section>
+    <Card aria-labelledby="ping-title" role="region">
+      <CardHeader>
+        <CardTitle id="ping-title">Ping de extremo a extremo</CardTitle>
+        <CardDescription>
+          Ejecuta un workflow de prueba y sigue su estado hasta que termine.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div>
+          <Button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
+            Ejecutar ping
+          </Button>
+        </div>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>
+              <p>
+                {error instanceof ApiProblemError
+                  ? error.problem.detail
+                  : 'No se pudo completar la solicitud.'}
+              </p>
+              {error instanceof ApiProblemError && (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  correlationId: {error.problem.correlationId}
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        {ping && (
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Estado</dt>
+            <dd>
+              <Badge status={ping.status} />
+            </dd>
+            {ping.result && (
+              <>
+                <dt className="text-muted-foreground">Resultado</dt>
+                <dd>
+                  {ping.result.pong} (worker {ping.result.workerId}, intentos {ping.result.attempts}
+                  )
+                </dd>
+              </>
+            )}
+            <dt className="text-muted-foreground">correlationId</dt>
+            <dd>
+              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{ping.correlationId}</code>
+            </dd>
+          </dl>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+/** The status as a pill; the label stays plain text so it reads the same to assistive tech. */
+function Badge({ status }: { status: PingExecution['status'] }) {
+  const tone =
+    status === 'completed'
+      ? 'bg-primary text-primary-foreground'
+      : status === 'failed' || status === 'timed_out'
+        ? 'bg-destructive/10 text-destructive'
+        : 'bg-muted text-muted-foreground';
+  return (
+    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>
+      {STATUS_LABELS[status]}
+    </span>
   );
 }
