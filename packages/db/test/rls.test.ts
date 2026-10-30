@@ -345,6 +345,80 @@ describe('lookup context keys', () => {
   });
 });
 
+describe('organization read by invitation token (option B, approved 2026-10-29)', () => {
+  type InvitationState = 'pending' | 'expired' | 'revoked' | 'accepted';
+  const hashes = {} as Record<InvitationState, Buffer>;
+
+  beforeAll(async () => {
+    for (const state of ['pending', 'expired', 'revoked', 'accepted'] as const) {
+      hashes[state] = hashBytes();
+      await inContext(pool, { organizationId: a.organizationId }, (client) =>
+        client.query(
+          `INSERT INTO invitations
+             (organization_id, email, role, token_hash, invited_by, status, expires_at,
+              accepted_by, accepted_at, revoked_at)
+           VALUES ($1, $2, 'viewer', $3, $4, $5,
+                   now() + ($6 || ' days')::interval,
+                   $7, $8, $9)`,
+          [
+            a.organizationId,
+            `${state}-${hashes[state].toString('hex').slice(0, 8)}@example.test`,
+            hashes[state],
+            a.userId,
+            state === 'expired' ? 'pending' : state,
+            state === 'expired' ? '-1' : '7',
+            state === 'accepted' ? a.userId : null,
+            state === 'accepted' ? new Date() : null,
+            state === 'revoked' ? new Date() : null,
+          ],
+        ),
+      );
+    }
+  });
+
+  const readOrganization = (lookupTokenHash: string, organizationId: string) =>
+    inContext(pool, { lookupTokenHash }, (client) =>
+      count(client, 'organizations', `id = '${organizationId}'`),
+    );
+
+  it('reads the organization with the token of a pending, unexpired invitation', async () => {
+    expect(await readOrganization(hashes.pending.toString('hex'), a.organizationId)).toBe(1);
+  });
+
+  it.each(['expired', 'revoked', 'accepted'] as const)(
+    'reads nothing with the token of a %s invitation',
+    async (state) => {
+      expect(await readOrganization(hashes[state].toString('hex'), a.organizationId)).toBe(0);
+    },
+  );
+
+  it('reads nothing with an unknown token', async () => {
+    expect(await readOrganization(hashBytes().toString('hex'), a.organizationId)).toBe(0);
+  });
+
+  it('reads only the organization the token belongs to, not another one', async () => {
+    expect(await readOrganization(hashes.pending.toString('hex'), b.organizationId)).toBe(0);
+    expect(await readOrganization(invitationHashB.toString('hex'), a.organizationId)).toBe(0);
+    expect(await readOrganization(invitationHashB.toString('hex'), b.organizationId)).toBe(1);
+  });
+
+  it('does not let the token write anything', async () => {
+    await inContext(pool, { lookupTokenHash: hashes.pending.toString('hex') }, async (client) => {
+      const result = await client.query("UPDATE organizations SET name = 'x' WHERE id = $1", [
+        a.organizationId,
+      ]);
+      expect(result.rowCount).toBe(0);
+    });
+  });
+
+  it('leaves member access unchanged', async () => {
+    await inContext(pool, { userId: a.userId }, async (client) => {
+      expect(await count(client, 'organizations')).toBeGreaterThanOrEqual(1);
+      expect(await count(client, 'organizations', `id = '${b.organizationId}'`)).toBe(0);
+    });
+  });
+});
+
 describe('users visible through the active organization', () => {
   it('shows a co-member to members of the organization and nobody else', async () => {
     const shared = await createSharedOrganization(pool, a.userId);

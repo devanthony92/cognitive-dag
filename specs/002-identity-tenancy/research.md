@@ -94,6 +94,11 @@ reemplazan por el parche anterior (política de pnpm, ADR-0020). Cada dependenci
   `UPDATE` que lee columnas, así que una política con `deleted_at IS NULL` impide marcar `deleted_at`. Las
   políticas de `SELECT` de `users`, `organizations` y `memberships` no lo comprueban; el filtro vive en los
   selectores `active` de `packages/db` (regla de ESLint en `apps/api`).
+- **Vista previa de invitaciones (2026-10-29, opción B del autor)**: quien aún no es miembro debe ver el
+  nombre de la organización que lo invita. La política `SELECT` de `organizations` añade una condición:
+  existe una invitación `pending` y no vencida de esa organización cuyo `token_hash` coincide con
+  `app.lookup_token_hash`. Consecuencia aceptada: con un token válido la fila completa es legible
+  (RLS es por fila); el endpoint selecciona solo el nombre.
 - **Rationale**: RLS protege contra el olvido del filtro por organización en la aplicación
   (SC-003), sin funciones `SECURITY DEFINER` ni roles con `BYPASSRLS`.
 - **Alternatives considered**: funciones `SECURITY DEFINER` para las consultas previas (requieren un

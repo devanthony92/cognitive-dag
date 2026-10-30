@@ -5,6 +5,9 @@
 >
 > Modificado el 2026-10-29 con aprobación del autor: `deleted_at` fuera de las políticas de RLS
 > (opción A). Ver la nota de "Aislamiento".
+>
+> Modificado el 2026-10-29 con aprobación del autor: lectura de `organizations` con token de
+> invitación pendiente (opción B). Ver la nota de "Aislamiento".
 
 Base de datos: PostgreSQL 18, esquema `public`. Decisiones de soporte en [research.md](./research.md)
 (R2 identificadores, R3 borrado lógico, R5 sesiones, R8 RLS, R9 roles).
@@ -229,7 +232,7 @@ Todas las tablas: `ENABLE ROW LEVEL SECURITY` y `FORCE ROW LEVEL SECURITY`. Cont
 | Tabla | Lectura (`SELECT`) | Escritura |
 |---|---|---|
 | `users` | `id = ctx(user_id)` o `email = ctx(lookup_email)` o el usuario es miembro activo de `ctx(organization_id)` | `INSERT` libre (registro); `UPDATE` solo `id = ctx(user_id)` |
-| `organizations` | existe membresía activa de `ctx(user_id)` | `INSERT` con `created_by = ctx(user_id)`; `UPDATE` si `id = ctx(organization_id)` |
+| `organizations` | existe membresía activa de `ctx(user_id)`, o existe una invitación `pending` y no vencida de esa organización con `token_hash = ctx(lookup_token_hash)` | `INSERT` con `created_by = ctx(user_id)`; `UPDATE` si `id = ctx(organization_id)` |
 | `memberships` | `user_id = ctx(user_id)` o `organization_id = ctx(organization_id)` | `INSERT` y `UPDATE` si `organization_id = ctx(organization_id)` |
 | `sessions` | `user_id = ctx(user_id)` o `token_hash = ctx(lookup_token_hash)` | `INSERT` y `UPDATE` con la misma condición |
 | `one_time_tokens` | `user_id = ctx(user_id)` o `token_hash = ctx(lookup_token_hash)` | igual |
@@ -248,6 +251,15 @@ Notas:
   los selectores `active` de `packages/db`, y una regla de ESLint prohíbe en `apps/api` leer `users`,
   `organizations` y `memberships` sin ellos. El trigger `memberships_keep_owner` cuenta solo owners
   activos.
+- **`organizations` legible con el token de una invitación pendiente** (opción B, aprobada por el autor;
+  migración `0002_organizations_read_by_invitation`). La vista previa de una invitación muestra el
+  nombre de la organización a quien aún no es miembro. La política añade a la condición de membresía
+  `OR EXISTS (SELECT 1 FROM invitations i WHERE i.organization_id = organizations.id AND i.token_hash =
+  ctx(lookup_token_hash) AND i.status = 'pending' AND i.expires_at > now())`. RLS es por fila: con un
+  token válido toda la fila de la organización es legible (no solo el nombre); el endpoint de vista
+  previa selecciona únicamente `name`. Con una invitación vencida, revocada, aceptada, un token
+  desconocido o el token de otra organización se obtienen 0 filas; las políticas de escritura no
+  cambian y el acceso de los miembros tampoco.
 - El registro crea usuario, organización personal y membresía en una transacción. Como
   `INSERT ... RETURNING` exige que la fila nueva cumpla la política de lectura, los ids se generan
   primero con `SELECT uuidv7()`, se fija `app.user_id` y `app.organization_id` con ellos y luego se
