@@ -1,0 +1,574 @@
+import {
+  Background,
+  Controls,
+  ReactFlow,
+  ReactFlowProvider,
+  useReactFlow,
+  type Connection,
+  type Edge,
+  type EdgeChange,
+  type NodeChange,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useBlocker } from '@tanstack/react-router';
+import { Save, Send } from 'lucide-react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import type { WorkflowBody } from '@cognitive-dag/contracts';
+import {
+  DEFAULT_LIMITS,
+  type DagDefinition,
+  type DagLimits,
+  type NodeType,
+} from '@cognitive-dag/dag-schema';
+import { ApiProblemError } from '../../api/client';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Button } from '../../components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '../../components/ui/dialog';
+import { cn } from '../../lib/utils';
+import { ProblemAlert } from '../auth/ProblemAlert';
+import { sessionQuery } from '../session/session';
+import {
+  limitsQuery,
+  publishVersion,
+  saveDraft,
+  versionsKey,
+  workflowKey,
+  workflowQuery,
+  workflowsKey,
+} from './api';
+import { ConfigForm } from './ConfigForm';
+import { DagNodeView } from './DagNodeView';
+import { buildEdges, createNodeBuilder, type FlowNode } from './flow';
+import {
+  addNode,
+  connect,
+  groupErrors,
+  moveNode,
+  removeEdges,
+  removeNodes,
+  toEditableDefinition,
+  updateNode,
+  type Position,
+} from './model';
+import { Palette, PALETTE_DRAG_TYPE } from './Palette';
+import { ProblemsList } from './ProblemsList';
+import { PublishDialog } from './PublishDialog';
+import { useLiveValidation } from './useLiveValidation';
+import { VersionsPanel } from './VersionsPanel';
+
+const NODE_TYPES = { dag: DagNodeView };
+const NO_SELECTION: ReadonlySet<string> = new Set();
+
+interface Props {
+  organizationId: string;
+  workflowId: string;
+}
+
+/** Loads the workflow and the session, then hands the draft to the editor. */
+export function WorkflowEditor({ organizationId, workflowId }: Props) {
+  const queryClient = useQueryClient();
+  const session = useQuery(sessionQuery);
+  const workflow = useQuery(workflowQuery(organizationId, workflowId));
+  // Bumping it remounts the editor, which restarts from whatever draft the cache holds.
+  const [generation, setGeneration] = useState(0);
+
+  const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
+
+  if (workflow.isError) {
+    return (
+      <div className="mx-auto w-full max-w-xl p-6">
+        <ProblemAlert error={workflow.error} />
+      </div>
+    );
+  }
+  if (!workflow.data || !session.data) {
+    return <p className="p-6 text-muted-foreground">Cargando el workflow…</p>;
+  }
+
+  return (
+    <ReactFlowProvider>
+      <EditorSession
+        key={generation}
+        organizationId={organizationId}
+        workflowId={workflowId}
+        workflow={workflow.data}
+        canWrite={role === 'owner' || role === 'editor'}
+        onReload={() => {
+          void workflow.refetch().then(() => setGeneration((value) => value + 1));
+        }}
+        onDraftReplaced={(replaced) => {
+          queryClient.setQueryData(workflowKey(organizationId, workflowId), replaced);
+          void queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
+          setGeneration((value) => value + 1);
+        }}
+      />
+    </ReactFlowProvider>
+  );
+}
+
+interface SessionProps extends Props {
+  workflow: WorkflowBody;
+  canWrite: boolean;
+  onReload: () => void;
+  onDraftReplaced: (workflow: WorkflowBody) => void;
+}
+
+type Size = { width: number; height: number };
+
+function EditorSession({
+  organizationId,
+  workflowId,
+  workflow,
+  canWrite,
+  onReload,
+  onDraftReplaced,
+}: SessionProps) {
+  const queryClient = useQueryClient();
+  const readOnly = !canWrite;
+  const flow = useReactFlow<FlowNode, Edge>();
+  const canvas = useRef<HTMLDivElement>(null);
+
+  const initial = useMemo(() => toEditableDefinition(workflow.draft), [workflow.draft]);
+  const [definition, setDefinition] = useState<DagDefinition>(initial.definition);
+  const [savedJson, setSavedJson] = useState(() => JSON.stringify(initial.definition));
+  const [revision, setRevision] = useState(workflow.draftRevision);
+  const [savedAt, setSavedAt] = useState<Date | undefined>();
+  const [notice, setNotice] = useState<string | undefined>();
+  const [tab, setTab] = useState<'node' | 'versions'>('node');
+  const [publishOpen, setPublishOpen] = useState(false);
+  // A new dialog (and an empty note) for every publication.
+  const [published, setPublished] = useState(0);
+  const [selectedNodes, setSelectedNodes] = useState<ReadonlySet<string>>(NO_SELECTION);
+  const [selectedEdges, setSelectedEdges] = useState<ReadonlySet<string>>(NO_SELECTION);
+  const [measured, setMeasured] = useState<ReadonlyMap<string, Size>>(new Map());
+  const buildNodes = useMemo(createNodeBuilder, []);
+
+  const limitsData = useQuery(limitsQuery(organizationId)).data;
+  const limits = useMemo<DagLimits>(
+    () =>
+      limitsData
+        ? {
+            maxNodes: limitsData.maxNodes,
+            maxEdges: limitsData.maxEdges,
+            maxDefinitionBytes: limitsData.maxDefinitionBytes,
+          }
+        : DEFAULT_LIMITS,
+    [limitsData],
+  );
+
+  const { result, pending: validating } = useLiveValidation(definition, limits);
+  const errors = useMemo(() => groupErrors(result.errors), [result.errors]);
+  const labels = useMemo(
+    () => new Map(definition.nodes.map((node) => [node.id, node.label])),
+    [definition.nodes],
+  );
+
+  const dirty = useMemo(() => JSON.stringify(definition) !== savedJson, [definition, savedJson]);
+
+  const blocker = useBlocker({
+    shouldBlockFn: () => dirty,
+    enableBeforeUnload: () => dirty,
+    withResolver: true,
+  });
+
+  // ---- Persistence ----------------------------------------------------------------------------
+
+  const applySaved = (saved: DagDefinition, nextRevision: number) => {
+    setRevision(nextRevision);
+    setSavedJson(JSON.stringify(saved));
+    setSavedAt(new Date());
+    void queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
+  };
+
+  const save = useMutation({
+    mutationFn: () => saveDraft(organizationId, workflowId, revision, definition),
+    onMutate: () => setNotice(undefined),
+    onSuccess: (saved) => applySaved(definition, saved.revision),
+  });
+
+  const publish = useMutation({
+    mutationFn: async (note: string) => {
+      let current = revision;
+      if (dirty) {
+        const saved = await saveDraft(organizationId, workflowId, current, definition);
+        applySaved(definition, saved.revision);
+        current = saved.revision;
+      }
+      return publishVersion(organizationId, workflowId, current, note);
+    },
+    onSuccess: async (version) => {
+      setPublishOpen(false);
+      setPublished((count) => count + 1);
+      setNotice(`Versión ${version.number} publicada y activa.`);
+      await queryClient.invalidateQueries({ queryKey: versionsKey(organizationId, workflowId) });
+      await queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
+    },
+  });
+
+  // ---- Canvas ---------------------------------------------------------------------------------
+
+  const nodes = useMemo(
+    () => buildNodes(definition, errors, selectedNodes, measured, readOnly),
+    [buildNodes, definition, errors, selectedNodes, measured, readOnly],
+  );
+  const edges = useMemo(
+    () => buildEdges(definition, errors, selectedEdges, readOnly),
+    [definition, errors, selectedEdges, readOnly],
+  );
+
+  const selectNode = useCallback((id: string) => {
+    setSelectedNodes(new Set([id]));
+    setSelectedEdges(NO_SELECTION);
+    setTab('node');
+  }, []);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<FlowNode>[]) => {
+      const moves = new Map<string, Position>();
+      const removed: string[] = [];
+      const selection = new Map<string, boolean>();
+      const sizes = new Map<string, Size>();
+      for (const change of changes) {
+        if (change.type === 'position' && change.position) moves.set(change.id, change.position);
+        else if (change.type === 'remove') removed.push(change.id);
+        else if (change.type === 'select') selection.set(change.id, change.selected);
+        else if (change.type === 'dimensions' && change.dimensions) {
+          sizes.set(change.id, change.dimensions);
+        }
+      }
+      if (!readOnly && (moves.size > 0 || removed.length > 0)) {
+        setDefinition((current) => {
+          let next = current;
+          for (const [id, position] of moves) next = moveNode(next, id, position);
+          return removed.length > 0 ? removeNodes(next, removed) : next;
+        });
+      }
+      if (selection.size > 0 || removed.length > 0) {
+        setSelectedNodes((current) => {
+          const next = new Set(current);
+          for (const [id, selected] of selection) {
+            if (selected) next.add(id);
+            else next.delete(id);
+          }
+          for (const id of removed) next.delete(id);
+          return next;
+        });
+        if ([...selection.values()].some(Boolean)) setTab('node');
+      }
+      if (sizes.size > 0) {
+        setMeasured((current) => {
+          let next: Map<string, Size> | undefined;
+          for (const [id, size] of sizes) {
+            const known = current.get(id);
+            if (known?.width !== size.width || known.height !== size.height) {
+              next ??= new Map(current);
+              next.set(id, { width: size.width, height: size.height });
+            }
+          }
+          return next ?? current;
+        });
+      }
+    },
+    [readOnly],
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      const removed: string[] = [];
+      const selection = new Map<string, boolean>();
+      for (const change of changes) {
+        if (change.type === 'remove') removed.push(change.id);
+        else if (change.type === 'select') selection.set(change.id, change.selected);
+      }
+      if (!readOnly && removed.length > 0)
+        setDefinition((current) => removeEdges(current, removed));
+      if (selection.size > 0 || removed.length > 0) {
+        setSelectedEdges((current) => {
+          const next = new Set(current);
+          for (const [id, selected] of selection) {
+            if (selected) next.add(id);
+            else next.delete(id);
+          }
+          for (const id of removed) next.delete(id);
+          return next;
+        });
+      }
+    },
+    [readOnly],
+  );
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (readOnly || !connection.sourceHandle) return;
+      setDefinition((current) =>
+        connect(current, {
+          source: connection.source,
+          sourceHandle: connection.sourceHandle as string,
+          target: connection.target,
+        }),
+      );
+    },
+    [readOnly],
+  );
+
+  const place = (type: NodeType, position: Position) => {
+    const added = addNode(definition, type, position);
+    setDefinition(added.definition);
+    selectNode(added.id);
+  };
+
+  const addFromPalette = (type: NodeType) => {
+    const rect = canvas.current?.getBoundingClientRect();
+    const center = flow.screenToFlowPosition({
+      x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
+      y: (rect?.top ?? 0) + (rect?.height ?? 0) / 2,
+    });
+    // New nodes fill a grid around the center of the view, so they never stack.
+    const slot = definition.nodes.length % 12;
+    place(type, {
+      x: center.x - 80 + ((slot % 3) - 1) * 220,
+      y: center.y - 30 + (Math.floor(slot / 3) - 1) * 90,
+    });
+  };
+
+  const selectedId = selectedNodes.values().next().value;
+  const selectedNode = definition.nodes.find((node) => node.id === selectedId);
+
+  const onNodeChange = useCallback(
+    (patch: { label?: string; config?: unknown }) => {
+      if (selectedId === undefined) return;
+      setDefinition((current) => updateNode(current, selectedId, patch));
+    },
+    [selectedId],
+  );
+
+  const conflict =
+    save.error instanceof ApiProblemError && save.error.problem.status === 409
+      ? save.error
+      : undefined;
+  const canPublish = result.valid && !validating && !save.isPending && !publish.isPending;
+
+  return (
+    <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full flex-col bg-background">
+      <div className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-2">
+        <Link
+          to="/orgs/$organizationId/workflows"
+          params={{ organizationId }}
+          className="text-sm underline"
+        >
+          Workflows
+        </Link>
+        <h1 className="text-lg font-semibold tracking-tight">{workflow.name}</h1>
+        <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+          {readOnly && (
+            <span className="rounded-full border px-2 py-0.5 text-xs font-medium">
+              Solo lectura
+            </span>
+          )}
+          {dirty && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+              Sin guardar
+            </span>
+          )}
+          <span className="text-muted-foreground">
+            {savedAt
+              ? `Guardado a las ${savedAt.toLocaleTimeString('es')}`
+              : `Último guardado: ${new Date(workflow.draftUpdatedAt).toLocaleString('es')}`}
+          </span>
+          {canWrite && (
+            <>
+              <Button
+                variant="outline"
+                disabled={!dirty || save.isPending}
+                onClick={() => save.mutate()}
+              >
+                <Save aria-hidden />
+                Guardar
+              </Button>
+              <Button
+                disabled={!canPublish}
+                onClick={() => {
+                  publish.reset();
+                  setPublishOpen(true);
+                }}
+              >
+                <Send aria-hidden />
+                Publicar
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {(notice || save.isError || initial.skipped > 0) && (
+        <div className="grid gap-2 px-4 py-2" role="status">
+          {notice && (
+            <Alert>
+              <AlertDescription>{notice}</AlertDescription>
+            </Alert>
+          )}
+          {save.isError && <ProblemAlert error={save.error} />}
+          {conflict && (
+            <div>
+              <Button variant="outline" size="sm" onClick={onReload}>
+                Recargar
+              </Button>
+              <span className="ml-2 text-sm text-muted-foreground">
+                Descarta tus cambios sin guardar y carga la última revisión.
+              </span>
+            </div>
+          )}
+          {initial.skipped > 0 && (
+            <Alert variant="destructive">
+              <AlertDescription>
+                El borrador tenía {initial.skipped} elementos que el editor no reconoce y no se
+                muestran.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+      )}
+
+      <div className="flex min-h-0 flex-1">
+        {canWrite && <Palette onAdd={addFromPalette} />}
+
+        <div
+          ref={canvas}
+          className="relative min-w-0 flex-1"
+          onDragOver={(event) => {
+            if (readOnly) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = 'copy';
+          }}
+          onDrop={(event) => {
+            if (readOnly) return;
+            const type = event.dataTransfer.getData(PALETTE_DRAG_TYPE);
+            if (!type) return;
+            event.preventDefault();
+            place(
+              type as NodeType,
+              flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }),
+            );
+          }}
+        >
+          <ReactFlow<FlowNode, Edge>
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={NODE_TYPES}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodesDraggable={!readOnly}
+            nodesConnectable={!readOnly}
+            deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
+            fitView
+            fitViewOptions={{ maxZoom: 1 }}
+            minZoom={0.2}
+            colorMode="system"
+          >
+            <Background />
+            <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
+          </ReactFlow>
+        </div>
+
+        <aside
+          aria-label="Panel lateral"
+          className="w-80 shrink-0 overflow-y-auto border-l bg-card"
+        >
+          <div role="tablist" className="flex border-b">
+            {(
+              [
+                ['node', 'Nodo'],
+                ['versions', 'Versiones'],
+              ] as const
+            ).map(([id, title]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={tab === id}
+                onClick={() => setTab(id)}
+                className={cn(
+                  'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
+                  tab === id
+                    ? 'border-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {title}
+              </button>
+            ))}
+          </div>
+          <div role="tabpanel" className="p-4">
+            {tab === 'node' ? (
+              selectedNode ? (
+                <ConfigForm
+                  key={selectedNode.id}
+                  node={selectedNode}
+                  readOnly={readOnly}
+                  errors={errors}
+                  onChange={onNodeChange}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Selecciona un nodo del lienzo para ver su configuración.
+                </p>
+              )
+            ) : (
+              <VersionsPanel
+                organizationId={organizationId}
+                workflowId={workflowId}
+                canWrite={canWrite}
+                revision={revision}
+                onDraftReplaced={onDraftReplaced}
+                onReload={onReload}
+              />
+            )}
+          </div>
+        </aside>
+      </div>
+
+      <ProblemsList errors={result.errors} labels={labels} onSelectNode={selectNode} />
+
+      <PublishDialog
+        key={published}
+        open={publishOpen}
+        pending={publish.isPending}
+        error={publish.error}
+        dirty={dirty}
+        onOpenChange={setPublishOpen}
+        onPublish={(note) => publish.mutate(note)}
+      />
+
+      <Dialog
+        open={blocker.status === 'blocked'}
+        onOpenChange={(open) => !open && blocker.reset?.()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Hay cambios sin guardar</DialogTitle>
+            <DialogDescription>
+              Si sales ahora perderás los cambios sin guardar de este workflow.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => blocker.reset?.()}>
+              Seguir editando
+            </Button>
+            <Button variant="destructive" onClick={() => blocker.proceed?.()}>
+              Salir sin guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

@@ -11,3 +11,7 @@ export const featuresQuery = queryOptions({
 export function isIdentityEnabled(features: Record<string, boolean> | undefined): boolean {
   return features?.[FEATURE_FLAGS.identityEnabled] === true;
 }
+
+export function isDagEditorEnabled(features: Record<string, boolean> | undefined): boolean {
+  return features?.[FEATURE_FLAGS.dagEditorEnabled] === true;
+}
