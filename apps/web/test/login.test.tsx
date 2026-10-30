@@ -62,6 +62,18 @@ describe('LoginForm', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('shows and hides the password with an accessible button', async () => {
+    renderForm();
+    const user = userEvent.setup();
+    const password = screen.getByLabelText<HTMLInputElement>('Contraseña');
+    expect(password.type).toBe('password');
+
+    await user.click(screen.getByRole('button', { name: 'Mostrar contraseña' }));
+    expect(password.type).toBe('text');
+    await user.click(screen.getByRole('button', { name: 'Ocultar contraseña' }));
+    expect(password.type).toBe('password');
+  });
+
   it('posts the credentials with the cookie and hands the session to the app', async () => {
     const fetchMock = vi.fn(() =>
       Promise.resolve(

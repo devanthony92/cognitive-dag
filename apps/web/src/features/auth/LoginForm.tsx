@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from '../../components/ui/form';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/ui/password-input';
 import { ProblemAlert } from './ProblemAlert';
 
 // Presence only: the API decides whether the credentials are right and never says which half failed.
@@ -83,7 +84,7 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (info: SessionInfo) => v
                 <FormItem>
                   <FormLabel>Contraseña</FormLabel>
                   <FormControl>
-                    <Input type="password" autoComplete="current-password" {...field} />
+                    <PasswordInput autoComplete="current-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

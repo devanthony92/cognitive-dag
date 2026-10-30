@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import type { z } from 'zod';
+import { z } from 'zod';
 import {
   AcceptedResponseSchema,
   EmailRequestSchema,
@@ -28,7 +28,9 @@ import {
   FormMessage,
 } from '../../components/ui/form';
 import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/ui/password-input';
 import { forgetSession, NoBodySchema } from '../session/session';
+import { PASSWORD_MISMATCH } from './password-confirmation';
 import { ProblemAlert } from './ProblemAlert';
 
 type EmailInput = z.input<typeof EmailRequestSchema>;
@@ -104,7 +106,12 @@ export function ForgotPasswordForm() {
   );
 }
 
-const NewPasswordSchema = PasswordResetConfirmRequestSchema.pick({ password: true });
+const NewPasswordSchema = PasswordResetConfirmRequestSchema.pick({ password: true })
+  .extend({ passwordConfirmation: z.string() })
+  .refine((values) => values.password === values.passwordConfirmation, {
+    error: PASSWORD_MISMATCH,
+    path: ['passwordConfirmation'],
+  });
 type NewPasswordInput = z.input<typeof NewPasswordSchema>;
 type NewPasswordOutput = z.output<typeof NewPasswordSchema>;
 
@@ -116,7 +123,7 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
   const queryClient = useQueryClient();
   const form = useForm<NewPasswordInput, unknown, NewPasswordOutput>({
     resolver: zodResolver(NewPasswordSchema),
-    defaultValues: { password: '' },
+    defaultValues: { password: '', passwordConfirmation: '' },
   });
   const confirm = useMutation<undefined, Error, NewPasswordOutput>({
     mutationFn: async (values) =>
@@ -196,9 +203,22 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
                 <FormItem>
                   <FormLabel>Contraseña nueva</FormLabel>
                   <FormControl>
-                    <Input type="password" autoComplete="new-password" {...field} />
+                    <PasswordInput autoComplete="new-password" {...field} />
                   </FormControl>
-                  <FormDescription>Entre 15 y 128 caracteres.</FormDescription>
+                  <FormDescription>Entre 8 y 25 caracteres.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="passwordConfirmation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Repite la contraseña nueva</FormLabel>
+                  <FormControl>
+                    <PasswordInput autoComplete="new-password" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
