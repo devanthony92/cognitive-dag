@@ -87,7 +87,7 @@ async function activate(tenant: Tenant, workflowId: string, versionId: string): 
   );
 }
 
-/** Same technique as `scripts/ops/set-limits.ts`: FORCE is lifted and restored in one transaction. */
+/** What the operator script does: app_migrator writes through its own policy. */
 async function writeLimitsAsOperator(
   operatorPool: pg.Pool,
   rows: [organizationId: string, nodes: number, edges: number, bytes: number][],
@@ -95,7 +95,6 @@ async function writeLimitsAsOperator(
   const client = await operatorPool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('ALTER TABLE organization_limits NO FORCE ROW LEVEL SECURITY');
     for (const [organizationId, nodes, edges, bytes] of rows) {
       await client.query(
         `INSERT INTO organization_limits
@@ -104,7 +103,6 @@ async function writeLimitsAsOperator(
         [organizationId, nodes, edges, bytes],
       );
     }
-    await client.query('ALTER TABLE organization_limits FORCE ROW LEVEL SECURITY');
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');
@@ -134,8 +132,7 @@ beforeAll(async () => {
   versionB = await publish(b, workflowB, 1);
   await activate(a, workflowA, versionA);
   await activate(b, workflowB, versionB);
-  // The operator, never the API, sets limits (FR-021). As the owner, app_migrator is still subject
-  // to the forced row-level security, so it lifts FORCE inside its own transaction.
+  // The operator, never the API, sets limits (FR-021).
   await writeLimitsAsOperator(migrator, [
     [a.organizationId, 3, 5, 2048],
     [b.organizationId, 4, 6, 4096],
@@ -154,6 +151,17 @@ describe('tables of F2', () => {
       relforcerowsecurity: boolean;
     }>('SELECT relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = $1', [table]);
     expect(rows[0]).toEqual({ relrowsecurity: true, relforcerowsecurity: true });
+  });
+
+  it('organization_limits has one policy for app_runtime (SELECT) and one for app_migrator', async () => {
+    const { rows } = await migrator.query<{ policyname: string; roles: string; cmd: string }>(
+      `SELECT policyname, roles::text, cmd FROM pg_policies
+        WHERE tablename = 'organization_limits' ORDER BY policyname`,
+    );
+    expect(rows).toEqual([
+      { policyname: 'organization_limits_operator', roles: '{app_migrator}', cmd: 'ALL' },
+      { policyname: 'organization_limits_select', roles: '{app_runtime}', cmd: 'SELECT' },
+    ]);
   });
 
   it('grants app_runtime exactly the privileges of data-model.md', async () => {

@@ -153,17 +153,13 @@ export interface LimitsChange {
 }
 
 /**
- * Writes the limits in one transaction. As owner of the table `app_migrator` is still subject to
- * its forced row-level security, which has no policy for that role (the policies belong to
- * `app_runtime` only). FORCE is therefore lifted and restored inside this transaction: the
- * statement takes an exclusive lock, so no other session ever sees the table unforced, and a
- * failure rolls everything back, FORCE included.
+ * Writes the limits in one transaction. `app_migrator` owns the table and writes it through the
+ * policy `organization_limits_operator`; FORCE ROW LEVEL SECURITY stays on.
  */
 export async function applyLimits(pool: pg.Pool, request: LimitsRequest): Promise<LimitsChange> {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('ALTER TABLE organization_limits NO FORCE ROW LEVEL SECURITY');
     const current = await client.query<LimitsRow>(
       `SELECT max_nodes, max_edges, max_definition_bytes
          FROM organization_limits WHERE organization_id = $1 FOR UPDATE`,
@@ -190,7 +186,6 @@ export async function applyLimits(pool: pg.Pool, request: LimitsRequest): Promis
         request.operator,
       ],
     );
-    await client.query('ALTER TABLE organization_limits FORCE ROW LEVEL SECURITY');
     await client.query('COMMIT');
     return { organizationId: request.organizationId, operator: request.operator, old, new: next };
   } catch (error) {

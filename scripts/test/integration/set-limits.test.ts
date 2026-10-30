@@ -154,6 +154,14 @@ describe('applyLimits (requires docker compose up and pnpm db:migrate)', () => {
       await expect(
         client.query('UPDATE organization_limits SET max_nodes = 500'),
       ).rejects.toMatchObject({ code: '42501' });
+      await expect(
+        client.query(
+          `INSERT INTO organization_limits
+             (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by)
+           VALUES ($1, 5, 5, 2048, 'x')`,
+          [organizationId],
+        ),
+      ).rejects.toMatchObject({ code: '42501' });
     } finally {
       client.release();
     }
