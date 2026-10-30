@@ -87,6 +87,33 @@ async function activate(tenant: Tenant, workflowId: string, versionId: string): 
   );
 }
 
+/** Same technique as `scripts/ops/set-limits.ts`: FORCE is lifted and restored in one transaction. */
+async function writeLimitsAsOperator(
+  operatorPool: pg.Pool,
+  rows: [organizationId: string, nodes: number, edges: number, bytes: number][],
+): Promise<void> {
+  const client = await operatorPool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('ALTER TABLE organization_limits NO FORCE ROW LEVEL SECURITY');
+    for (const [organizationId, nodes, edges, bytes] of rows) {
+      await client.query(
+        `INSERT INTO organization_limits
+           (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by)
+         VALUES ($1, $2, $3, $4, 'rls-test')`,
+        [organizationId, nodes, edges, bytes],
+      );
+    }
+    await client.query('ALTER TABLE organization_limits FORCE ROW LEVEL SECURITY');
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 async function count(client: pg.PoolClient, table: string, where = 'true'): Promise<number> {
   const { rows } = await client.query<{ n: string }>(
     `SELECT count(*) AS n FROM ${table} WHERE ${where}`,
@@ -107,13 +134,12 @@ beforeAll(async () => {
   versionB = await publish(b, workflowB, 1);
   await activate(a, workflowA, versionA);
   await activate(b, workflowB, versionB);
-  // The operator, never the API, sets limits: app_migrator writes this row.
-  await migrator.query(
-    `INSERT INTO organization_limits
-       (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by)
-     VALUES ($1, 3, 5, 2048, 'rls-test'), ($2, 4, 6, 4096, 'rls-test')`,
-    [a.organizationId, b.organizationId],
-  );
+  // The operator, never the API, sets limits (FR-021). As the owner, app_migrator is still subject
+  // to the forced row-level security, so it lifts FORCE inside its own transaction.
+  await writeLimitsAsOperator(migrator, [
+    [a.organizationId, 3, 5, 2048],
+    [b.organizationId, 4, 6, 4096],
+  ]);
 });
 
 afterAll(async () => {
