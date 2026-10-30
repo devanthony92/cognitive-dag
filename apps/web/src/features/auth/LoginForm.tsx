@@ -100,6 +100,9 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (info: SessionInfo) => v
         <a href="/register" className="underline">
           Crear cuenta
         </a>
+        <a href="/forgot-password" className="underline">
+          Olvidé mi contraseña
+        </a>
         <a href="/verify-email" className="underline">
           Reenviar verificación
         </a>
