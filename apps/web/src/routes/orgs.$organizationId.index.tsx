@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { buttonVariants } from '../components/ui/button';
+import { OrganizationLimits } from '../features/organizations/OrganizationLimits';
 import { OrganizationSettings } from '../features/organizations/OrganizationSettings';
 import { PingPanel } from '../features/ping/PingPanel';
 import { ROLE_LABELS } from '../features/organizations/OrganizationSwitcher';
@@ -34,6 +35,7 @@ function OrganizationHome() {
         </Link>
       </section>
       <OrganizationSettings organizationId={organizationId} />
+      <OrganizationLimits organizationId={organizationId} />
       <PingPanel organizationId={organizationId} />
     </div>
   );
