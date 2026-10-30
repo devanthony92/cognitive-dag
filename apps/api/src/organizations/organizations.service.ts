@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   active,
+  and,
   eq,
+  isNull,
   inArray,
   memberships,
   newId,
@@ -9,6 +11,7 @@ import {
   type DatabaseClient,
 } from '@cognitive-dag/db';
 import type { OrganizationSummary } from '@cognitive-dag/contracts';
+import { ResourceNotFoundException } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 
@@ -39,6 +42,33 @@ export class OrganizationsService {
           (a, b) => Number(b.isPersonal) - Number(a.isPersonal) || a.name.localeCompare(b.name),
         );
     });
+  }
+
+  /** Renames the active organization; the policy `organizations_update` is the second layer. */
+  async rename(
+    actor: { userId: string; organizationId: string; ip: string },
+    name: string,
+  ): Promise<OrganizationSummary> {
+    const row = await this.database.withContext(
+      { userId: actor.userId, organizationId: actor.organizationId },
+      async (tx) => {
+        const [updated] = await tx
+          .update(organizations)
+          .set({ name })
+          .where(and(eq(organizations.id, actor.organizationId), isNull(organizations.deletedAt)))
+          .returning();
+        if (!updated) throw new ResourceNotFoundException();
+        return updated;
+      },
+    );
+    this.events.emit({
+      event: 'org.renamed',
+      outcome: 'success',
+      userId: actor.userId,
+      organizationId: actor.organizationId,
+      ip: actor.ip,
+    });
+    return { id: row.id, name: row.name, role: 'owner', isPersonal: row.isPersonal };
   }
 
   /** Creates an organization and makes its creator the owner, in one transaction (FR-016). */

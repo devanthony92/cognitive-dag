@@ -15,6 +15,7 @@ export const SECURITY_EVENTS = [
   'auth.password_reset_completed',
   'auth.password_changed',
   'org.created',
+  'org.renamed',
   'invitation.sent',
   'invitation.accepted',
   'invitation.revoked',
