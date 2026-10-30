@@ -157,9 +157,9 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 - [X] T058 [P] ADRs: Drizzle, argon2 y política de contraseñas, sesiones opacas y CSRF, organización activa en la ruta, RLS con claves de contexto, dos roles de PostgreSQL, borrado lógico, rate-limiter-flexible, Mailpit y nodemailer, TanStack Router, React Hook Form, Tailwind y shadcn/ui, eventos de seguridad en logs
 - [X] T059 [P] Actualizar `docs/threat-model.md`: nuevos elementos (sesiones, correo, Mailpit), filas `planned:F1` pasan a `mitigated` con evidencia
 - [X] T060 [P] Actualizar `docs/PLAN.md` (O1 y O2 cerradas) y `README.md` (F1, Mailpit, migraciones)
-- [ ] T061 Issue de eliminación del flag `identity-enabled` y del ping de F0 sin organización
-- [ ] T062 Ejecutar los 17 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T063 Revisar la tabla "Security Considerations" de la spec contra el código y registrar el checklist en la PR
+- [X] T061 Issue de eliminación del flag `identity-enabled` y del ping de F0 sin organización
+- [X] T062 Ejecutar los 17 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T063 Revisar la tabla "Security Considerations" de la spec contra el código y registrar el checklist en la PR
 
 ---
 
