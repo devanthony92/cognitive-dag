@@ -136,6 +136,29 @@ organization and every password field has a show/hide button; owners rename an o
 **Ajustes de la organización** on its home page. With the flag off the F0 ping panel is shown
 instead and none of these screens exist.
 
+### Workflows API (F2, behind `dag-editor-enabled`)
+
+Under `/api/v1/organizations/{organizationId}/workflows` the API stores workflows with a draft,
+immutable numbered versions and one active version
+([contract](specs/003-dag-model-editor/contracts/api.openapi.yaml)). Owners and editors write,
+viewers read and only owners archive. Saving a draft needs the `If-Match` revision (`428` without
+it, `409 DRAFT_CONFLICT` if it is stale) and stores drafts with validation errors; publishing
+validates with `@cognitive-dag/dag-schema` and answers `422 DAG_INVALID` with `dagErrors`. Each
+version stores `definition_hash`, the SHA-256 of the definition in canonical JSON (RFC 8785 style:
+sorted keys, no whitespace, ECMAScript numbers), see `apps/api/src/workflows/canonical-json.ts`.
+With the flag off every one of these endpoints answers `404 FEATURE_NOT_AVAILABLE`.
+
+`GET /organizations/{id}/limits` shows the limits in force (50 nodes, 100 connections and 256 KB by
+default). No endpoint writes them: the platform operator sets them per organization, connected as
+`app_migrator`, and every change is logged with operator, organization and old/new values:
+
+```bash
+pnpm ops:set-limits <organizationId> --max-nodes 80 --max-edges 160 --max-definition-bytes 524288 --operator ana
+```
+
+The ceilings are 500 nodes, 1000 connections and 1 MB; `DAG_MAX_NODES_CEILING`,
+`DAG_MAX_EDGES_CEILING` and `DAG_MAX_DEFINITION_BYTES_CEILING` can lower them for the whole server.
+
 ## Quality checks
 
 ```bash

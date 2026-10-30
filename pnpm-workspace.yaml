@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - scripts
 allowBuilds:
   argon2: false
   '@swc/core': false
