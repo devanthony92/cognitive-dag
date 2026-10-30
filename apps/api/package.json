@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@cognitive-dag/contracts": "workspace:*",
+    "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/db": "workspace:*",
     "@cognitive-dag/logger": "workspace:*",
     "@nestjs/common": "11.2.8",

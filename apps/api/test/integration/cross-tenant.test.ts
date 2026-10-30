@@ -8,7 +8,6 @@ import { httpServer } from './helpers';
 import {
   authHeaders,
   createVerifiedUser,
-  IDENTITY_FLAGS,
   loginAs,
   openDatabase,
   resetRateLimits,
@@ -17,6 +16,7 @@ import {
   type TestUser,
 } from './identity-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
+import { DAG_FLAGS, validDefinition } from './workflows-helpers';
 
 /**
  * Every endpoint under /organizations/{id} (SC-002); each row is exercised against every way of
@@ -40,6 +40,7 @@ interface Resources {
   /** The owner's membership in the organization the resources belong to. */
   membershipId: string;
   invitationId: string;
+  workflowId: string;
 }
 
 const ENDPOINTS: Endpoint[] = [
@@ -111,7 +112,114 @@ const ENDPOINTS: Endpoint[] = [
         .delete(`/api/v1/organizations/${organizationId}/invitations/${resource.invitationId}`)
         .set(authHeaders(session)),
   },
+  ...workflowEndpoints(),
 ];
+
+function workflowEndpoints(): Endpoint[] {
+  const root = (organizationId: string) => `/api/v1/organizations/${organizationId}/workflows`;
+  const withId = (organizationId: string, resource: Resources) =>
+    `${root(organizationId)}/${resource.workflowId}`;
+  return [
+    {
+      name: 'GET /organizations/{id}/workflows',
+      takesResource: false,
+      call: (app, session, organizationId) =>
+        request(httpServer(app)).get(root(organizationId)).set('Cookie', session.cookie),
+    },
+    {
+      name: 'POST /organizations/{id}/workflows',
+      takesResource: false,
+      call: (app, session, organizationId) =>
+        request(httpServer(app))
+          .post(root(organizationId))
+          .set(authHeaders(session))
+          .send({ name: 'Ajeno' }),
+    },
+    {
+      name: 'GET /organizations/{id}/limits',
+      takesResource: false,
+      call: (app, session, organizationId) =>
+        request(httpServer(app))
+          .get(`/api/v1/organizations/${organizationId}/limits`)
+          .set('Cookie', session.cookie),
+    },
+    {
+      name: 'GET /organizations/{id}/workflows/{workflowId}',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .get(withId(organizationId, resource))
+          .set('Cookie', session.cookie),
+    },
+    {
+      name: 'PATCH /organizations/{id}/workflows/{workflowId}',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .patch(withId(organizationId, resource))
+          .set(authHeaders(session))
+          .send({ name: 'Robado' }),
+    },
+    {
+      name: 'DELETE /organizations/{id}/workflows/{workflowId}',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app)).delete(withId(organizationId, resource)).set(authHeaders(session)),
+    },
+    {
+      name: 'PUT /organizations/{id}/workflows/{workflowId}/draft',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .put(`${withId(organizationId, resource)}/draft`)
+          .set(authHeaders(session))
+          .set('If-Match', '"2"')
+          .send({ definition: validDefinition() }),
+    },
+    {
+      name: 'POST /organizations/{id}/workflows/{workflowId}/draft/from-version/{n}',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .post(`${withId(organizationId, resource)}/draft/from-version/1`)
+          .set(authHeaders(session))
+          .set('If-Match', '"2"'),
+    },
+    {
+      name: 'GET /organizations/{id}/workflows/{workflowId}/versions',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .get(`${withId(organizationId, resource)}/versions`)
+          .set('Cookie', session.cookie),
+    },
+    {
+      name: 'POST /organizations/{id}/workflows/{workflowId}/versions',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .post(`${withId(organizationId, resource)}/versions`)
+          .set(authHeaders(session))
+          .set('If-Match', '"2"'),
+    },
+    {
+      name: 'GET /organizations/{id}/workflows/{workflowId}/versions/{n}',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .get(`${withId(organizationId, resource)}/versions/1`)
+          .set('Cookie', session.cookie),
+    },
+    {
+      name: 'POST /organizations/{id}/workflows/{workflowId}/versions/{n}/activate',
+      takesResource: true,
+      call: (app, session, organizationId, resource) =>
+        request(httpServer(app))
+          .post(`${withId(organizationId, resource)}/versions/1/activate`)
+          .set(authHeaders(session)),
+    },
+  ];
+}
 
 describe('cross-tenant access (requires docker compose up and pnpm db:migrate)', () => {
   let app: INestApplication;
@@ -128,7 +236,7 @@ describe('cross-tenant access (requires docker compose up and pnpm db:migrate)',
   let bobResources: Resources;
 
   beforeAll(async () => {
-    app = await startIdentityApp(IDENTITY_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
+    app = await startIdentityApp(DAG_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
     database = openDatabase();
     await resetRateLimits();
     alice = await createVerifiedUser(app, database, 'tenant-a');
@@ -154,7 +262,25 @@ describe('cross-tenant access (requires docker compose up and pnpm db:migrate)',
       .set(authHeaders(bobSession))
       .send({ email: 'bobs-guest@example.test', role: 'viewer' })
       .expect(201);
+    const bobWorkflow = await request(httpServer(app))
+      .post(`/api/v1/organizations/${bobOrg.id}/workflows`)
+      .set(authHeaders(bobSession))
+      .send({ name: 'Flujo de Bob' })
+      .expect(201);
+    const bobWorkflowId = (bobWorkflow.body as { id: string }).id;
+    await request(httpServer(app))
+      .put(`/api/v1/organizations/${bobOrg.id}/workflows/${bobWorkflowId}/draft`)
+      .set(authHeaders(bobSession))
+      .set('If-Match', '"1"')
+      .send({ definition: validDefinition() })
+      .expect(200);
+    await request(httpServer(app))
+      .post(`/api/v1/organizations/${bobOrg.id}/workflows/${bobWorkflowId}/versions`)
+      .set(authHeaders(bobSession))
+      .set('If-Match', '"2"')
+      .expect(201);
     bobResources = {
+      workflowId: bobWorkflowId,
       pingId: bobPingId,
       membershipId: (bobMembers.body as { membershipId: string }[])[0]!.membershipId,
       invitationId: (invited.body as { id: string }).id,

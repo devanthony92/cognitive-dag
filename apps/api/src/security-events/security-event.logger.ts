@@ -21,6 +21,10 @@ export const SECURITY_EVENTS = [
   'invitation.revoked',
   'membership.role_changed',
   'membership.removed',
+  'workflow.created',
+  'workflow.published',
+  'workflow.version_activated',
+  'workflow.archived',
 ] as const;
 
 export type SecurityEventType = (typeof SECURITY_EVENTS)[number];
