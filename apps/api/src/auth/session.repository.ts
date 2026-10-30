@@ -5,10 +5,12 @@ import {
   eq,
   gt,
   isNull,
+  ne,
   sessions,
   sql,
   users,
   type DatabaseClient,
+  type Tx,
 } from '@cognitive-dag/db';
 import { DATABASE } from '../database/database.module';
 
@@ -72,6 +74,31 @@ export class SessionRepository {
         return user ? row : undefined;
       },
     );
+  }
+
+  /**
+   * Revokes every live session of the user, except `keepTokenHash` when given, inside the caller's
+   * transaction so a password change and the revocation commit together. Returns the hex token
+   * hashes, whose Valkey keys the caller drops after the commit. Needs `userId` in the context.
+   */
+  async revokeAllOf(
+    tx: Tx,
+    userId: string,
+    reason: SessionRevokeReason,
+    keepTokenHash?: Buffer,
+  ): Promise<string[]> {
+    const revoked = await tx
+      .update(sessions)
+      .set({ revokedAt: sql`now()`, revokeReason: reason })
+      .where(
+        and(
+          eq(sessions.userId, userId),
+          isNull(sessions.revokedAt),
+          keepTokenHash === undefined ? undefined : ne(sessions.tokenHash, keepTokenHash),
+        ),
+      )
+      .returning({ tokenHash: sessions.tokenHash });
+    return revoked.map((row) => row.tokenHash.toString('hex'));
   }
 
   /** Idempotent: an already revoked session keeps its first reason. */

@@ -126,6 +126,14 @@ export class SessionService {
     await this.cache.remove(tokenHash.toString('hex')).catch(() => undefined);
   }
 
+  /**
+   * Drops the Valkey keys of sessions already revoked in PostgreSQL. PostgreSQL decides, so a
+   * failure here only leaves a key that expires on its own.
+   */
+  async forgetCached(tokenHashesHex: string[]): Promise<void> {
+    await Promise.allSettled(tokenHashesHex.map((hash) => this.cache.remove(hash)));
+  }
+
   private async guarded<T>(call: () => Promise<T>): Promise<T> {
     try {
       return await call();

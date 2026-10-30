@@ -32,3 +32,35 @@ export const CreateInvitationRequestSchema = z.strictObject({
 });
 
 export type CreateInvitationRequest = z.infer<typeof CreateInvitationRequestSchema>;
+
+export const ChangeMemberRoleRequestSchema = z.strictObject({ role: RoleSchema });
+
+export type ChangeMemberRoleRequest = z.infer<typeof ChangeMemberRoleRequestSchema>;
+
+export const MemberSchema = z.object({
+  membershipId: z.uuid(),
+  userId: z.uuid(),
+  name: z.string(),
+  email: z.string(),
+  role: RoleSchema,
+});
+
+export type Member = z.infer<typeof MemberSchema>;
+
+export const InvitationSchema = z.object({
+  id: z.uuid(),
+  email: z.string(),
+  role: RoleSchema,
+  expiresAt: z.iso.datetime(),
+});
+
+export type Invitation = z.infer<typeof InvitationSchema>;
+
+/** What a person sees before accepting: the minimum, never ids (FR-023). */
+export const InvitationPreviewSchema = z.object({
+  organizationName: z.string(),
+  email: z.string(),
+  role: RoleSchema,
+});
+
+export type InvitationPreview = z.infer<typeof InvitationPreviewSchema>;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ChangePasswordRequestSchema,
   EmailRequestSchema,
+  PasswordResetConfirmRequestSchema,
   PasswordSchema,
   ProblemCodeSchema,
   ProblemDetailsSchema,
@@ -133,5 +135,42 @@ describe('problem codes of F1', () => {
 
   it('rejects a non-positive retryAfterSeconds', () => {
     expect(ProblemDetailsSchema.safeParse({ ...base, retryAfterSeconds: 0 }).success).toBe(false);
+  });
+});
+
+describe('PasswordResetConfirmRequestSchema and ChangePasswordRequestSchema', () => {
+  const token = 'a'.repeat(43);
+
+  it('applies the password policy length to the new password only', () => {
+    expect(
+      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(14) }).success,
+    ).toBe(false);
+    expect(
+      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(15) }).success,
+    ).toBe(true);
+    expect(
+      ChangePasswordRequestSchema.safeParse({
+        currentPassword: 'corta',
+        newPassword: 'x'.repeat(15),
+      }).success,
+    ).toBe(true);
+    expect(
+      ChangePasswordRequestSchema.safeParse({ currentPassword: '', newPassword: 'x'.repeat(15) })
+        .success,
+    ).toBe(false);
+  });
+
+  it('rejects unknown fields and malformed tokens', () => {
+    expect(
+      PasswordResetConfirmRequestSchema.safeParse({ token: 'short', password: 'x'.repeat(15) })
+        .success,
+    ).toBe(false);
+    expect(
+      ChangePasswordRequestSchema.safeParse({
+        currentPassword: 'a',
+        newPassword: 'x'.repeat(15),
+        extra: 1,
+      }).success,
+    ).toBe(false);
   });
 });

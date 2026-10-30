@@ -112,5 +112,17 @@ describe('anti-enumeration timing (requires docker compose up and pnpm db:migrat
     expect(Math.abs(result.existing - result.unknown)).toBeLessThan(MAX_MEAN_DIFFERENCE_MS);
   });
 
-  // Password reset (US4, PR 3) joins this file when its endpoint exists.
+  it('password reset request: an existing email vs an unknown one', async () => {
+    const result = await compare(
+      () =>
+        request(httpServer(app))
+          .post('/api/v1/auth/password-reset/request')
+          .send({ email: user.email }),
+      () =>
+        request(httpServer(app))
+          .post('/api/v1/auth/password-reset/request')
+          .send({ email: uniqueEmail('ghost') }),
+    );
+    expect(Math.abs(result.existing - result.unknown)).toBeLessThan(MAX_MEAN_DIFFERENCE_MS);
+  });
 });
