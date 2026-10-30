@@ -175,10 +175,7 @@ export async function workflowWithValidDraft(
   return { id: workflow.id, revision: (saved.body as { revision: number }).revision };
 }
 
-/**
- * What the operator script does, without importing it: app_migrator is subject to the forced
- * row-level security of organization_limits, so FORCE is lifted inside one transaction.
- */
+/** What the operator script does: app_migrator writes through its own policy. */
 export async function setLimitsAsOperator(
   organizationId: string,
   limits: { maxNodes: number; maxEdges: number; maxDefinitionBytes: number },
@@ -187,7 +184,6 @@ export async function setLimitsAsOperator(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    await client.query('ALTER TABLE organization_limits NO FORCE ROW LEVEL SECURITY');
     await client.query(
       `INSERT INTO organization_limits
          (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by)
@@ -197,7 +193,6 @@ export async function setLimitsAsOperator(
          max_definition_bytes = EXCLUDED.max_definition_bytes, updated_at = now()`,
       [organizationId, limits.maxNodes, limits.maxEdges, limits.maxDefinitionBytes],
     );
-    await client.query('ALTER TABLE organization_limits FORCE ROW LEVEL SECURITY');
     await client.query('COMMIT');
   } catch (error) {
     await client.query('ROLLBACK');

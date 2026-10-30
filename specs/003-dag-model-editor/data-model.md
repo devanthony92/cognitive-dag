@@ -2,6 +2,8 @@
 
 > **Estado: APROBADO por el autor el 2026-10-30**, con la tabla puente `workflow_active_versions`
 > (opción C) en lugar de `workflows.active_version_id`.
+> Modificado el 2026-10-30 con aprobación del autor: política `organization_limits_operator` para
+> `app_migrator` (opción B).
 
 Se agregan 4 tablas al esquema de F1. Mismas convenciones: `uuidv7()`, `timestamptz` en UTC, `CHECK`
 de longitud, claves foráneas `ON DELETE RESTRICT`, RLS forzado y borrado lógico filtrado en
@@ -151,7 +153,10 @@ Sin fila = se aplican los valores por defecto de la plataforma (50 / 100 / 256 K
 | `workflows` | `organization_id = ctx(organization_id)` | `INSERT` y `UPDATE` con la misma condición |
 | `workflow_versions` | `organization_id = ctx(organization_id)` | `INSERT` con la misma condición; sin `UPDATE` |
 | `workflow_active_versions` | `organization_id = ctx(organization_id)` | `INSERT` y `UPDATE` con la misma condición |
-| `organization_limits` | `organization_id = ctx(organization_id)` | ninguna para `app_runtime` |
+| `organization_limits` | `organization_id = ctx(organization_id)` | ninguna para `app_runtime`; política `organization_limits_operator` (`FOR ALL TO app_migrator`, `USING (true) WITH CHECK (true)`) para el script del operador |
+
+El dueño de la tabla (`app_migrator`) también está sujeto al RLS forzado, por eso necesita su propia
+política; `app_runtime` mantiene solo `SELECT`.
 
 Quién puede editar o publicar (owner y editor) lo decide el guard de organización de F1 en la
 aplicación; RLS garantiza el aislamiento entre organizaciones.
