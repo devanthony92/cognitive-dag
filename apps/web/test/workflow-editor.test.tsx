@@ -196,7 +196,10 @@ describe('editor: palette and canvas (US1)', () => {
 
     await user.click(within(palette()).getByRole('button', { name: /Clasificar/ }));
 
-    expect(await within(panel()).findByText('classify_1')).toBeDefined();
+    expect(await within(panel()).findByLabelText('Identificador')).toHaveProperty(
+      'value',
+      'classify_1',
+    );
     expect(document.querySelector('[data-id="classify_1"]')).not.toBeNull();
     expect(screen.getByText(/Sin guardar/)).toBeDefined();
   });
@@ -378,14 +381,13 @@ describe('editor: live validation (US2)', () => {
     expect(within(problems).getAllByRole('listitem').length).toBeGreaterThan(0);
   });
 
-  it('reports invalid JSON in the free-form condition field', async () => {
+  it('gives a new condition node the visual builder instead of a JSON field', async () => {
     const { user } = setup();
     await screen.findByText('Resumir');
     await user.click(within(palette()).getByRole('button', { name: /Condición/ }));
-    const field = await within(panel()).findByLabelText('Condición');
-    fireEvent.change(field, { target: { value: '{"op":' } });
 
-    expect(await within(panel()).findByText('JSON no válido.')).toBeDefined();
+    expect(await within(panel()).findByRole('group', { name: 'Condición' })).toBeDefined();
+    expect(within(panel()).queryByRole('textbox', { name: 'Condición' })).toBeNull();
   });
 });
 

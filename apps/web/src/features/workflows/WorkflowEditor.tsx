@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useBlocker } from '@tanstack/react-router';
-import { Save, Send } from 'lucide-react';
+import { Download, Network, Save, Send } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { WorkflowBody } from '@cognitive-dag/contracts';
 import {
@@ -48,6 +48,9 @@ import {
   workflowsKey,
 } from './api';
 import { ConfigForm } from './ConfigForm';
+import { downloadDefinition, exportFileName } from './export';
+import { autoLayout } from './layout';
+import { checkRename, renameNodeId } from './references';
 import { DagNodeView } from './DagNodeView';
 import { buildEdges, createNodeBuilder, type FlowNode } from './flow';
 import {
@@ -150,6 +153,7 @@ function EditorSession({
   const [publishedNow, setPublishedNow] = useState<{ number: number; canonical: string }>();
   const [tab, setTab] = useState<'node' | 'versions'>('node');
   const [publishOpen, setPublishOpen] = useState(false);
+  const [conflictOpen, setConflictOpen] = useState(false);
   // A new dialog (and an empty note) for every publication.
   const [published, setPublished] = useState(0);
   const [selectedNodes, setSelectedNodes] = useState<ReadonlySet<string>>(NO_SELECTION);
@@ -217,6 +221,10 @@ function EditorSession({
       setSavedJson(JSON.stringify(definition));
       setSavedAt(new Date());
       void queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
+    },
+    // Someone saved a newer draft: the dialog explains it and offers to load theirs (US5).
+    onError: (error) => {
+      if (error instanceof ApiProblemError && error.problem.status === 409) setConflictOpen(true);
     },
   });
 
@@ -370,6 +378,32 @@ function EditorSession({
     [selectedId],
   );
 
+  const renameSelected = useCallback(
+    (to: string): string | undefined => {
+      if (selectedId === undefined) return undefined;
+      const why = checkRename(definition, selectedId, to);
+      if (why) return why;
+      setDefinition((current) => renameNodeId(current, selectedId, to));
+      setSelectedNodes(new Set([to]));
+      setMeasured((current) => {
+        const next = new Map(current);
+        const size = next.get(selectedId);
+        next.delete(selectedId);
+        if (size && to !== selectedId) next.set(to, size);
+        return next;
+      });
+      return undefined;
+    },
+    [definition, selectedId],
+  );
+
+  const arrange = () => {
+    setDefinition((current) => autoLayout(current, measured));
+    requestAnimationFrame(() => void flow.fitView({ maxZoom: 1, duration: 200 }));
+  };
+
+  const exportJson = () => downloadDefinition(definition, exportFileName(workflow.name));
+
   const conflict =
     save.error instanceof ApiProblemError && save.error.problem.status === 409
       ? save.error
@@ -411,6 +445,25 @@ function EditorSession({
               ? `Guardado a las ${savedAt.toLocaleTimeString('es')}`
               : `Último guardado: ${new Date(workflow.draftUpdatedAt).toLocaleString('es')}`}
           </span>
+          {canWrite && (
+            <Button
+              variant="outline"
+              disabled={definition.nodes.length === 0}
+              onClick={arrange}
+              title="Ordena los nodos en capas de izquierda a derecha, sin cambiar la lógica"
+            >
+              <Network aria-hidden />
+              Ordenar
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={exportJson}
+            title="Descarga la definición como archivo JSON"
+          >
+            <Download aria-hidden />
+            Exportar JSON
+          </Button>
           {canWrite && (
             <>
               <Button
@@ -538,9 +591,11 @@ function EditorSession({
                 <ConfigForm
                   key={selectedNode.id}
                   node={selectedNode}
+                  definition={definition}
                   readOnly={readOnly}
                   errors={errors}
                   onChange={onNodeChange}
+                  onRename={renameSelected}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">
@@ -552,6 +607,7 @@ function EditorSession({
                 organizationId={organizationId}
                 workflowId={workflowId}
                 canWrite={canWrite}
+                workflowName={workflow.name}
                 revision={revision}
                 onDraftReplaced={onDraftReplaced}
                 onReload={onReload}
@@ -564,6 +620,35 @@ function EditorSession({
       <ProblemsList errors={result.errors} labels={labels} onSelectNode={selectNode} />
 
       {notice && <Toast message={notice} onClose={closeNotice} />}
+
+      <Dialog open={conflictOpen} onOpenChange={setConflictOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>El borrador cambió en otra sesión</DialogTitle>
+            <DialogDescription>
+              Alguien guardó el borrador después de que lo abrieras, y tu guardado no se aplicó para
+              no pisar su trabajo. Recarga para ver lo que guardó: perderás los cambios que no están
+              guardados aquí. Si quieres conservarlos, exporta el JSON antes de recargar.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={exportJson}>
+              Exportar mis cambios
+            </Button>
+            <Button variant="outline" onClick={() => setConflictOpen(false)}>
+              Seguir editando
+            </Button>
+            <Button
+              onClick={() => {
+                setConflictOpen(false);
+                onReload();
+              }}
+            >
+              Recargar borrador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <PublishDialog
         key={published}
