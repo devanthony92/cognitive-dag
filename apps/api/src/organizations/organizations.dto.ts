@@ -4,9 +4,11 @@ import {
   ChangeMemberRoleRequestSchema,
   CreateInvitationRequestSchema,
   CreateOrganizationRequestSchema,
+  RenameOrganizationRequestSchema,
 } from '@cognitive-dag/contracts';
 
 export class CreateOrganizationDto extends createZodDto(CreateOrganizationRequestSchema) {}
+export class RenameOrganizationDto extends createZodDto(RenameOrganizationRequestSchema) {}
 export class ChangeMemberRoleDto extends createZodDto(ChangeMemberRoleRequestSchema) {}
 export class CreateInvitationDto extends createZodDto(CreateInvitationRequestSchema) {}
 

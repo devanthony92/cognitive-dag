@@ -55,9 +55,10 @@ describe('RegisterForm', () => {
 
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
-    expect(await screen.findByText('Debe tener entre 1 y 100 caracteres.')).toBeDefined();
+    // Name and organization name share the rule.
+    expect(await screen.findAllByText('Debe tener entre 1 y 100 caracteres.')).toHaveLength(2);
     expect(screen.getByText('Debe ser un email válido.')).toBeDefined();
-    expect(screen.getByText('Debe tener al menos 15 caracteres.')).toBeDefined();
+    expect(screen.getByText('Debe tener al menos 8 caracteres.')).toBeDefined();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -69,6 +70,7 @@ describe('RegisterForm', () => {
     await user.type(screen.getByLabelText('Nombre'), 'Ana');
     await user.type(screen.getByLabelText('Correo electrónico'), '  Ana@Example.COM ');
     await user.type(screen.getByLabelText('Contraseña'), 'un-caballo-azul-en-marte');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'un-caballo-azul-en-marte');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     expect(await screen.findByText(/Revisa tu correo/)).toBeDefined();
@@ -80,6 +82,7 @@ describe('RegisterForm', () => {
       name: 'Ana',
       email: 'ana@example.com',
       password: 'un-caballo-azul-en-marte',
+      organizationName: 'Organización de Ana',
     });
     // The form is replaced by the confirmation: nothing reveals whether the email already existed.
     expect(screen.queryByLabelText('Contraseña')).toBeNull();
@@ -96,7 +99,8 @@ describe('RegisterForm', () => {
 
     await user.type(screen.getByLabelText('Nombre'), 'Ana');
     await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com');
-    await user.type(screen.getByLabelText('Contraseña'), 'password123456789');
+    await user.type(screen.getByLabelText('Contraseña'), 'password123');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'password123');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     expect(await screen.findByText('Es una contraseña demasiado común. Elige otra.')).toBeDefined();
@@ -110,11 +114,89 @@ describe('RegisterForm', () => {
     await user.type(screen.getByLabelText('Nombre'), 'Ana');
     await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com');
     await user.type(screen.getByLabelText('Contraseña'), 'un-caballo-azul-en-marte');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'un-caballo-azul-en-marte');
     await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('2 minutos');
     expect(alert.textContent).toContain(CORRELATION_ID);
+  });
+});
+
+describe('RegisterForm: organization name, confirmation and visibility', () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('proposes "Organización de <nombre>" and follows the name until it is edited', async () => {
+    mockFetch(() => json(202, ACCEPTED));
+    const user = userEvent.setup();
+    renderWithClient(<RegisterForm />);
+    const organization = screen.getByLabelText<HTMLInputElement>('Nombre de la organización');
+
+    await user.type(screen.getByLabelText('Nombre'), 'Ana');
+    expect(organization.value).toBe('Organización de Ana');
+    await user.clear(organization);
+    await user.type(organization, 'Laboratorio Ñandú');
+    await user.type(screen.getByLabelText('Nombre'), ' María');
+    expect(organization.value).toBe('Laboratorio Ñandú');
+  });
+
+  it('sends the edited organization name and never the confirmation', async () => {
+    const fetchMock = mockFetch(() => json(202, ACCEPTED));
+    const user = userEvent.setup();
+    renderWithClient(<RegisterForm />);
+
+    await user.type(screen.getByLabelText('Nombre'), 'Ana');
+    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com');
+    const organization = screen.getByLabelText('Nombre de la organización');
+    await user.clear(organization);
+    await user.type(organization, '  Acme  ');
+    await user.type(screen.getByLabelText('Contraseña'), 'un-caballo-azul-en-marte');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'un-caballo-azul-en-marte');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    expect(await screen.findByText(/Revisa tu correo/)).toBeDefined();
+    const body = JSON.parse(fetchMock.mock.calls[0]?.[1]?.body as string) as Record<
+      string,
+      unknown
+    >;
+    expect(body.organizationName).toBe('Acme');
+    expect(body).not.toHaveProperty('passwordConfirmation');
+  });
+
+  it('blocks a different confirmation with a clear message and no request', async () => {
+    const fetchMock = mockFetch(() => json(202, ACCEPTED));
+    const user = userEvent.setup();
+    renderWithClient(<RegisterForm />);
+
+    await user.type(screen.getByLabelText('Nombre'), 'Ana');
+    await user.type(screen.getByLabelText('Correo electrónico'), 'ana@example.com');
+    await user.type(screen.getByLabelText('Contraseña'), 'un-caballo-azul-en-marte');
+    await user.type(screen.getByLabelText('Confirmar contraseña'), 'un-caballo-azul-en-venus');
+    await user.click(screen.getByRole('button', { name: 'Crear cuenta' }));
+
+    expect(await screen.findByText('Las contraseñas no coinciden.')).toBeDefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows and hides both password fields with an accessible button', async () => {
+    renderWithClient(<RegisterForm />);
+    const user = userEvent.setup();
+    const password = screen.getByLabelText<HTMLInputElement>('Contraseña');
+    const confirmation = screen.getByLabelText<HTMLInputElement>('Confirmar contraseña');
+    expect(password.type).toBe('password');
+
+    const [first, second] = screen.getAllByRole('button', { name: 'Mostrar contraseña' });
+    await user.click(first!);
+    expect(password.type).toBe('text');
+    expect(confirmation.type).toBe('password');
+    expect(screen.getAllByRole('button', { name: 'Ocultar contraseña' })).toHaveLength(1);
+    await user.click(second!);
+    expect(confirmation.type).toBe('text');
+    await user.click(screen.getAllByRole('button', { name: 'Ocultar contraseña' })[0]!);
+    expect(password.type).toBe('password');
   });
 });
 

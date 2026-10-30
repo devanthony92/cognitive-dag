@@ -74,6 +74,63 @@ describe('registration (requires docker compose up and pnpm db:migrate)', () => 
     expect(rows.tokens[0]!.purpose).toBe('email_verification');
   });
 
+  describe('organization name', () => {
+    const personalOrganizationOf = (email: string) =>
+      database.withContext({ lookupEmail: email }, async (tx, extend) => {
+        const [user] = await active.users(tx);
+        await extend({ userId: user!.id });
+        const [membership] = await active.memberships(tx);
+        await extend({ organizationId: membership!.organizationId });
+        const [organization] = await active.organizations(tx);
+        return organization!;
+      });
+
+    it('keeps the default name when none is sent', async () => {
+      const email = uniqueEmail('org-default');
+      await register({ name: 'Ana', email, password: STRONG_PASSWORD }).expect(202);
+      expect((await personalOrganizationOf(email)).name).toBe('Organización de Ana');
+    });
+
+    it('uses the name sent, trimmed', async () => {
+      const email = uniqueEmail('org-custom');
+      await register({
+        name: 'Ana',
+        email,
+        password: STRONG_PASSWORD,
+        organizationName: '  Laboratorio Ñandú  ',
+      }).expect(202);
+      const organization = await personalOrganizationOf(email);
+      expect(organization.name).toBe('Laboratorio Ñandú');
+      expect(organization.isPersonal).toBe(true);
+    });
+
+    it.each([
+      ['blank', '   '],
+      ['over 100 characters', 'o'.repeat(101)],
+    ])('rejects a %s name with 422', async (_case, organizationName) => {
+      const response = await register({
+        name: 'Ana',
+        email: uniqueEmail('org-bad'),
+        password: STRONG_PASSWORD,
+        organizationName,
+      }).expect(422);
+      expect(ProblemDetailsSchema.parse(response.body).code).toBe('VALIDATION_FAILED');
+    });
+
+    it('answers an existing email the same way when a name is sent', async () => {
+      const email = uniqueEmail('org-dup');
+      const first = await register({ name: 'Uno', email, password: STRONG_PASSWORD }).expect(202);
+      const second = await register({
+        name: 'Dos',
+        email,
+        password: STRONG_PASSWORD,
+        organizationName: 'Otra',
+      }).expect(202);
+      expect(second.body).toEqual(first.body);
+      expect((await personalOrganizationOf(email)).name).toBe('Organización de Uno');
+    });
+  });
+
   it('sends a verification email whose token is stored only as its SHA-256', async () => {
     const email = uniqueEmail('mail');
     await register({ name: 'Mail', email, password: STRONG_PASSWORD }).expect(202);
@@ -154,9 +211,9 @@ describe('registration (requires docker compose up and pnpm db:migrate)', () => 
   });
 
   it.each([
-    ['14 characters', 'x7Qm-vR2!kLp9z', /al menos 15/],
-    ['129 characters', 'qZ3v-'.repeat(26).slice(0, 129), /como máximo 128/],
-    ['a common password', 'password123456789', /demasiado común/],
+    ['7 characters', 'x7Qm-vR', /al menos 8/],
+    ['26 characters', 'qZ3v-'.repeat(6).slice(0, 26), /como máximo 25/],
+    ['a common password', 'password123', /demasiado común/],
   ])('rejects %s with errors[] on password', async (_case, password, message) => {
     const response = await register({ name: 'Ana', email: uniqueEmail('bad'), password }).expect(
       422,
