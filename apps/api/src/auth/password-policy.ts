@@ -4,8 +4,8 @@ import { Injectable } from '@nestjs/common';
 import { PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, passwordLength } from '@cognitive-dag/contracts';
 
 /**
- * Common passwords of at least 15 characters (NFKC, lower case), one per line. Source: SecLists
- * Pwdb_top-10000000.txt, MIT license (see ADR on passwords). No external calls at run time.
+ * Common passwords of 8 to 25 characters (NFKC, lower case), one per line. Source: SecLists
+ * Pwdb_top-1000000.txt, MIT license (see ADR-0026). No external calls at run time.
  */
 const COMMON_PASSWORDS_FILE = join(__dirname, 'common-passwords.txt');
 
@@ -20,7 +20,10 @@ function loadCommonPasswords(): ReadonlySet<string> {
   return commonPasswords;
 }
 
-/** NIST 800-63B-4 for single-factor passwords: length, no composition rules, common list. */
+/**
+ * Length, no composition rules, common list. Follows NIST 800-63B-4 except for the 8-25 length
+ * range, a documented deviation (ADR-0026).
+ */
 @Injectable()
 export class PasswordPolicy {
   /** Spanish messages for every rule the password breaks; empty when it is acceptable. */

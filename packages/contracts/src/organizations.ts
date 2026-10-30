@@ -26,6 +26,12 @@ export const CreateOrganizationRequestSchema = z.strictObject({
 
 export type CreateOrganizationRequest = z.infer<typeof CreateOrganizationRequestSchema>;
 
+export const RenameOrganizationRequestSchema = z.strictObject({
+  name: OrganizationNameSchema,
+});
+
+export type RenameOrganizationRequest = z.infer<typeof RenameOrganizationRequestSchema>;
+
 export const CreateInvitationRequestSchema = z.strictObject({
   email: EmailSchema,
   role: RoleSchema,

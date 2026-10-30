@@ -21,7 +21,7 @@ import {
   type TestUser,
 } from './identity-helpers';
 
-const NEW_PASSWORD = 'otra-contraseña-larga-y-nueva';
+const NEW_PASSWORD = 'otra-contraseña-nueva';
 
 describe('password reset (requires docker compose up and pnpm db:migrate)', () => {
   let app: INestApplication;
@@ -165,7 +165,7 @@ describe('password reset (requires docker compose up and pnpm db:migrate)', () =
 
     it('applies the password policy and keeps the token usable after a rejection', async () => {
       const { token } = await userWithResetToken('reset-policy');
-      const weak = await confirm({ token, password: 'a'.repeat(15) }).expect(422);
+      const weak = await confirm({ token, password: 'password123' }).expect(422);
       expect(ProblemDetailsSchema.parse(weak.body).code).toBe('VALIDATION_FAILED');
       await confirm({ token, password: 'corta' }).expect(422);
       await confirm({ token, password: NEW_PASSWORD }).expect(204);

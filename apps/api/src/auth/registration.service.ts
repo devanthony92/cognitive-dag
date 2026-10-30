@@ -87,7 +87,7 @@ export class RegistrationService {
         });
         await tx.insert(organizations).values({
           id: organizationId,
-          name: `Organización de ${request.name}`.slice(0, 100),
+          name: request.organizationName ?? `Organización de ${request.name}`.slice(0, 100),
           isPersonal: true,
           createdBy: userId,
         });

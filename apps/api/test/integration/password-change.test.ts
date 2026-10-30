@@ -18,7 +18,7 @@ import {
   type TestUser,
 } from './identity-helpers';
 
-const NEW_PASSWORD = 'otra-contraseña-larga-y-nueva';
+const NEW_PASSWORD = 'otra-contraseña-nueva';
 
 describe('password change (requires docker compose up and pnpm db:migrate)', () => {
   let app: INestApplication;
@@ -99,7 +99,7 @@ describe('password change (requires docker compose up and pnpm db:migrate)', () 
     const session = await loginAs(app, user);
     const response = await change(session, {
       currentPassword: user.password,
-      newPassword: 'a'.repeat(15),
+      newPassword: 'password123',
     }).expect(422);
     expect(ProblemDetailsSchema.parse(response.body).code).toBe('VALIDATION_FAILED');
     await change(session, { currentPassword: user.password, newPassword: 'corta' }).expect(422);
