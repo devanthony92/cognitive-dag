@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '../../components/ui/form';
 import { Input } from '../../components/ui/input';
+import { readPendingInvitation } from '../invitations/pending';
 import { ProblemAlert } from './ProblemAlert';
 
 type RegisterInput = z.input<typeof RegisterRequestSchema>;
@@ -36,7 +37,8 @@ type RegisterOutput = z.output<typeof RegisterRequestSchema>;
 export function RegisterForm() {
   const form = useForm<RegisterInput, unknown, RegisterOutput>({
     resolver: zodResolver(RegisterRequestSchema),
-    defaultValues: { name: '', email: '', password: '' },
+    // Coming from an invitation link: the invitation is bound to that email.
+    defaultValues: { name: '', email: readPendingInvitation()?.email ?? '', password: '' },
   });
 
   const register = useMutation<AcceptedResponse, Error, RegisterOutput>({

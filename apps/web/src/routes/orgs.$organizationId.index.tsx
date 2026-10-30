@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { createFileRoute } from '@tanstack/react-router';
+import { Link, createFileRoute } from '@tanstack/react-router';
+import { buttonVariants } from '../components/ui/button';
 import { PingPanel } from '../features/ping/PingPanel';
 import { ROLE_LABELS } from '../features/organizations/OrganizationSwitcher';
 import { sessionQuery } from '../features/session/session';
@@ -23,6 +24,13 @@ function OrganizationHome() {
             {ROLE_LABELS[organization.role]}
           </p>
         )}
+        <Link
+          to="/orgs/$organizationId/members"
+          params={{ organizationId }}
+          className={buttonVariants({ variant: 'outline', className: 'mt-4' })}
+        >
+          Miembros
+        </Link>
       </section>
       <PingPanel organizationId={organizationId} />
     </div>
