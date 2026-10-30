@@ -18,7 +18,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @cognitive-dag/db generate",
-    "db:migrate": "pnpm --filter @cognitive-dag/db migrate"
+    "db:migrate": "pnpm --filter @cognitive-dag/db migrate",
+    "ops:set-limits": "turbo run build --filter=@cognitive-dag/scripts^... && node scripts/ops/set-limits.ts"
   },
   "devDependencies": {
     "@commitlint/cli": "21.2.4",

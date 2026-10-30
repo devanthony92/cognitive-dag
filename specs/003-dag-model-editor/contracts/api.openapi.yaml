@@ -303,9 +303,10 @@ components:
         location:
           type: object
           properties:
-            nodeId: { type: string }
+            node: { type: string }
             field: { type: string }
-            edgeId: { type: string }
+            edge: { type: string }
+            nodes: { type: array, items: { type: string }, description: Nodos implicados (ciclos) }
     Limits:
       type: object
       required: [maxNodes, maxEdges, maxDefinitionBytes, source]

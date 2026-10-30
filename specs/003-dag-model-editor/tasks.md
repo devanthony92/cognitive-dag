@@ -20,7 +20,7 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 ## Phase 1: Setup
 
 - [X] T001 Crear `packages/dag-schema` (ESM, Zod, condición de export `@cognitive-dag/source`, Vitest)
-- [ ] T002 [P] Agregar el flag `dag-editor-enabled` al catálogo y a `.env.example` _(diferido al PR 3 de F2: exige código en API y web)_
+- [X] T002 [P] Agregar el flag `dag-editor-enabled` al catálogo y a `.env.example` _(hecho en el PR 2 de F2, junto con los endpoints de la API; la web lo usa desde el PR 3)_
 - [ ] T003 [P] Agregar `@xyflow/react` 12.12 y `@dagrejs/dagre` 3.1 a `apps/web` (versiones con más de un día) _(diferido al PR 3 de F2: sin código que las use en el PR 1)_
 
 ---
@@ -53,18 +53,18 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 ### Tests
 
-- [ ] T016 [P] `packages/db/test/rls-workflows.test.ts` como `app_runtime`: aislamiento de las 4 tablas; sin `UPDATE` ni `DELETE` en `workflow_versions`; sin escritura en `organization_limits`; FK compuesta impide activar una versión de otro workflow; triggers de misma organización y de desactivación al archivar
-- [ ] T017 [P] `apps/api/test/integration/workflows.test.ts`: crear, listar, renombrar, nombre repetido 409, archivar solo owner, viewer 403 al escribir, otra organización 404
-- [ ] T018 [P] `drafts.test.ts`: guardar con errores devuelve `validation`; sin `If-Match` 428; revisión vieja 409 `DRAFT_CONFLICT`; definición sobre el límite 413 `LIMIT_EXCEEDED`; campo desconocido 422
-- [ ] T019 [P] `versions.test.ts`: publicar crea v1, v2 correlativas e inmutables con `definition_hash`; publicar con errores 422 `DAG_INVALID` con `dagErrors`; publicaciones paralelas crean una sola versión; reactivar no crea versión; copiar versión al borrador
+- [X] T016 [P] `packages/db/test/rls-workflows.test.ts` como `app_runtime`: aislamiento de las 4 tablas; sin `UPDATE` ni `DELETE` en `workflow_versions`; sin escritura en `organization_limits`; FK compuesta impide activar una versión de otro workflow; triggers de misma organización y de desactivación al archivar
+- [X] T017 [P] `apps/api/test/integration/workflows.test.ts`: crear, listar, renombrar, nombre repetido 409, archivar solo owner, viewer 403 al escribir, otra organización 404
+- [X] T018 [P] `drafts.test.ts`: guardar con errores devuelve `validation`; sin `If-Match` 428; revisión vieja 409 `DRAFT_CONFLICT`; definición sobre el límite 413 `LIMIT_EXCEEDED`; campo desconocido 422
+- [X] T019 [P] `versions.test.ts`: publicar crea v1, v2 correlativas e inmutables con `definition_hash`; publicar con errores 422 `DAG_INVALID` con `dagErrors`; publicaciones paralelas crean una sola versión; reactivar no crea versión; copiar versión al borrador
 
 ### Implementation
 
-- [ ] T020 Esquema Drizzle de las 4 tablas exactamente como `data-model.md` y migración `0003`
-- [ ] T021 Migración manual `0004`: RLS, privilegios, triggers y FK compuesta
-- [ ] T022 `apps/api/src/workflows/`: endpoints del contrato, guard de rol (owner/editor escriben, viewer lee, owner archiva), publicación en transacción con `FOR UPDATE` (R11), ETag e `If-Match` (R10)
-- [ ] T023 `GET /limits` y `scripts/ops/set-limits.ts` (`pnpm ops:set-limits`, conecta como `app_migrator`, valida contra máximos absolutos, registra el cambio)
-- [ ] T024 Eventos de seguridad: `workflow.created`, `workflow.published`, `workflow.version_activated`, `workflow.archived`
+- [X] T020 Esquema Drizzle de las 4 tablas exactamente como `data-model.md` y migración `0003`
+- [X] T021 Migración manual `0004`: RLS, privilegios, triggers y FK compuesta
+- [X] T022 `apps/api/src/workflows/`: endpoints del contrato, guard de rol (owner/editor escriben, viewer lee, owner archiva), publicación en transacción con `FOR UPDATE` (R11), ETag e `If-Match` (R10)
+- [X] T023 `GET /limits` y `scripts/ops/set-limits.ts` (`pnpm ops:set-limits`, conecta como `app_migrator`, valida contra máximos absolutos, registra el cambio)
+- [X] T024 Eventos de seguridad: `workflow.created`, `workflow.published`, `workflow.version_activated`, `workflow.archived`
 
 ---
 

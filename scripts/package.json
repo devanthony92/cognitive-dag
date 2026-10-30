@@ -1,0 +1,21 @@
+{
+  "name": "@cognitive-dag/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --dir test/unit",
+    "test:integration": "vitest run --dir test/integration",
+    "set-limits": "node ops/set-limits.ts"
+  },
+  "dependencies": {
+    "@cognitive-dag/dag-schema": "workspace:*",
+    "@cognitive-dag/logger": "workspace:*",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@cognitive-dag/config": "workspace:*",
+    "@types/pg": "8.23.1"
+  }
+}

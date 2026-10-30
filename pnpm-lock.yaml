@@ -497,6 +497,25 @@ importers:
         specifier: workspace:*
         version: link:../config
 
+  scripts:
+    dependencies:
+      '@cognitive-dag/dag-schema':
+        specifier: workspace:*
+        version: link:../packages/dag-schema
+      '@cognitive-dag/logger':
+        specifier: workspace:*
+        version: link:../packages/logger
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
+    devDependencies:
+      '@cognitive-dag/config':
+        specifier: workspace:*
+        version: link:../packages/config
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+
 packages:
 
   '@angular-devkit/core@19.2.24':
