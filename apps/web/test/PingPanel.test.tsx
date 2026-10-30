@@ -82,3 +82,50 @@ describe('PingPanel', () => {
     expect(sent).toMatch(/^[0-9a-f-]{36}$/);
   });
 });
+
+describe('PingPanel inside an organization', () => {
+  const ORG_ID = '0192f0a0-0000-7000-8000-0000000000aa';
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  function mockSession(role: 'owner' | 'editor' | 'viewer'): void {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string) => {
+        const body = url.endsWith('/auth/session')
+          ? {
+              user: { id: '0192f0a0-0000-7000-8000-000000000001', name: 'Ana', email: 'a@e.com' },
+              organizations: [{ id: ORG_ID, name: 'Equipo', role, isPersonal: false }],
+              csrfToken: 'c'.repeat(43),
+            }
+          : { 'ping-enabled': true };
+        return Promise.resolve(
+          new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          }),
+        );
+      }),
+    );
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <PingPanel organizationId={ORG_ID} />
+      </QueryClientProvider>,
+    );
+  }
+
+  it.each(['owner', 'editor'] as const)('offers the action to a %s', async (role) => {
+    mockSession(role);
+    expect(await screen.findByRole('button', { name: 'Ejecutar ping' })).toBeDefined();
+  });
+
+  it('does not offer the action to a viewer, and says why', async () => {
+    mockSession('viewer');
+    expect(await screen.findByText(/solo lectura/i)).toBeDefined();
+    expect(screen.queryByRole('button', { name: 'Ejecutar ping' })).toBeNull();
+  });
+});

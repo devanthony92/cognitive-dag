@@ -8,6 +8,7 @@ import {
   type PingExecution,
 } from '@cognitive-dag/contracts';
 import { ApiProblemError, request } from '../../api/client';
+import { sessionQuery } from '../session/session';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import {
@@ -46,6 +47,11 @@ export function PingPanel({ organizationId }: { organizationId?: string } = {}) 
     queryFn: async () => (await request('/api/v1/features', PublicFeaturesSchema)).data,
   });
 
+  // Viewers cannot start pings (the API answers 403), so the action is not offered to them.
+  const session = useQuery({ ...sessionQuery, enabled: organizationId !== undefined });
+  const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
+  const canStart = organizationId === undefined || (role !== undefined && role !== 'viewer');
+
   const start = useMutation({
     mutationFn: async () =>
       (
@@ -80,11 +86,19 @@ export function PingPanel({ organizationId }: { organizationId?: string } = {}) 
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        <div>
-          <Button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
-            Ejecutar ping
-          </Button>
-        </div>
+        {canStart ? (
+          <div>
+            <Button type="button" onClick={() => start.mutate()} disabled={start.isPending}>
+              Ejecutar ping
+            </Button>
+          </div>
+        ) : (
+          role === 'viewer' && (
+            <p className="text-sm text-muted-foreground">
+              Tu rol es de solo lectura: un owner o un editor puede ejecutar el ping.
+            </p>
+          )
+        )}
         {error && (
           <Alert variant="destructive">
             <AlertDescription>
