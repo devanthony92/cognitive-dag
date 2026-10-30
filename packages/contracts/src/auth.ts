@@ -73,3 +73,21 @@ export const SessionInfoSchema = z.object({
 });
 
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
+
+export const PasswordResetConfirmRequestSchema = z.strictObject({
+  token: OpaqueTokenSchema,
+  password: PasswordSchema,
+});
+
+export type PasswordResetConfirmRequest = z.infer<typeof PasswordResetConfirmRequestSchema>;
+
+export const ChangePasswordRequestSchema = z.strictObject({
+  // Presence only, like login: the API decides whether it is the right one.
+  currentPassword: z
+    .string()
+    .min(1, 'Ingresa tu contraseña actual.')
+    .max(PASSWORD_MAX_LENGTH * 2),
+  newPassword: PasswordSchema,
+});
+
+export type ChangePasswordRequest = z.infer<typeof ChangePasswordRequestSchema>;

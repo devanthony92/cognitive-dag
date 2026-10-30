@@ -49,6 +49,24 @@ export function verificationEmail(name: string, url: string): Content {
   };
 }
 
+export function passwordResetLink(baseUrl: string, token: string): string {
+  return `${baseUrl.replace(/\/$/, '')}/reset-password?token=${token}`;
+}
+
+export function passwordResetEmail(name: string, url: string): Content {
+  return {
+    subject: 'Restablece tu contraseña en CognitiveDAG',
+    ...layout(
+      [
+        `Hola ${name},`,
+        'Recibimos una solicitud para restablecer tu contraseña. El enlace vence en 30 minutos y solo sirve una vez. Al usarlo se cerrarán todas tus sesiones.',
+        'Si no fuiste tú, ignora este mensaje: tu contraseña no cambió.',
+      ],
+      { label: 'Restablecer mi contraseña', url },
+    ),
+  };
+}
+
 /** Sent to the owner of an existing account when someone registers with its email (FR-014). */
 export function registrationAttemptEmail(name: string): Content {
   return {

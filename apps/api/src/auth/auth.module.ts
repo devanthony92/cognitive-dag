@@ -7,6 +7,7 @@ import { IdentityEnabledGuard } from './identity-enabled.guard';
 import { LoginService } from './login.service';
 import { OneTimeTokenService } from './one-time-token.service';
 import { PasswordHasher } from './password-hasher';
+import { PasswordService } from './password.service';
 import { PasswordPolicy } from './password-policy';
 import { RegistrationService } from './registration.service';
 import { SessionCache } from './session.cache';
@@ -24,6 +25,7 @@ import { SessionService } from './session.service';
     OneTimeTokenService,
     PasswordHasher,
     PasswordPolicy,
+    PasswordService,
     RegistrationService,
     SessionCache,
     SessionInfoService,

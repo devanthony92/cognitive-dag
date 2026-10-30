@@ -1,9 +1,17 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { AcceptedResponse, SessionInfo } from '@cognitive-dag/contracts';
-import { EmailDto, LoginDto, RegisterDto, TokenDto } from './auth.dto';
+import {
+  ChangePasswordDto,
+  EmailDto,
+  LoginDto,
+  PasswordResetConfirmDto,
+  RegisterDto,
+  TokenDto,
+} from './auth.dto';
 import { IdentityEnabledGuard } from './identity-enabled.guard';
 import { LoginService } from './login.service';
+import { PasswordService } from './password.service';
 import { Public } from './public.decorator';
 import { CurrentAuth } from './request-context';
 import { ACCEPTED_MESSAGE, RegistrationService } from './registration.service';
@@ -25,6 +33,7 @@ export class AuthController {
   constructor(
     private readonly registration: RegistrationService,
     private readonly logins: LoginService,
+    private readonly passwords: PasswordService,
     private readonly sessions: SessionService,
     private readonly sessionInfo: SessionInfoService,
     private readonly events: SecurityEventLogger,
@@ -89,6 +98,37 @@ export class AuthController {
       userId: auth.userId,
       ip: clientIp(req),
     });
+  }
+
+  @Public()
+  @Post('password-reset/request')
+  @HttpCode(202)
+  async requestPasswordReset(
+    @Body() body: EmailDto,
+    @Req() req: Request,
+  ): Promise<AcceptedResponse> {
+    await this.passwords.requestReset(body.email, clientIp(req));
+    return ACCEPTED;
+  }
+
+  @Public()
+  @Post('password-reset/confirm')
+  @HttpCode(204)
+  async confirmPasswordReset(
+    @Body() body: PasswordResetConfirmDto,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.passwords.confirmReset(body.token, body.password, clientIp(req));
+  }
+
+  @Post('password/change')
+  @HttpCode(204)
+  async changePassword(
+    @Body() body: ChangePasswordDto,
+    @CurrentAuth() auth: AuthSession,
+    @Req() req: Request,
+  ): Promise<void> {
+    await this.passwords.change(auth, body.currentPassword, body.newPassword, clientIp(req));
   }
 
   @Get('session')
