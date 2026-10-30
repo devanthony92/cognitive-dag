@@ -13,8 +13,8 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 
 ## Status
 
-**F0 — foundations and walking skeleton: complete.** The repository contains a runnable end-to-end
-skeleton and no product features yet.
+**F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
+the `identity-enabled` flag, on by default in `.env.example`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -27,8 +27,20 @@ skeleton and no product features yet.
 | CI                   | GitHub Actions: quality, security (audit + gitleaks), integration and images on amd64 and arm64                  |
 | Documentation        | 23 architecture decision records and a [threat model](docs/threat-model.md)                                      |
 
-**Next: F1 — identity and multi-tenancy** (registration, login, roles, Row-Level Security). Until
-then the system runs locally only and is not deployed publicly. Phases are listed in
+F1 adds:
+
+| Area          | What F1 delivers                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Accounts      | Registration (with a personal organization you can name), email verification, password reset and change (8–25 characters, [ADR-0026](docs/adr/0026-politica-de-contrasenas-8-25.md)) |
+| Sessions      | Opaque `__Host-session` cookie, CSRF token, progressive rate limiting, fail-closed when Valkey or PostgreSQL are down                                                                |
+| Multi-tenancy | Organizations, roles (owner, editor, viewer), invitations, renaming; guard per request plus forced Row-Level Security                                                                |
+| Data          | Drizzle schema and migrations, two PostgreSQL roles (`app_migrator`, `app_runtime`), soft delete                                                                                     |
+| Email         | Mailpit in Compose for development (http://localhost:8025)                                                                                                                           |
+| Observability | Security events as structured logs (`event`, `outcome`, `userId`, `organizationId`, `ip`, `correlationId`)                                                                           |
+| Documentation | 38 architecture decision records; threat model v1.1 with the F1 rows mitigated                                                                                                       |
+
+**Next: F2 — workflows and DAG model.** Until F9 the system runs locally only and is not deployed
+publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
 ## Architecture
@@ -50,16 +62,18 @@ then the system runs locally only and is not deployed publicly. Phases are liste
                                                    └──────────────┘
 ```
 
-| Path                 | Role                                                                   |
-| -------------------- | ---------------------------------------------------------------------- |
-| `apps/web`           | React + Vite single-page app                                           |
-| `apps/api`           | NestJS HTTP API (RFC 9457 errors, correlation IDs, health checks)      |
-| `apps/worker`        | Temporal worker (workflows and activities)                             |
-| `packages/contracts` | Zod schemas shared by every app (single source of truth for contracts) |
-| `packages/logger`    | Structured pino logging with redaction of sensitive fields             |
-| `packages/config`    | Shared TypeScript and Prettier configuration                           |
+| Path                 | Role                                                                                 |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| `apps/web`           | React + Vite single-page app                                                         |
+| `apps/api`           | NestJS HTTP API (RFC 9457 errors, correlation IDs, health checks)                    |
+| `apps/worker`        | Temporal worker (workflows and activities)                                           |
+| `packages/db`        | Drizzle schema, migrations, tenant context (`withContext`) and soft-delete selectors |
+| `packages/contracts` | Zod schemas shared by every app (single source of truth for contracts)               |
+| `packages/logger`    | Structured pino logging with redaction of sensitive fields                           |
+| `packages/config`    | Shared TypeScript and Prettier configuration                                         |
 
-In F0 the API only checks PostgreSQL and Valkey for readiness; the data model arrives in F1.
+The API stores identity data in PostgreSQL (Row-Level Security, migrations in `packages/db`) and
+keeps sessions and rate-limit counters in Valkey.
 
 ## Documentation
 
@@ -70,6 +84,7 @@ In F0 the API only checks PostgreSQL and Valkey for readiness; the data model ar
 | [docs/adr/](docs/adr/)                                             | Architecture decision records, one per decision (es)                       |
 | [docs/threat-model.md](docs/threat-model.md)                       | Data-flow diagram, trust boundaries and STRIDE analysis (es)               |
 | [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/) | F0 spec, plan, research, tasks and quickstart (es)                         |
+| [specs/002-identity-tenancy/](specs/002-identity-tenancy/)         | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 
 The project follows Spec-Driven Development with [GitHub Spec Kit](https://github.com/github/spec-kit).
 
@@ -116,7 +131,9 @@ With `identity-enabled` on (the default in `.env.example`) the web app starts at
 open the verification link in Mailpit and sign in; from the header you can switch organization,
 change your password (**Contraseña**) and manage the organization's **Miembros**: owners invite by
 email (the invitation link arrives in Mailpit), change roles and remove people. **Olvidé mi
-contraseña** on the login screen mails a reset link. With the flag off the F0 ping panel is shown
+contraseña** on the login screen mails a reset link. Registration lets you name your personal
+organization and every password field has a show/hide button; owners rename an organization from
+**Ajustes de la organización** on its home page. With the flag off the F0 ping panel is shown
 instead and none of these screens exist.
 
 ## Quality checks
@@ -140,5 +157,7 @@ enforces it. `main` only accepts pull requests with all six CI checks green.
 
 Security is part of every spec's definition of done. The F0 controls (validated configuration,
 Helmet and strict CORS, no stack traces in errors, log redaction, locked-down supply chain, secret
-scanning) and the risks deferred to later phases are catalogued in the
+scanning), the F1 controls (sessions, CSRF, rate limiting, tenant isolation with Row-Level Security,
+security events), the accepted deviation from NIST 800-63B-4 in the password length and the risks
+deferred to later phases are catalogued in the
 [threat model](docs/threat-model.md).
