@@ -1,0 +1,328 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F2 workflows and DAG editor
+  version: 0.3.0
+  description: >
+    Extiende los contratos de F0 y F1. Todos los endpoints exigen sesión, membresía en la
+    organización de la ruta y X-CSRF-Token en las peticiones que cambian estado. Con el flag
+    dag-editor-enabled apagado responden 404 FEATURE_NOT_AVAILABLE. Permisos: owner y editor
+    escriben, viewer lee, solo owner archiva.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/organizations/{organizationId}/workflows:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    get:
+      operationId: listWorkflows
+      responses:
+        '200':
+          description: Workflows no archivados
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WorkflowSummary' }
+    post:
+      operationId: createWorkflow
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { $ref: '#/components/schemas/WorkflowName' }
+      responses:
+        '201':
+          description: Workflow con borrador vacío (revisión 1)
+          headers: { ETag: { $ref: '#/components/headers/DraftRevision' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      operationId: getWorkflow
+      responses:
+        '200':
+          description: Workflow con borrador, revisión y versión activa
+          headers: { ETag: { $ref: '#/components/headers/DraftRevision' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        '404': { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: renameWorkflow
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { $ref: '#/components/schemas/WorkflowName' }
+      responses:
+        '200':
+          description: Renombrado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkflowSummary' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: archiveWorkflow
+      description: Borrado lógico (solo owner); desactiva la versión activa.
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '204': { description: Archivado }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/draft:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    put:
+      operationId: saveDraft
+      description: Guarda el borrador aunque tenga errores de validación (se devuelven); bloqueo optimista con If-Match.
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [definition]
+              properties:
+                definition: { $ref: '#/components/schemas/DagDefinition' }
+      responses:
+        '200':
+          description: Guardado; nueva revisión y resultado de validación
+          headers: { ETag: { $ref: '#/components/headers/DraftRevision' } }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [revision, validation]
+                properties:
+                  revision: { type: integer, minimum: 1 }
+                  validation: { $ref: '#/components/schemas/ValidationResult' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '428': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/draft/from-version/{versionNumber}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+      - $ref: '#/components/parameters/VersionNumber'
+    post:
+      operationId: copyVersionToDraft
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Borrador reemplazado por la definición de la versión
+          headers: { ETag: { $ref: '#/components/headers/DraftRevision' } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Workflow' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      operationId: listVersions
+      responses:
+        '200':
+          description: Versiones, la más reciente primero
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/VersionSummary' }
+    post:
+      operationId: publishVersion
+      description: Publica la revisión indicada en If-Match; falla si el borrador tiene errores.
+      parameters:
+        - $ref: '#/components/parameters/CsrfHeader'
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note: { type: string, maxLength: 500 }
+      responses:
+        '201':
+          description: Versión creada y activada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VersionSummary' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/versions/{versionNumber}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+      - $ref: '#/components/parameters/VersionNumber'
+    get:
+      operationId: getVersion
+      responses:
+        '200':
+          description: Versión con su definición inmutable
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/VersionSummary'
+                  - type: object
+                    required: [definition]
+                    properties:
+                      definition: { $ref: '#/components/schemas/DagDefinition' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/versions/{versionNumber}/activate:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+      - $ref: '#/components/parameters/VersionNumber'
+    post:
+      operationId: activateVersion
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '200':
+          description: Versión activada (sin crear una nueva)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VersionSummary' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/limits:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    get:
+      operationId: getOrganizationLimits
+      responses:
+        '200':
+          description: Límites vigentes (propios o por defecto); solo lectura
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Limits' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: __Host-session }
+  parameters:
+    OrganizationId: { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
+    WorkflowId: { name: workflowId, in: path, required: true, schema: { type: string, format: uuid } }
+    VersionNumber: { name: versionNumber, in: path, required: true, schema: { type: integer, minimum: 1 } }
+    CsrfHeader: { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: Revisión del borrador sobre la que se trabaja, como ETag (p. ej. "7").
+      schema: { type: string }
+  headers:
+    DraftRevision:
+      description: Revisión actual del borrador como ETag entre comillas
+      schema: { type: string }
+  schemas:
+    WorkflowName: { type: string, minLength: 1, maxLength: 100 }
+    WorkflowSummary:
+      type: object
+      required: [id, name, draftRevision, draftUpdatedAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        draftRevision: { type: integer }
+        draftUpdatedAt: { type: string, format: date-time }
+        activeVersionNumber: { type: [integer, 'null'] }
+    Workflow:
+      allOf:
+        - $ref: '#/components/schemas/WorkflowSummary'
+        - type: object
+          required: [draft]
+          properties:
+            draft: { $ref: '#/components/schemas/DagDefinition' }
+            draftValidation: { $ref: '#/components/schemas/ValidationResult' }
+    VersionSummary:
+      type: object
+      required: [number, publishedAt, publishedBy, nodeCount, edgeCount, nodeTypes, active]
+      properties:
+        number: { type: integer }
+        note: { type: [string, 'null'] }
+        publishedAt: { type: string, format: date-time }
+        publishedBy: { type: object, properties: { id: { type: string }, name: { type: string } } }
+        nodeCount: { type: integer }
+        edgeCount: { type: integer }
+        nodeTypes: { type: array, items: { type: string } }
+        active: { type: boolean }
+    DagDefinition:
+      type: object
+      description: Forma completa en research.md R2; el esquema autoritativo es packages/dag-schema.
+      additionalProperties: false
+      required: [schemaVersion, nodes, edges]
+      properties:
+        schemaVersion: { const: 1 }
+        nodes: { type: array, items: { type: object } }
+        edges: { type: array, items: { type: object } }
+    ValidationResult:
+      type: object
+      required: [valid, errors]
+      properties:
+        valid: { type: boolean }
+        errors: { type: array, items: { $ref: '#/components/schemas/DagError' } }
+    DagError:
+      type: object
+      required: [code, message, location]
+      properties:
+        code: { type: string, example: CYCLE_DETECTED }
+        message: { type: string }
+        location:
+          type: object
+          properties:
+            nodeId: { type: string }
+            field: { type: string }
+            edgeId: { type: string }
+    Limits:
+      type: object
+      required: [maxNodes, maxEdges, maxDefinitionBytes, source]
+      properties:
+        maxNodes: { type: integer }
+        maxEdges: { type: integer }
+        maxDefinitionBytes: { type: integer }
+        source: { type: string, enum: [default, organization] }
+    Problem:
+      type: object
+      description: >
+        RFC 9457 como en F1. Códigos nuevos: WORKFLOW_NAME_TAKEN (409), DRAFT_CONFLICT (409),
+        PRECONDITION_REQUIRED (428), DAG_INVALID (422, con la extensión dagErrors[] de tipo DagError),
+        LIMIT_EXCEEDED (413).
+  responses:
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
