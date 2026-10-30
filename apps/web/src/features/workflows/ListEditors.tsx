@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -10,6 +11,25 @@ export interface ListMessages {
   list: string[];
   /** Errors of an item or one of its parts, including the parts below it. */
   at: (path: string) => string[];
+}
+
+/**
+ * Focus for the item an "Agregar" press just created: ask for it with `request(index)` and the
+ * first input of that row takes it when it mounts, so the next keystrokes are not lost.
+ */
+function useFocusOnAdd() {
+  const wanted = useRef<number | null>(null);
+  return {
+    request: (index: number) => {
+      wanted.current = index;
+    },
+    ref: (index: number) => (element: HTMLInputElement | null) => {
+      if (element && wanted.current === index) {
+        wanted.current = null;
+        element.focus();
+      }
+    },
+  };
 }
 
 const move = <T,>(items: readonly T[], from: number, to: number): T[] => {
@@ -133,6 +153,7 @@ export function StringListEditor({
   disabled,
   onChange,
 }: StringListProps) {
+  const focus = useFocusOnAdd();
   return (
     <div role="group" aria-labelledby={`${id}-label`} className="grid gap-2">
       {items.map((item, index) => {
@@ -141,6 +162,7 @@ export function StringListEditor({
           <div key={index} className="grid gap-1">
             <div className="flex items-center gap-1">
               <Input
+                ref={focus.ref(index)}
                 aria-label={`${label} ${index + 1}`}
                 aria-invalid={problems.length > 0}
                 value={item}
@@ -163,7 +185,14 @@ export function StringListEditor({
         );
       })}
       <Messages messages={messages.list} />
-      <AddButton label={label} disabled={disabled} onClick={() => onChange([...items, ''])} />
+      <AddButton
+        label={label}
+        disabled={disabled}
+        onClick={() => {
+          focus.request(items.length);
+          onChange([...items, '']);
+        }}
+      />
     </div>
   );
 }
@@ -296,6 +325,7 @@ export function FieldListEditor({
   disabled,
   onChange,
 }: FieldListProps) {
+  const focus = useFocusOnAdd();
   const update = (index: number, patch: Partial<TypedField>) =>
     onChange(items.map((old, at) => (at === index ? { ...old, ...patch } : old)));
   return (
@@ -311,6 +341,7 @@ export function FieldListEditor({
           <div key={index} className="grid gap-1.5 rounded-md border p-2">
             <div className="flex items-center gap-1">
               <Input
+                ref={focus.ref(index)}
                 aria-label={`${name}: nombre`}
                 aria-invalid={nameProblems.length > 0}
                 placeholder="nombre"
@@ -344,7 +375,10 @@ export function FieldListEditor({
       <AddButton
         label={label}
         disabled={disabled}
-        onClick={() => onChange([...items, { name: '', type: { kind: 'string' } }])}
+        onClick={() => {
+          focus.request(items.length);
+          onChange([...items, { name: '', type: { kind: 'string' } }]);
+        }}
       />
     </div>
   );
@@ -361,6 +395,7 @@ interface KeyValueProps {
 
 /** A map of text to text (HTTP headers): a name and a value per row. */
 export function KeyValueEditor({ id, label, items, messages, disabled, onChange }: KeyValueProps) {
+  const focus = useFocusOnAdd();
   const update = (index: number, patch: Partial<KeyValueRow>) =>
     onChange(items.map((old, at) => (at === index ? { ...old, ...patch } : old)));
   const problems = messages.at('');
@@ -369,6 +404,7 @@ export function KeyValueEditor({ id, label, items, messages, disabled, onChange 
       {items.map((item, index) => (
         <div key={index} className="flex items-center gap-1">
           <Input
+            ref={focus.ref(index)}
             aria-label={`${label} ${index + 1}: nombre`}
             aria-invalid={problems.length > 0}
             placeholder="nombre"
@@ -397,7 +433,10 @@ export function KeyValueEditor({ id, label, items, messages, disabled, onChange 
       <AddButton
         label={label}
         disabled={disabled}
-        onClick={() => onChange([...items, { key: '', value: '' }])}
+        onClick={() => {
+          focus.request(items.length);
+          onChange([...items, { key: '', value: '' }]);
+        }}
       />
     </div>
   );

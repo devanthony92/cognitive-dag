@@ -38,31 +38,6 @@ export interface KeyValueRow {
 export type ListValue = string[] | TypedField[] | KeyValueRow[];
 export type FormValue = string | boolean | ListValue;
 
-/** Spanish captions for the configuration keys of the catalog. */
-const LABELS: Record<string, string> = {
-  inputSchema: 'Campos de entrada',
-  bodySchema: 'Campos del cuerpo',
-  cron: 'Expresión cron',
-  timezone: 'Zona horaria',
-  text: 'Texto',
-  labels: 'Etiquetas',
-  fields: 'Campos a extraer',
-  instruction: 'Instrucción',
-  language: 'Idioma',
-  maxLength: 'Longitud máxima',
-  condition: 'Condición',
-  strategy: 'Estrategia',
-  message: 'Mensaje',
-  timeoutSeconds: 'Plazo (segundos)',
-  method: 'Método',
-  url: 'URL',
-  headers: 'Cabeceras',
-  body: 'Cuerpo',
-  latencyMs: 'Latencia (ms)',
-  failureRate: 'Tasa de fallos (0 a 1)',
-  failureKind: 'Tipo de fallo',
-};
-
 interface JsonProperty {
   type?: string;
   enum?: unknown[];
@@ -115,7 +90,7 @@ export function describeConfig(type: NodeType): FieldDescriptor[] {
 
   const descriptors = Object.entries(jsonSchema.properties ?? {}).map(
     ([key, property]): FieldDescriptor => {
-      const base = { key, label: LABELS[key] ?? key, required: required.has(key) };
+      const base = { key, label: entry.fieldLabels[key] ?? key, required: required.has(key) };
       if (Array.isArray(property.enum)) {
         return { ...base, kind: 'select', options: property.enum.map(String) };
       }
