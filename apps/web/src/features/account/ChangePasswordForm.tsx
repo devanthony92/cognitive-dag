@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { ChangePasswordRequestSchema } from '@cognitive-dag/contracts';
 import { ApiProblemError, request } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -22,25 +22,34 @@ import {
   FormLabel,
   FormMessage,
 } from '../../components/ui/form';
-import { Input } from '../../components/ui/input';
+import { PasswordInput } from '../../components/ui/password-input';
+import { PASSWORD_MISMATCH } from '../auth/password-confirmation';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { NoBodySchema } from '../session/session';
 
-type ChangeInput = z.input<typeof ChangePasswordRequestSchema>;
-type ChangeOutput = z.output<typeof ChangePasswordRequestSchema>;
+const ChangeFormSchema = ChangePasswordRequestSchema.extend({
+  newPasswordConfirmation: z.string(),
+}).refine((values) => values.newPassword === values.newPasswordConfirmation, {
+  error: PASSWORD_MISMATCH,
+  path: ['newPasswordConfirmation'],
+});
+
+type ChangeInput = z.input<typeof ChangeFormSchema>;
+type ChangeOutput = z.output<typeof ChangeFormSchema>;
 
 /** Changing the password closes the other sessions and keeps this one (FR-009). */
 export function ChangePasswordForm() {
   const form = useForm<ChangeInput, unknown, ChangeOutput>({
-    resolver: zodResolver(ChangePasswordRequestSchema),
-    defaultValues: { currentPassword: '', newPassword: '' },
+    resolver: zodResolver(ChangeFormSchema),
+    defaultValues: { currentPassword: '', newPassword: '', newPasswordConfirmation: '' },
   });
   const change = useMutation<undefined, Error, ChangeOutput>({
-    mutationFn: async (values) =>
+    mutationFn: async ({ currentPassword, newPassword }) =>
       (
         await request('/api/v1/auth/password/change', NoBodySchema, {
           method: 'POST',
-          body: JSON.stringify(values),
+          // The confirmation stays in the browser.
+          body: JSON.stringify({ currentPassword, newPassword }),
         })
       ).data,
     onSuccess: () => form.reset(),
@@ -83,7 +92,7 @@ export function ChangePasswordForm() {
                 <FormItem>
                   <FormLabel>Contraseña actual</FormLabel>
                   <FormControl>
-                    <Input type="password" autoComplete="current-password" {...field} />
+                    <PasswordInput autoComplete="current-password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -96,9 +105,22 @@ export function ChangePasswordForm() {
                 <FormItem>
                   <FormLabel>Contraseña nueva</FormLabel>
                   <FormControl>
-                    <Input type="password" autoComplete="new-password" {...field} />
+                    <PasswordInput autoComplete="new-password" {...field} />
                   </FormControl>
-                  <FormDescription>Entre 15 y 128 caracteres.</FormDescription>
+                  <FormDescription>Entre 8 y 25 caracteres.</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="newPasswordConfirmation"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Repite la contraseña nueva</FormLabel>
+                  <FormControl>
+                    <PasswordInput autoComplete="new-password" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

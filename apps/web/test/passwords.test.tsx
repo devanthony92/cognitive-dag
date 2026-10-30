@@ -9,7 +9,7 @@ import { ForgotPasswordForm, ResetPasswordForm } from '../src/features/auth/Pass
 
 const CORRELATION_ID = '0b5f7f5e-3c1a-4d57-9a53-7d9a2a2d6c11';
 const TOKEN = 'T'.repeat(43);
-const NEW_PASSWORD = 'otra-contraseña-larga-y-nueva';
+const NEW_PASSWORD = 'otra-contraseña-nueva';
 
 const json = (status: number, body: unknown) =>
   new Response(JSON.stringify(body), {
@@ -70,6 +70,7 @@ describe('password screens', () => {
       renderWithClient(<ResetPasswordForm token={TOKEN} />);
 
       await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), NEW_PASSWORD);
       await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
 
       expect(await screen.findByText('Contraseña actualizada')).toBeDefined();
@@ -91,8 +92,33 @@ describe('password screens', () => {
       await user.type(screen.getByLabelText('Contraseña nueva'), 'corta');
       await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
 
-      expect(await screen.findByText('Debe tener al menos 15 caracteres.')).toBeDefined();
+      expect(await screen.findByText('Debe tener al menos 8 caracteres.')).toBeDefined();
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('blocks a different confirmation without calling the API', async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      const user = userEvent.setup();
+      renderWithClient(<ResetPasswordForm token={TOKEN} />);
+
+      await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), `${NEW_PASSWORD}x`);
+      await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+
+      expect(await screen.findByText('Las contraseñas no coinciden.')).toBeDefined();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('shows and hides the new password and its confirmation', async () => {
+      renderWithClient(<ResetPasswordForm token={TOKEN} />);
+      const user = userEvent.setup();
+      const password = screen.getByLabelText<HTMLInputElement>('Contraseña nueva');
+      expect(password.type).toBe('password');
+      await user.click(screen.getAllByRole('button', { name: 'Mostrar contraseña' })[0]!);
+      expect(password.type).toBe('text');
+      await user.click(screen.getByRole('button', { name: 'Ocultar contraseña' }));
+      expect(password.type).toBe('password');
     });
 
     it('offers a new link when the server rejects the token', async () => {
@@ -104,6 +130,7 @@ describe('password screens', () => {
       renderWithClient(<ResetPasswordForm token={TOKEN} />);
 
       await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), NEW_PASSWORD);
       await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
 
       expect(await screen.findByRole('alert')).toBeDefined();
@@ -128,6 +155,7 @@ describe('password screens', () => {
 
       await user.type(screen.getByLabelText('Contraseña actual'), 'la-contraseña-de-antes');
       await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), NEW_PASSWORD);
       await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
 
       expect(await screen.findByText(/Contraseña actualizada/)).toBeDefined();
@@ -136,6 +164,33 @@ describe('password screens', () => {
         currentPassword: 'la-contraseña-de-antes',
         newPassword: NEW_PASSWORD,
       });
+    });
+
+    it('blocks a different confirmation without calling the API', async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal('fetch', fetchMock);
+      const user = userEvent.setup();
+      renderWithClient(<ChangePasswordForm />);
+
+      await user.type(screen.getByLabelText('Contraseña actual'), 'la-contraseña-de-antes');
+      await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), 'otra-cosa-distinta');
+      await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
+
+      expect(await screen.findByText('Las contraseñas no coinciden.')).toBeDefined();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('shows and hides each of the three password fields on its own', async () => {
+      renderWithClient(<ChangePasswordForm />);
+      const user = userEvent.setup();
+      const current = screen.getByLabelText<HTMLInputElement>('Contraseña actual');
+      const next = screen.getByLabelText<HTMLInputElement>('Contraseña nueva');
+      const buttons = screen.getAllByRole('button', { name: 'Mostrar contraseña' });
+      expect(buttons).toHaveLength(3);
+      await user.click(buttons[0]!);
+      expect(current.type).toBe('text');
+      expect(next.type).toBe('password');
     });
 
     it('marks the current password field when it is wrong', async () => {
@@ -148,6 +203,7 @@ describe('password screens', () => {
 
       await user.type(screen.getByLabelText('Contraseña actual'), 'equivocada');
       await user.type(screen.getByLabelText('Contraseña nueva'), NEW_PASSWORD);
+      await user.type(screen.getByLabelText('Repite la contraseña nueva'), NEW_PASSWORD);
       await user.click(screen.getByRole('button', { name: 'Cambiar contraseña' }));
 
       await waitFor(() =>
