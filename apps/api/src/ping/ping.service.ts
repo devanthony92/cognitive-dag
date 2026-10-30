@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   Client,
@@ -65,7 +65,7 @@ export class PingService {
     /** Set under /organizations/{id}/pings: the ping is stored with its owner. */
     organizationId?: string;
   }): Promise<PingExecution> {
-    const workflowId = `ping-${(input.idempotencyKey ?? randomUUID()).toLowerCase()}`;
+    const workflowId = pingWorkflowId(input.idempotencyKey, input.organizationId);
     const args: PingWorkflowInput = {
       correlationId: input.correlationId,
       ...(input.message === undefined ? {} : { message: input.message }),
@@ -170,6 +170,23 @@ export class PingService {
     if (isTemporalUnavailable(error)) return new ServiceUnavailableException();
     return error instanceof Error ? error : new Error('Unknown Temporal error');
   }
+}
+
+/**
+ * `ping-<uuid>`. The F0 route uses the key itself. Under an organization the id is a UUID derived
+ * from SHA-256 of `<organizationId>:<key>`, so the same key in two organizations is two pings and
+ * a repeated key can never reveal that another organization used it (FR-017).
+ */
+export function pingWorkflowId(idempotencyKey?: string, organizationId?: string): string {
+  if (idempotencyKey === undefined) return `ping-${randomUUID()}`;
+  const key = idempotencyKey.toLowerCase();
+  if (organizationId === undefined) return `ping-${key}`;
+  const bytes = createHash('sha256').update(`${organizationId}:${key}`, 'utf8').digest();
+  // Version 5 / RFC 4122 variant bits keep it a well-formed UUID.
+  bytes[6] = (bytes[6]! & 0x0f) | 0x50;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = bytes.subarray(0, 16).toString('hex');
+  return `ping-${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
 }
 
 function pingNotFound(organizationId?: string): DomainException {
