@@ -56,6 +56,11 @@ type InviteOutput = z.output<typeof CreateInvitationRequestSchema>;
 
 const ROLES = RoleSchema.options;
 
+interface Feedback {
+  onStart: () => void;
+  onError: (error: unknown) => void;
+}
+
 const membersKey = (organizationId: string) => ['members', organizationId] as const;
 const invitationsKey = (organizationId: string) => ['invitations', organizationId] as const;
 const base = (organizationId: string) => `/api/v1/organizations/${organizationId}`;
@@ -70,6 +75,10 @@ export function MembersPage({ organizationId }: { organizationId: string }) {
   const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
   const isOwner = role === 'owner';
   const currentUserId = session.data?.user.id;
+
+  // One alert for the page: starting or finishing any action replaces what the last one said.
+  const [actionError, setActionError] = useState<unknown>();
+  const feedback = { onStart: () => setActionError(undefined), onError: setActionError };
 
   const members = useQuery({
     queryKey: membersKey(organizationId),
@@ -94,18 +103,20 @@ export function MembersPage({ organizationId }: { organizationId: string }) {
         </CardHeader>
         <CardContent>
           {members.isError && <ProblemAlert error={members.error} />}
+          {actionError !== undefined && <ProblemAlert error={actionError} />}
           {members.data && (
             <MembersTable
               organizationId={organizationId}
               members={members.data}
               isOwner={isOwner}
               currentUserId={currentUserId}
+              feedback={feedback}
             />
           )}
         </CardContent>
       </Card>
 
-      {isOwner && <InvitationsSection organizationId={organizationId} />}
+      {isOwner && <InvitationsSection organizationId={organizationId} feedback={feedback} />}
     </div>
   );
 }
@@ -115,7 +126,9 @@ function MembersTable({
   members,
   isOwner,
   currentUserId,
+  feedback,
 }: {
+  feedback: Feedback;
   organizationId: string;
   members: Member[];
   isOwner: boolean;
@@ -138,6 +151,8 @@ function MembersTable({
           body: JSON.stringify({ role }),
         })
       ).data,
+    onMutate: feedback.onStart,
+    onError: feedback.onError,
     onSettled: refresh,
   });
 
@@ -148,13 +163,13 @@ function MembersTable({
           method: 'DELETE',
         })
       ).data,
+    onMutate: feedback.onStart,
     onSuccess: () => setRemoving(undefined),
     onSettled: refresh,
   });
 
   return (
     <div className="grid gap-4">
-      {changeRole.isError && <ProblemAlert error={changeRole.error} />}
       <Table>
         <TableHeader>
           <TableRow>
@@ -248,7 +263,13 @@ function MembersTable({
   );
 }
 
-function InvitationsSection({ organizationId }: { organizationId: string }) {
+function InvitationsSection({
+  organizationId,
+  feedback,
+}: {
+  organizationId: string;
+  feedback: Feedback;
+}) {
   const queryClient = useQueryClient();
   const form = useForm<InviteInput, unknown, InviteOutput>({
     resolver: zodResolver(CreateInvitationRequestSchema),
@@ -269,6 +290,8 @@ function InvitationsSection({ organizationId }: { organizationId: string }) {
           body: JSON.stringify(values),
         })
       ).data,
+    onMutate: feedback.onStart,
+    onError: feedback.onError,
     onSuccess: async () => {
       form.reset();
       await queryClient.invalidateQueries({ queryKey: invitationsKey(organizationId) });
@@ -282,6 +305,8 @@ function InvitationsSection({ organizationId }: { organizationId: string }) {
           method: 'DELETE',
         })
       ).data,
+    onMutate: feedback.onStart,
+    onError: feedback.onError,
     onSettled: () => queryClient.invalidateQueries({ queryKey: invitationsKey(organizationId) }),
   });
 
@@ -337,14 +362,12 @@ function InvitationsSection({ organizationId }: { organizationId: string }) {
             </Button>
           </form>
         </Form>
-        {invite.isError && <ProblemAlert error={invite.error} />}
         {invite.isSuccess && (
           <Alert>
             <AlertDescription>Invitación enviada a {invite.data.email}.</AlertDescription>
           </Alert>
         )}
 
-        {revoke.isError && <ProblemAlert error={revoke.error} />}
         {pending.isError && <ProblemAlert error={pending.error} />}
         {pending.data && pending.data.length > 0 && (
           <Table>

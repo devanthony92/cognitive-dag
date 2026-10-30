@@ -162,6 +162,39 @@ describe('MembersPage', () => {
     expect((await screen.findByRole('alert')).textContent).toContain('al menos un owner');
   });
 
+  it('clears an earlier error when a later action succeeds', async () => {
+    stubApi(
+      sessionHandler('owner'),
+      membersHandler,
+      whenPath(/\/invitations$/, 'GET', () => json([])),
+      whenPath(/\/members\/[0-9a-f-]{36}$/, 'PATCH', () =>
+        problem(409, 'LAST_OWNER', 'La organización debe conservar al menos un owner.'),
+      ),
+      whenPath(/\/invitations$/, 'POST', () =>
+        json(
+          {
+            id: '0192f0a0-0000-7000-8000-0000000000c1',
+            email: 'nueva@example.com',
+            role: 'viewer',
+            expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+          },
+          201,
+        ),
+      ),
+    );
+    const user = userEvent.setup();
+    renderWithClient(<MembersPage organizationId={ORG_ID} />);
+
+    await user.selectOptions(await screen.findByLabelText('Rol de Ana'), 'viewer');
+    expect((await screen.findByRole('alert')).textContent).toContain('al menos un owner');
+
+    await user.type(screen.getByLabelText('Correo de la persona'), 'nueva@example.com');
+    await user.click(screen.getByRole('button', { name: 'Enviar invitación' }));
+
+    expect(await screen.findByText('Invitación enviada a nueva@example.com.')).toBeDefined();
+    expect(screen.queryByText(/al menos un owner/)).toBeNull();
+  });
+
   it('asks for confirmation before removing a member', async () => {
     const fetchMock = stubApi(
       sessionHandler('owner'),
