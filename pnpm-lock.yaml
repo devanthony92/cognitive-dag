@@ -455,6 +455,16 @@ importers:
         specifier: workspace:*
         version: link:../config
 
+  packages/dag-schema:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@cognitive-dag/config':
+        specifier: workspace:*
+        version: link:../config
+
   packages/db:
     dependencies:
       drizzle-orm:
