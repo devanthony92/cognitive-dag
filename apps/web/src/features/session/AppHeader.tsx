@@ -40,6 +40,15 @@ export function AppHeader() {
             }
           />
         )}
+        {identity && info && organizationId !== undefined && (
+          <Link
+            to="/orgs/$organizationId/members"
+            params={{ organizationId }}
+            className="text-sm underline"
+          >
+            Miembros
+          </Link>
+        )}
         <div className="ml-auto flex items-center gap-3 text-sm">
           {identity && info && (
             <>

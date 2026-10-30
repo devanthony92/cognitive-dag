@@ -16,8 +16,10 @@ import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as AccountPasswordRouteImport } from './routes/account.password'
+import { Route as InvitationsAcceptRouteImport } from './routes/invitations.accept'
 import { Route as OrgsOrganizationIdRouteImport } from './routes/orgs.$organizationId'
 import { Route as OrgsOrganizationIdIndexRouteImport } from './routes/orgs.$organizationId.index'
+import { Route as OrgsOrganizationIdMembersRouteImport } from './routes/orgs.$organizationId.members'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -54,6 +56,11 @@ const AccountPasswordRoute = AccountPasswordRouteImport.update({
   path: '/account/password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvitationsAcceptRoute = InvitationsAcceptRouteImport.update({
+  id: '/invitations/accept',
+  path: '/invitations/accept',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrgsOrganizationIdRoute = OrgsOrganizationIdRouteImport.update({
   id: '/orgs/$organizationId',
   path: '/orgs/$organizationId',
@@ -64,6 +71,12 @@ const OrgsOrganizationIdIndexRoute = OrgsOrganizationIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OrgsOrganizationIdRoute,
 } as any)
+const OrgsOrganizationIdMembersRoute =
+  OrgsOrganizationIdMembersRouteImport.update({
+    id: '/members',
+    path: '/members',
+    getParentRoute: () => OrgsOrganizationIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -73,7 +86,9 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRoutesByTo {
@@ -84,6 +99,8 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
+  '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRoutesById {
@@ -95,7 +112,9 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/verify-email': typeof VerifyEmailRoute
   '/account/password': typeof AccountPasswordRoute
+  '/invitations/accept': typeof InvitationsAcceptRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -108,7 +127,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/account/password'
+    | '/invitations/accept'
     | '/orgs/$organizationId'
+    | '/orgs/$organizationId/members'
     | '/orgs/$organizationId/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -119,6 +140,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/account/password'
+    | '/invitations/accept'
+    | '/orgs/$organizationId/members'
     | '/orgs/$organizationId'
   id:
     | '__root__'
@@ -129,7 +152,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/verify-email'
     | '/account/password'
+    | '/invitations/accept'
     | '/orgs/$organizationId'
+    | '/orgs/$organizationId/members'
     | '/orgs/$organizationId/'
   fileRoutesById: FileRoutesById
 }
@@ -141,6 +166,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
   AccountPasswordRoute: typeof AccountPasswordRoute
+  InvitationsAcceptRoute: typeof InvitationsAcceptRoute
   OrgsOrganizationIdRoute: typeof OrgsOrganizationIdRouteWithChildren
 }
 
@@ -195,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccountPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/invitations/accept': {
+      id: '/invitations/accept'
+      path: '/invitations/accept'
+      fullPath: '/invitations/accept'
+      preLoaderRoute: typeof InvitationsAcceptRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orgs/$organizationId': {
       id: '/orgs/$organizationId'
       path: '/orgs/$organizationId'
@@ -209,14 +242,23 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgsOrganizationIdIndexRouteImport
       parentRoute: typeof OrgsOrganizationIdRoute
     }
+    '/orgs/$organizationId/members': {
+      id: '/orgs/$organizationId/members'
+      path: '/members'
+      fullPath: '/orgs/$organizationId/members'
+      preLoaderRoute: typeof OrgsOrganizationIdMembersRouteImport
+      parentRoute: typeof OrgsOrganizationIdRoute
+    }
   }
 }
 
 interface OrgsOrganizationIdRouteChildren {
+  OrgsOrganizationIdMembersRoute: typeof OrgsOrganizationIdMembersRoute
   OrgsOrganizationIdIndexRoute: typeof OrgsOrganizationIdIndexRoute
 }
 
 const OrgsOrganizationIdRouteChildren: OrgsOrganizationIdRouteChildren = {
+  OrgsOrganizationIdMembersRoute: OrgsOrganizationIdMembersRoute,
   OrgsOrganizationIdIndexRoute: OrgsOrganizationIdIndexRoute,
 }
 
@@ -231,6 +273,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   VerifyEmailRoute: VerifyEmailRoute,
   AccountPasswordRoute: AccountPasswordRoute,
+  InvitationsAcceptRoute: InvitationsAcceptRoute,
   OrgsOrganizationIdRoute: OrgsOrganizationIdRouteWithChildren,
 }
 export const routeTree = rootRouteImport
