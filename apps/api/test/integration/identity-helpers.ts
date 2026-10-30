@@ -94,6 +94,24 @@ export async function waitForEmails(address: string, count = 1): Promise<Capture
   }
 }
 
+/**
+ * Waits for the message whose subject matches. When several messages go to the same address
+ * (a duplicate registration also sends one) their arrival order is not fixed, so tests must pick
+ * by subject instead of by position.
+ */
+export async function waitForEmailWithSubject(
+  address: string,
+  subject: RegExp,
+): Promise<CapturedEmail> {
+  const deadline = Date.now() + 10_000;
+  for (;;) {
+    const found = (await emailsTo(address)).find((mail) => subject.test(mail.subject));
+    if (found) return found;
+    if (Date.now() > deadline) throw new Error(`No email matching ${subject} for ${address}`);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  }
+}
+
 /** The 43-character token carried by the link of an email body. */
 export function tokenFrom(email: CapturedEmail): string {
   const match = /[?&]token=([A-Za-z0-9_-]{43})(?![A-Za-z0-9_-])/.exec(email.text);

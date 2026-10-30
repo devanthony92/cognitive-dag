@@ -20,7 +20,7 @@ import {
   STRONG_PASSWORD,
   tokenFrom,
   uniqueEmail,
-  waitForEmails,
+  waitForEmailWithSubject,
 } from './identity-helpers';
 import { createOrganization, invite, joinAs } from './members-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
@@ -60,8 +60,9 @@ describe('security events (requires docker compose up and pnpm db:migrate)', () 
       .post('/api/v1/auth/register')
       .send({ name: 'Eventos', email, password: STRONG_PASSWORD })
       .expect(202);
-    const [verification] = await waitForEmails(email);
-    const verificationToken = tokenFrom(verification!);
+    // The duplicate registration also mails this address, and either mail may arrive first.
+    const verification = await waitForEmailWithSubject(email, /Verifica/);
+    const verificationToken = tokenFrom(verification);
     secrets.push(verificationToken);
     await api().post('/api/v1/auth/verify-email').send({ token: verificationToken }).expect(204);
 
