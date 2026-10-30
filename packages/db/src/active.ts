@@ -1,19 +1,20 @@
 import { and, isNull, type SQL } from 'drizzle-orm';
-import { memberships, organizations, users } from './schema/index.js';
+import { memberships, organizations, users, workflows } from './schema/index.js';
 import type { Tx } from './tenant.js';
 
 /**
  * Soft delete (research R3, option A): the row-level security policies of `users`,
- * `organizations` and `memberships` do not test `deleted_at`, because PostgreSQL also applies the
+ * `organizations`, `memberships` and `workflows` do not test `deleted_at`, because PostgreSQL also applies the
  * SELECT policy to the new row of an UPDATE and would then forbid setting `deleted_at`.
  *
- * RULE: no API query reads these three tables except through the helpers below. ESLint forbids
- * `.from(users|organizations|memberships)` and the join methods in `apps/api`.
+ * RULE: no API query reads these tables except through the helpers below. ESLint forbids
+ * `.from(users|organizations|memberships|workflows)` and the join methods in `apps/api`.
  */
 export const isActive = {
   users: isNull(users.deletedAt),
   organizations: isNull(organizations.deletedAt),
   memberships: isNull(memberships.deletedAt),
+  workflows: isNull(workflows.deletedAt),
 } as const;
 
 export const active = {
@@ -22,6 +23,8 @@ export const active = {
     tx.select().from(organizations).where(and(isActive.organizations, where)),
   memberships: (tx: Tx, where?: SQL) =>
     tx.select().from(memberships).where(and(isActive.memberships, where)),
+  workflows: (tx: Tx, where?: SQL) =>
+    tx.select().from(workflows).where(and(isActive.workflows, where)),
   /**
    * Only the name: with a pending invitation token the whole organization row is readable
    * (data-model.md, option B), and the invitation preview must not carry more than this.

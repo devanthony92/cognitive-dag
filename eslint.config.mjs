@@ -57,9 +57,9 @@ export default defineConfig(
         'error',
         {
           selector:
-            'CallExpression[callee.property.name=/^(from|innerJoin|leftJoin|rightJoin|fullJoin)$/][arguments.0.name=/^(users|organizations|memberships)$/]',
+            'CallExpression[callee.property.name=/^(from|innerJoin|leftJoin|rightJoin|fullJoin)$/][arguments.0.name=/^(users|organizations|memberships|workflows)$/]',
           message:
-            'Read users, organizations and memberships through `active` from @cognitive-dag/db (soft delete).',
+            'Read users, organizations, memberships and workflows through `active` from @cognitive-dag/db (soft delete).',
         },
       ],
     },
