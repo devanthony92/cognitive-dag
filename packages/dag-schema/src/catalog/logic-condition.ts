@@ -13,6 +13,7 @@ export const logicCondition = defineNode({
   acceptsInput: true,
   handles: ['true', 'false'],
   templatableFields: [],
+  fieldLabels: { condition: 'Condición' },
   configSchema: ConditionConfigSchema,
   defaultConfig: (): { condition: Condition } => ({
     condition: {

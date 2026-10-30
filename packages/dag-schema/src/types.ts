@@ -11,12 +11,7 @@ export type DagType =
   | { kind: 'list'; item: DagType };
 
 /** Identifier used for field names inside objects and declared fields. */
-export const FieldNameSchema = z
-  .string()
-  .regex(
-    /^[a-z][a-z0-9_]{0,39}$/,
-    'Debe empezar con una letra minúscula y usar a-z, 0-9 o _ (máx. 40).',
-  );
+export const FieldNameSchema = z.string().regex(/^[a-z][a-z0-9_]{0,39}$/);
 
 export const MAX_TYPE_NESTING = 4;
 

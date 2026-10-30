@@ -19,6 +19,7 @@ export const llmGenerate = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['instruction'],
+  fieldLabels: { instruction: 'Instrucción', language: 'Idioma', maxLength: 'Longitud máxima' },
   configSchema: GenerateConfigSchema,
   defaultConfig: () => ({ instruction: 'Escribe un resumen.', language: 'es', maxLength: 1000 }),
   outputSchema: () => object({ text: { kind: 'string' } }),

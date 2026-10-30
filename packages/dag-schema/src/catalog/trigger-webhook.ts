@@ -13,6 +13,8 @@ export const triggerWebhook = defineNode({
   acceptsInput: false,
   handles: ['out'],
   templatableFields: [],
+  fieldLabels: { bodySchema: 'Campos del cuerpo' },
+  itemLabels: { bodySchema: 'El campo' },
   configSchema: WebhookConfigSchema,
   defaultConfig: () => ({ bodySchema: [] as FieldSpec[] }),
   outputSchema: (config: { bodySchema: FieldSpec[] }) => fieldsToObject(config.bodySchema),

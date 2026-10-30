@@ -8,6 +8,7 @@ import {
   type DagNode,
 } from './definition.js';
 import { ABSOLUTE_LIMITS, DEFAULT_LIMITS, definitionByteSize, type DagLimits } from './limits.js';
+import { schemaMessage } from './messages.js';
 import { resolveReference, type ReferenceScope } from './references.js';
 import { tokenizeTemplate } from './templates.js';
 import { isTextConvertible, describeType, type DagType } from './types.js';
@@ -76,7 +77,6 @@ function schemaErrors(raw: unknown, issues: readonly z.core.$ZodIssue[]): DagErr
   const errors: DagError[] = [];
   for (const issue of issues) {
     const where = (extra?: string) => locate(extra ? [...issue.path, extra] : [...issue.path], raw);
-    const label = issue.path.length > 0 ? issue.path.map(String).join('.') : 'la definición';
 
     if (issue.code === 'unrecognized_keys') {
       for (const key of issue.keys) {
@@ -94,18 +94,9 @@ function schemaErrors(raw: unknown, issues: readonly z.core.$ZodIssue[]): DagErr
     const dagCode = (issue as { params?: { dagCode?: string } }).params?.dagCode;
     if (issue.code === 'custom' && dagCode) {
       errors.push({ code: dagCode, message: issue.message, location: where() });
-    } else if (issue.code === 'invalid_type' && issue.input === undefined) {
-      errors.push({
-        code: 'SCHEMA_INVALID',
-        message: `Falta el campo «${label}».`,
-        location: where(),
-      });
     } else {
-      errors.push({
-        code: 'SCHEMA_INVALID',
-        message: `El valor de «${label}» no es válido.`,
-        location: where(),
-      });
+      // Already in Spanish: `schemaMessage` ran as the parser's error map.
+      errors.push({ code: 'SCHEMA_INVALID', message: issue.message, location: where() });
     }
   }
   return errors;
@@ -366,7 +357,9 @@ export function validateDefinition(
 
   // 1. Strict schema.
   const secrets = secretFieldErrors(input);
-  const parsed = DagDefinitionSchema.safeParse(input);
+  const parsed = DagDefinitionSchema.safeParse(input, {
+    error: (issue) => schemaMessage(input, issue),
+  });
   if (!parsed.success) {
     return {
       valid: false,

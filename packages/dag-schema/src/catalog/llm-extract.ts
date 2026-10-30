@@ -16,6 +16,8 @@ export const llmExtract = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['text'],
+  fieldLabels: { text: 'Texto', fields: 'Campos a extraer' },
+  itemLabels: { fields: 'El campo' },
   configSchema: ExtractConfigSchema,
   defaultConfig: () => ({
     text: 'Texto del que extraer datos',

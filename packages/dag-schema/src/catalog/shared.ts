@@ -20,6 +20,10 @@ export interface NodeTypeDefinition<TType extends string = string, TConfig = unk
   handles: readonly string[];
   /** Configuration fields (top level) where `{{reference}}` templates are allowed. */
   templatableFields: readonly string[];
+  /** Spanish caption of each configuration field, used in messages and in the editor. */
+  fieldLabels: Readonly<Record<string, string>>;
+  /** For list fields, how one item reads in a message, with its article: `La etiqueta`. */
+  itemLabels?: Readonly<Record<string, string>>;
   configSchema: z.ZodType<TConfig>;
   defaultConfig(): TConfig;
   /** Type of the node output computed from its configuration, or null when it has none. */

@@ -17,6 +17,7 @@ export const triggerSchedule = defineNode({
   acceptsInput: false,
   handles: ['out'],
   templatableFields: [],
+  fieldLabels: { cron: 'Expresión cron', timezone: 'Zona horaria' },
   configSchema: ScheduleConfigSchema,
   defaultConfig: () => ({ cron: '0 9 * * *', timezone: 'UTC' }),
   outputSchema: () => object({ firedAt: { kind: 'datetime' } }),

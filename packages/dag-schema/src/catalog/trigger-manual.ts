@@ -13,6 +13,8 @@ export const triggerManual = defineNode({
   acceptsInput: false,
   handles: ['out'],
   templatableFields: [],
+  fieldLabels: { inputSchema: 'Campos de entrada' },
+  itemLabels: { inputSchema: 'El campo' },
   configSchema: ManualConfigSchema,
   defaultConfig: () => ({ inputSchema: [] as FieldSpec[] }),
   outputSchema: (config: { inputSchema: FieldSpec[] }) => fieldsToObject(config.inputSchema),

@@ -12,6 +12,7 @@ export const logicMerge = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: [],
+  fieldLabels: { strategy: 'Estrategia' },
   configSchema: MergeConfigSchema,
   defaultConfig: () => ({ strategy: 'all' }),
   outputSchema: () => null,
