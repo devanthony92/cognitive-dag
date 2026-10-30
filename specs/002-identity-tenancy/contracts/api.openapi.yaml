@@ -303,7 +303,10 @@ paths:
     parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
     post:
       operationId: createPing
-      description: Reemplaza POST /api/v1/pings de F0. Mismo cuerpo, Idempotency-Key y respuesta.
+      description: >
+        Reemplaza POST /api/v1/pings de F0. Mismo cuerpo, Idempotency-Key y respuesta. La clave de
+        idempotencia se aplica por organización: el pingId (ping-<uuid>) se deriva de la organización y
+        la clave, así que la misma clave en otra organización crea otro ping.
       parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
       responses:
         '202': { description: Igual que en F0 }

@@ -118,14 +118,14 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T045 [P] [US4] Integración `password-reset.test.ts`: misma respuesta con email existente o no; token de 30 min de un solo uso; restablecer revoca todas las sesiones
-- [ ] T046 [P] [US4] Integración `password-change.test.ts`: contraseña actual incorrecta → 401 y cuenta para rate limit; cambio revoca las demás sesiones y conserva la actual
+- [X] T045 [P] [US4] Integración `password-reset.test.ts`: misma respuesta con email existente o no; token de 30 min de un solo uso; restablecer revoca todas las sesiones
+- [X] T046 [P] [US4] Integración `password-change.test.ts`: contraseña actual incorrecta → 401 y cuenta para rate limit; cambio revoca las demás sesiones y conserva la actual
 
 ### Implementation
 
-- [ ] T047 [US4] Endpoints `/auth/password-reset/request`, `/auth/password-reset/confirm`, `/auth/password/change`
-- [ ] T048 [US4] Web: `/forgot-password`, `/reset-password?token=` (token fuera de la URL tras cargar), `/account/password`
-- [ ] T049 [US4] Eventos `auth.password_reset_requested`, `auth.password_reset_completed`, `auth.password_changed`
+- [X] T047 [US4] Endpoints `/auth/password-reset/request`, `/auth/password-reset/confirm`, `/auth/password/change`
+- [X] T048 [US4] Web: `/forgot-password`, `/reset-password?token=` (token fuera de la URL tras cargar), `/account/password`
+- [X] T049 [US4] Eventos `auth.password_reset_requested`, `auth.password_reset_completed`, `auth.password_changed`
 
 ---
 
@@ -133,15 +133,15 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ### Tests
 
-- [ ] T050 [P] [US5] Unitarias `member-permissions.test.ts`: solo owner invita, cambia roles, quita y revoca; editor y viewer → 403 `FORBIDDEN`; último owner → 409 `LAST_OWNER`
-- [ ] T051 [P] [US5] Integración `invitations.test.ts`: invitación de un solo uso, 7 días, ligada al email; aceptar con otro email → 403; email ya miembro → 409 `ALREADY_MEMBER`; aceptar tras registrarse desde el enlace
-- [ ] T052 [P] [US5] Integración `members.test.ts`: cambio de rol y expulsión aplican en la siguiente petición del afectado; expulsión es borrado lógico y re-invitar crea una membresía nueva
+- [X] T050 [P] [US5] Unitarias `member-permissions.test.ts`: solo owner invita, cambia roles, quita y revoca; editor y viewer → 403 `FORBIDDEN`; último owner → 409 `LAST_OWNER`
+- [X] T051 [P] [US5] Integración `invitations.test.ts`: invitación de un solo uso, 7 días, ligada al email; aceptar con otro email → 403; email ya miembro → 409 `ALREADY_MEMBER`; aceptar tras registrarse desde el enlace
+- [X] T052 [P] [US5] Integración `members.test.ts`: cambio de rol y expulsión aplican en la siguiente petición del afectado; expulsión es borrado lógico y re-invitar crea una membresía nueva
 
 ### Implementation
 
-- [ ] T053 [US5] Endpoints de miembros e invitaciones según contrato (preview y accept con el token en el cuerpo)
-- [ ] T054 [US5] Web: página de miembros (lista para todos; invitar, cambiar rol, quitar y revocar solo owner), `/invitations/accept?token=`
-- [ ] T055 [US5] Eventos `org.created`, `invitation.sent`, `invitation.accepted`, `invitation.revoked`, `membership.role_changed`, `membership.removed`
+- [X] T053 [US5] Endpoints de miembros e invitaciones según contrato (preview y accept con el token en el cuerpo)
+- [X] T054 [US5] Web: página de miembros (lista para todos; invitar, cambiar rol, quitar y revocar solo owner), `/invitations/accept?token=`
+- [X] T055 [US5] Eventos `org.created`, `invitation.sent`, `invitation.accepted`, `invitation.revoked`, `membership.role_changed`, `membership.removed`
 
 ---
 

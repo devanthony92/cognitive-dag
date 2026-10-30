@@ -112,6 +112,13 @@ Open the web app and press **Ejecutar ping**: the status moves from `pending`/`r
 `completed` and shows the result and the correlation ID. To follow that ID, search
 `CorrelationId="<id>"` in the Temporal UI and in the API and worker logs.
 
+With `identity-enabled` on (the default in `.env.example`) the web app starts at `/login`. Register,
+open the verification link in Mailpit and sign in; from the header you can switch organization,
+change your password (**Contraseña**) and manage the organization's **Miembros**: owners invite by
+email (the invitation link arrives in Mailpit), change roles and remove people. **Olvidé mi
+contraseña** on the login screen mails a reset link. With the flag off the F0 ping panel is shown
+instead and none of these screens exist.
+
 ## Quality checks
 
 ```bash
