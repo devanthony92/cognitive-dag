@@ -6,3 +6,4 @@ export * from './organizations.js';
 export * from './ping.js';
 export * from './primitives.js';
 export * from './problem.js';
+export * from './workflows.js';

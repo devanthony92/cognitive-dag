@@ -8,6 +8,7 @@ import type { ZodError } from 'zod';
 import {
   PROBLEM_CONTENT_TYPE,
   resolveCorrelationId,
+  type DagErrorBody,
   type FieldError,
   type ProblemCode,
   type ProblemDetails,
@@ -19,6 +20,7 @@ interface MappedProblem {
   code: ProblemCode;
   detail: string;
   errors?: FieldError[];
+  dagErrors?: DagErrorBody[];
   retryAfterSeconds?: number;
 }
 
@@ -57,6 +59,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       code: mapped.code,
       correlationId,
       ...(mapped.errors ? { errors: mapped.errors } : {}),
+      ...(mapped.dagErrors ? { dagErrors: mapped.dagErrors } : {}),
       ...(mapped.retryAfterSeconds ? { retryAfterSeconds: mapped.retryAfterSeconds } : {}),
     };
 
