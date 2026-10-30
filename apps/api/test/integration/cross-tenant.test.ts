@@ -19,8 +19,8 @@ import {
 import { uniqueTaskQueue } from './ping-helpers';
 
 /**
- * Every endpoint under /organizations/{id} (SC-002). PR 3 adds members and invitations to the
- * table; each row is exercised against every way of reaching someone else's organization.
+ * Every endpoint under /organizations/{id} (SC-002); each row is exercised against every way of
+ * reaching someone else's organization.
  */
 interface Endpoint {
   name: string;
@@ -37,6 +37,9 @@ interface Endpoint {
 
 interface Resources {
   pingId: string;
+  /** The owner's membership in the organization the resources belong to. */
+  membershipId: string;
+  invitationId: string;
 }
 
 const ENDPOINTS: Endpoint[] = [
@@ -58,6 +61,56 @@ const ENDPOINTS: Endpoint[] = [
         .get(`/api/v1/organizations/${organizationId}/pings/${resource.pingId}`)
         .set('Cookie', session.cookie),
   },
+  {
+    name: 'GET /organizations/{id}/members',
+    takesResource: false,
+    call: (app, session, organizationId) =>
+      request(httpServer(app))
+        .get(`/api/v1/organizations/${organizationId}/members`)
+        .set('Cookie', session.cookie),
+  },
+  {
+    name: 'PATCH /organizations/{id}/members/{membershipId}',
+    takesResource: true,
+    call: (app, session, organizationId, resource) =>
+      request(httpServer(app))
+        .patch(`/api/v1/organizations/${organizationId}/members/${resource.membershipId}`)
+        .set(authHeaders(session))
+        .send({ role: 'viewer' }),
+  },
+  {
+    name: 'DELETE /organizations/{id}/members/{membershipId}',
+    takesResource: true,
+    call: (app, session, organizationId, resource) =>
+      request(httpServer(app))
+        .delete(`/api/v1/organizations/${organizationId}/members/${resource.membershipId}`)
+        .set(authHeaders(session)),
+  },
+  {
+    name: 'GET /organizations/{id}/invitations',
+    takesResource: false,
+    call: (app, session, organizationId) =>
+      request(httpServer(app))
+        .get(`/api/v1/organizations/${organizationId}/invitations`)
+        .set('Cookie', session.cookie),
+  },
+  {
+    name: 'POST /organizations/{id}/invitations',
+    takesResource: false,
+    call: (app, session, organizationId) =>
+      request(httpServer(app))
+        .post(`/api/v1/organizations/${organizationId}/invitations`)
+        .set(authHeaders(session))
+        .send({ email: 'someone@example.test', role: 'viewer' }),
+  },
+  {
+    name: 'DELETE /organizations/{id}/invitations/{invitationId}',
+    takesResource: true,
+    call: (app, session, organizationId, resource) =>
+      request(httpServer(app))
+        .delete(`/api/v1/organizations/${organizationId}/invitations/${resource.invitationId}`)
+        .set(authHeaders(session)),
+  },
 ];
 
 describe('cross-tenant access (requires docker compose up and pnpm db:migrate)', () => {
@@ -72,6 +125,7 @@ describe('cross-tenant access (requires docker compose up and pnpm db:migrate)',
   let carolSession: LoggedIn;
   let sharedOrgId: string;
   let bobPingId: string;
+  let bobResources: Resources;
 
   beforeAll(async () => {
     app = await startIdentityApp(IDENTITY_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
@@ -91,6 +145,20 @@ describe('cross-tenant access (requires docker compose up and pnpm db:migrate)',
       .send({})
       .expect(202);
     bobPingId = (created.body as { pingId: string }).pingId;
+    const bobMembers = await request(httpServer(app))
+      .get(`/api/v1/organizations/${bobOrg.id}/members`)
+      .set('Cookie', bobSession.cookie)
+      .expect(200);
+    const invited = await request(httpServer(app))
+      .post(`/api/v1/organizations/${bobOrg.id}/invitations`)
+      .set(authHeaders(bobSession))
+      .send({ email: 'bobs-guest@example.test', role: 'viewer' })
+      .expect(201);
+    bobResources = {
+      pingId: bobPingId,
+      membershipId: (bobMembers.body as { membershipId: string }[])[0]!.membershipId,
+      invitationId: (invited.body as { id: string }).id,
+    };
 
     // Carol owned a shared organization with Bob and was then removed from it (soft delete).
     const carol = await createVerifiedUser(app, database, 'tenant-c');
@@ -136,26 +204,26 @@ describe('cross-tenant access (requires docker compose up and pnpm db:migrate)',
 
   describe.each(ENDPOINTS)('$name', (endpoint) => {
     it('404 for a user who is not a member of the organization', async () => {
-      await expectNotFound(endpoint.call(app, aliceSession, bobOrg.id, { pingId: bobPingId }));
+      await expectNotFound(endpoint.call(app, aliceSession, bobOrg.id, bobResources));
     });
 
     it('404 for an organization that does not exist', async () => {
-      await expectNotFound(endpoint.call(app, aliceSession, randomUUID(), { pingId: bobPingId }));
+      await expectNotFound(endpoint.call(app, aliceSession, randomUUID(), bobResources));
     });
 
     it('404 for an id that is not a UUID', async () => {
-      await expectNotFound(endpoint.call(app, aliceSession, 'not-a-uuid', { pingId: bobPingId }));
+      await expectNotFound(endpoint.call(app, aliceSession, 'not-a-uuid', bobResources));
     });
 
     it.runIf(endpoint.takesResource)(
       '404 for a resource of another organization reached through an organization of the user',
       async () => {
-        await expectNotFound(endpoint.call(app, aliceSession, aliceOrg.id, { pingId: bobPingId }));
+        await expectNotFound(endpoint.call(app, aliceSession, aliceOrg.id, bobResources));
       },
     );
 
     it('404 after the membership was removed (soft delete)', async () => {
-      await expectNotFound(endpoint.call(app, carolSession, sharedOrgId, { pingId: bobPingId }));
+      await expectNotFound(endpoint.call(app, carolSession, sharedOrgId, bobResources));
     });
   });
 

@@ -21,3 +21,15 @@ export function isUniqueViolation(error: unknown, constraint: string): boolean {
   const pg = pgError(error);
   return pg?.code === UNIQUE_VIOLATION && pg.constraint === constraint;
 }
+
+const CHECK_VIOLATION = '23514';
+const DEADLOCK_DETECTED = '40P01';
+
+export function isCheckViolation(error: unknown, constraint: string): boolean {
+  const pg = pgError(error);
+  return pg?.code === CHECK_VIOLATION && pg.constraint === constraint;
+}
+
+export function isDeadlock(error: unknown): boolean {
+  return pgError(error)?.code === DEADLOCK_DETECTED;
+}

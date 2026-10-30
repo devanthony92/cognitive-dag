@@ -67,6 +67,31 @@ export function passwordResetEmail(name: string, url: string): Content {
   };
 }
 
+export function invitationLink(baseUrl: string, token: string): string {
+  return `${baseUrl.replace(/\/$/, '')}/invitations/accept?token=${token}`;
+}
+
+const ROLE_NAMES = { owner: 'owner', editor: 'editor', viewer: 'viewer' } as const;
+
+export function invitationEmail(input: {
+  organizationName: string;
+  inviterName: string;
+  role: keyof typeof ROLE_NAMES;
+  url: string;
+}): Content {
+  return {
+    subject: `${input.inviterName} te invitó a ${input.organizationName} en CognitiveDAG`,
+    ...layout(
+      [
+        'Hola,',
+        `${input.inviterName} te invitó a la organización "${input.organizationName}" con el rol ${ROLE_NAMES[input.role]}. La invitación vence en 7 días y solo sirve una vez.`,
+        'Si todavía no tienes cuenta, podrás crearla desde el enlace con este mismo correo. Si no esperabas esta invitación, ignora este mensaje.',
+      ],
+      { label: 'Ver la invitación', url: input.url },
+    ),
+  };
+}
+
 /** Sent to the owner of an existing account when someone registers with its email (FR-014). */
 export function registrationAttemptEmail(name: string): Content {
   return {

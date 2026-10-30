@@ -74,3 +74,27 @@ export class ResourceNotFoundException extends DomainException {
     super(404, 'NOT_FOUND', 'No se encontró el recurso solicitado.');
   }
 }
+
+/** FR-024: the change would leave the organization without an active owner. */
+export class LastOwnerException extends DomainException {
+  constructor() {
+    super(409, 'LAST_OWNER', 'La organización debe conservar al menos un owner.');
+  }
+}
+
+export class AlreadyMemberException extends DomainException {
+  constructor() {
+    super(409, 'ALREADY_MEMBER', 'Esa persona ya es miembro de la organización.');
+  }
+}
+
+/** The invitation is bound to an email (FR-023); another account cannot take it. */
+export class InvitationForAnotherAccountException extends DomainException {
+  constructor() {
+    super(
+      403,
+      'FORBIDDEN',
+      'Esta invitación es para otro correo. Inicia sesión con la cuenta invitada.',
+    );
+  }
+}

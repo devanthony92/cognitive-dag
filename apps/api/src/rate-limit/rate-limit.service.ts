@@ -21,6 +21,8 @@ export const RATE_RULES = {
   registerEmail: { name: 'register:email', points: 3, durationSeconds: 3600 },
   resendIp: { name: 'resend:ip', points: 10, durationSeconds: 3600 },
   resendEmail: { name: 'resend:email', points: 3, durationSeconds: 3600 },
+  inviteOrganization: { name: 'invite:org', points: 20, durationSeconds: 3600 },
+  previewInvitationIp: { name: 'invite-preview:ip', points: 60, durationSeconds: 3600 },
   resetIp: { name: 'reset:ip', points: 10, durationSeconds: 3600 },
   resetEmail: { name: 'reset:email', points: 3, durationSeconds: 3600 },
 } as const satisfies Record<string, FixedRule>;

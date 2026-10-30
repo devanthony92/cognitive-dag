@@ -22,4 +22,13 @@ export const active = {
     tx.select().from(organizations).where(and(isActive.organizations, where)),
   memberships: (tx: Tx, where?: SQL) =>
     tx.select().from(memberships).where(and(isActive.memberships, where)),
+  /**
+   * Only the name: with a pending invitation token the whole organization row is readable
+   * (data-model.md, option B), and the invitation preview must not carry more than this.
+   */
+  organizationNames: (tx: Tx, where?: SQL) =>
+    tx
+      .select({ name: organizations.name })
+      .from(organizations)
+      .where(and(isActive.organizations, where)),
 };
