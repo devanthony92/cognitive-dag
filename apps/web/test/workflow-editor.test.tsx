@@ -619,6 +619,59 @@ describe('editor: list fields', () => {
     });
   });
 
+  it('focuses the new item so what the user types next is not lost', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Clasificar/ }));
+
+    await user.click(await within(panel()).findByRole('button', { name: 'Agregar a Etiquetas' }));
+    expect(document.activeElement).toBe(within(panel()).getByLabelText('Etiquetas 3'));
+    await user.keyboard('neutro');
+    expect(within(panel()).getByLabelText('Etiquetas 3')).toHaveProperty('value', 'neutro');
+  });
+
+  it('focuses the first input of a new typed field, header and enum value', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Disparador manual/ }));
+    await user.click(
+      await within(panel()).findByRole('button', { name: 'Agregar a Campos de entrada' }),
+    );
+    expect(document.activeElement).toBe(
+      within(panel()).getByLabelText('Campos de entrada 1: nombre'),
+    );
+
+    await user.selectOptions(within(panel()).getByLabelText('Campos de entrada 1: tipo'), 'enum');
+    await user.click(
+      within(panel()).getByRole('button', { name: 'Agregar a Campos de entrada 1: valores' }),
+    );
+    expect(document.activeElement).toBe(
+      within(panel()).getByLabelText('Campos de entrada 1: valores 1'),
+    );
+
+    await user.click(within(palette()).getByRole('button', { name: /Petición HTTP/ }));
+    await user.click(await within(panel()).findByRole('button', { name: 'Agregar a Cabeceras' }));
+    expect(document.activeElement).toBe(within(panel()).getByLabelText('Cabeceras 1: nombre'));
+  });
+
+  it('shows human messages tied to the field label, never the internal path', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Clasificar/ }));
+    await user.click(await within(panel()).findByRole('button', { name: 'Agregar a Etiquetas' }));
+
+    await waitFor(
+      () =>
+        expect(within(panel()).getAllByText('La etiqueta 3 no puede estar vacía.')).toHaveLength(1),
+      {
+        timeout: 1500,
+      },
+    );
+    const problems = screen.getByRole('region', { name: 'Problemas' });
+    expect(within(problems).getByText(/La etiqueta 3 no puede estar vacía\./)).toBeDefined();
+    expect(problems.textContent).not.toMatch(/nodes\.\d|config\./);
+  });
+
   it('marks the item that is wrong, not the whole list', async () => {
     const { user } = setup();
     await screen.findByText('Resumir');
