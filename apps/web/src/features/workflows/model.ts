@@ -98,6 +98,8 @@ export interface GroupedErrors {
   global: DagError[];
   /** Messages for one field of a node, e.g. `fieldMessages('classify_1', 'config.labels')`. */
   fieldMessages(node: string, field: string): string[];
+  /** Like `fieldMessages`, but only the errors of that very field, not of its items. */
+  exactMessages(node: string, field: string): string[];
 }
 
 function push(map: Map<string, DagError[]>, key: string, error: DagError): void {
@@ -128,7 +130,20 @@ export function groupErrors(errors: readonly DagError[]): GroupedErrors {
           return where === field || where?.startsWith(`${field}.`) === true;
         })
         .map((error) => error.message),
+    exactMessages: (node, field) =>
+      (byNode.get(node) ?? [])
+        .filter((error) => error.location.field === field)
+        .map((error) => error.message),
   };
+}
+
+/** JSON with sorted keys, so two definitions with the same content compare equal. */
+export function canonicalJson(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === 'object' && item !== null && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
+      : item,
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -32,6 +32,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
+import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { sessionQuery } from '../session/session';
@@ -39,7 +40,9 @@ import {
   limitsQuery,
   publishVersion,
   saveDraft,
+  versionQuery,
   versionsKey,
+  versionsQuery,
   workflowKey,
   workflowQuery,
   workflowsKey,
@@ -49,6 +52,7 @@ import { DagNodeView } from './DagNodeView';
 import { buildEdges, createNodeBuilder, type FlowNode } from './flow';
 import {
   addNode,
+  canonicalJson,
   connect,
   groupErrors,
   moveNode,
@@ -142,6 +146,8 @@ function EditorSession({
   const [revision, setRevision] = useState(workflow.draftRevision);
   const [savedAt, setSavedAt] = useState<Date | undefined>();
   const [notice, setNotice] = useState<string | undefined>();
+  const closeNotice = useCallback(() => setNotice(undefined), []);
+  const [publishedNow, setPublishedNow] = useState<{ number: number; canonical: string }>();
   const [tab, setTab] = useState<'node' | 'versions'>('node');
   const [publishOpen, setPublishOpen] = useState(false);
   // A new dialog (and an empty note) for every publication.
@@ -173,6 +179,29 @@ function EditorSession({
 
   const dirty = useMemo(() => JSON.stringify(definition) !== savedJson, [definition, savedJson]);
 
+  // The published draft is the active version until the server says otherwise, so Publish stays
+  // blocked while nothing changed since then.
+  const savedCanonical = useMemo(() => canonicalJson(JSON.parse(savedJson)), [savedJson]);
+  const versions = useQuery(versionsQuery(organizationId, workflowId)).data;
+  const activeNumber = versions?.find((version) => version.active)?.number;
+  const activeVersion = useQuery({
+    ...versionQuery(organizationId, workflowId, activeNumber ?? 0),
+    enabled: activeNumber !== undefined,
+  }).data;
+  const activeCanonical = useMemo(
+    () =>
+      activeVersion
+        ? canonicalJson(toEditableDefinition(activeVersion.definition).definition)
+        : undefined,
+    [activeVersion],
+  );
+  const bridged =
+    publishedNow !== undefined &&
+    savedCanonical === publishedNow.canonical &&
+    !(activeVersion && activeVersion.number >= publishedNow.number);
+  const unchanged =
+    bridged || (activeCanonical !== undefined && savedCanonical === activeCanonical);
+
   const blocker = useBlocker({
     shouldBlockFn: () => dirty,
     enableBeforeUnload: () => dirty,
@@ -181,30 +210,21 @@ function EditorSession({
 
   // ---- Persistence ----------------------------------------------------------------------------
 
-  const applySaved = (saved: DagDefinition, nextRevision: number) => {
-    setRevision(nextRevision);
-    setSavedJson(JSON.stringify(saved));
-    setSavedAt(new Date());
-    void queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
-  };
-
   const save = useMutation({
     mutationFn: () => saveDraft(organizationId, workflowId, revision, definition),
-    onMutate: () => setNotice(undefined),
-    onSuccess: (saved) => applySaved(definition, saved.revision),
+    onSuccess: (saved) => {
+      setRevision(saved.revision);
+      setSavedJson(JSON.stringify(definition));
+      setSavedAt(new Date());
+      void queryClient.invalidateQueries({ queryKey: workflowsKey(organizationId) });
+    },
   });
 
+  // Publishing needs a saved draft, so the revision sent is always one the server holds.
   const publish = useMutation({
-    mutationFn: async (note: string) => {
-      let current = revision;
-      if (dirty) {
-        const saved = await saveDraft(organizationId, workflowId, current, definition);
-        applySaved(definition, saved.revision);
-        current = saved.revision;
-      }
-      return publishVersion(organizationId, workflowId, current, note);
-    },
+    mutationFn: (note: string) => publishVersion(organizationId, workflowId, revision, note),
     onSuccess: async (version) => {
+      setPublishedNow({ number: version.number, canonical: savedCanonical });
       setPublishOpen(false);
       setPublished((count) => count + 1);
       setNotice(`Versión ${version.number} publicada y activa.`);
@@ -354,7 +374,15 @@ function EditorSession({
     save.error instanceof ApiProblemError && save.error.problem.status === 409
       ? save.error
       : undefined;
-  const canPublish = result.valid && !validating && !save.isPending && !publish.isPending;
+  const publishBlock = dirty
+    ? 'Guarda los cambios antes de publicar'
+    : !result.valid
+      ? 'Corrige los problemas antes de publicar'
+      : unchanged
+        ? 'No hay cambios desde la versión activa'
+        : undefined;
+  const canPublish =
+    publishBlock === undefined && !validating && !save.isPending && !publish.isPending;
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full flex-col bg-background">
@@ -393,28 +421,25 @@ function EditorSession({
                 <Save aria-hidden />
                 Guardar
               </Button>
-              <Button
-                disabled={!canPublish}
-                onClick={() => {
-                  publish.reset();
-                  setPublishOpen(true);
-                }}
-              >
-                <Send aria-hidden />
-                Publicar
-              </Button>
+              <span title={publishBlock}>
+                <Button
+                  disabled={!canPublish}
+                  onClick={() => {
+                    publish.reset();
+                    setPublishOpen(true);
+                  }}
+                >
+                  <Send aria-hidden />
+                  Publicar
+                </Button>
+              </span>
             </>
           )}
         </div>
       </div>
 
-      {(notice || save.isError || initial.skipped > 0) && (
+      {(save.isError || initial.skipped > 0) && (
         <div className="grid gap-2 px-4 py-2" role="status">
-          {notice && (
-            <Alert>
-              <AlertDescription>{notice}</AlertDescription>
-            </Alert>
-          )}
           {save.isError && <ProblemAlert error={save.error} />}
           {conflict && (
             <div>
@@ -538,12 +563,13 @@ function EditorSession({
 
       <ProblemsList errors={result.errors} labels={labels} onSelectNode={selectNode} />
 
+      {notice && <Toast message={notice} onClose={closeNotice} />}
+
       <PublishDialog
         key={published}
         open={publishOpen}
         pending={publish.isPending}
         error={publish.error}
-        dirty={dirty}
         onOpenChange={setPublishOpen}
         onPublish={(note) => publish.mutate(note)}
       />

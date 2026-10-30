@@ -10,8 +10,16 @@ import {
   fromFormValue,
   toFormValue,
   type FieldDescriptor,
+  type KeyValueRow,
+  type TypedField,
   type FormValue,
 } from './config-fields';
+import {
+  FieldListEditor,
+  KeyValueEditor,
+  StringListEditor,
+  type ListMessages,
+} from './ListEditors';
 import type { GroupedErrors } from './model';
 
 type Values = Record<string, FormValue>;
@@ -24,6 +32,8 @@ interface Props {
 }
 
 const LABEL_KEY = '__label';
+
+const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
 
 /**
  * The form of the side panel, generated from the `configSchema` of the node type. The shared
@@ -49,12 +59,12 @@ export function ConfigForm({ node, readOnly, errors, onChange }: Props) {
       if (name === undefined) return;
       const { node: current, descriptors: fields, onChange: emit } = latest;
       if (name === LABEL_KEY) {
-        emit({ label: String(values[LABEL_KEY] ?? '') });
+        emit({ label: asText(values[LABEL_KEY]) });
         return;
       }
       const descriptor = fields.find((d) => d.key === name);
       if (!descriptor) return;
-      const parsed = fromFormValue(descriptor, values[name] ?? '');
+      const parsed = fromFormValue(descriptor, (values[name] as FormValue | undefined) ?? '');
       if (!parsed.ok) {
         form.setError(name, { type: 'json', message: 'JSON no válido.' });
         return;
@@ -88,7 +98,7 @@ export function ConfigForm({ node, readOnly, errors, onChange }: Props) {
               id={`${node.id}-label`}
               aria-invalid={labelMessages.length > 0}
               {...field}
-              value={String(field.value ?? '')}
+              value={asText(field.value)}
             />
           </FieldRow>
         )}
@@ -100,6 +110,51 @@ export function ConfigForm({ node, readOnly, errors, onChange }: Props) {
           control={form.control}
           name={descriptor.key}
           render={({ field, fieldState }) => {
+            const id = `${node.id}-${descriptor.key}`;
+            const path = `config.${descriptor.key}`;
+            const list: ListMessages = {
+              list: errors.exactMessages(node.id, path),
+              at: (rel) => errors.fieldMessages(node.id, rel ? `${path}.${rel}` : path),
+            };
+            if (descriptor.kind === 'string-list') {
+              return (
+                <ListRow id={id} label={descriptor.label}>
+                  <StringListEditor
+                    id={id}
+                    label={descriptor.label}
+                    items={field.value as string[]}
+                    messages={list}
+                    onChange={field.onChange}
+                  />
+                </ListRow>
+              );
+            }
+            if (descriptor.kind === 'field-list') {
+              return (
+                <ListRow id={id} label={descriptor.label}>
+                  <FieldListEditor
+                    id={id}
+                    label={descriptor.label}
+                    items={field.value as TypedField[]}
+                    messages={list}
+                    onChange={field.onChange}
+                  />
+                </ListRow>
+              );
+            }
+            if (descriptor.kind === 'key-value') {
+              return (
+                <ListRow id={id} label={descriptor.label}>
+                  <KeyValueEditor
+                    id={id}
+                    label={descriptor.label}
+                    items={field.value as KeyValueRow[]}
+                    messages={list}
+                    onChange={field.onChange}
+                  />
+                </ListRow>
+              );
+            }
             const messages = [
               ...(fieldState.error?.message ? [fieldState.error.message] : []),
               ...errors.fieldMessages(node.id, `config.${descriptor.key}`),
@@ -124,6 +179,26 @@ export function ConfigForm({ node, readOnly, errors, onChange }: Props) {
         />
       ))}
     </fieldset>
+  );
+}
+
+/** Caption of a list editor; the editor itself is a group named by it. */
+function ListRow({
+  id,
+  label,
+  children,
+}: {
+  id: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-1.5">
+      <span id={`${id}-label`} className="text-sm leading-none font-medium">
+        {label}
+      </span>
+      {children}
+    </div>
   );
 }
 

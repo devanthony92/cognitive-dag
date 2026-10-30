@@ -16,12 +16,11 @@ interface Props {
   open: boolean;
   pending: boolean;
   error: unknown;
-  dirty: boolean;
   onOpenChange: (open: boolean) => void;
   onPublish: (note: string) => void;
 }
 
-export function PublishDialog({ open, pending, error, dirty, onOpenChange, onPublish }: Props) {
+export function PublishDialog({ open, pending, error, onOpenChange, onPublish }: Props) {
   const [note, setNote] = useState('');
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -30,7 +29,6 @@ export function PublishDialog({ open, pending, error, dirty, onOpenChange, onPub
           <DialogTitle>Publicar versión</DialogTitle>
           <DialogDescription>
             Se crea una versión inmutable con el borrador actual y queda como la versión activa.
-            {dirty && ' Los cambios sin guardar se guardan primero.'}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-1.5">

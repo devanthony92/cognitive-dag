@@ -2,6 +2,7 @@ import { queryOptions } from '@tanstack/react-query';
 import {
   LimitsSchema,
   SaveDraftResponseSchema,
+  VersionSchema,
   VersionSummarySchema,
   WorkflowSchema,
   WorkflowSummarySchema,
@@ -50,6 +51,20 @@ export const versionsQuery = (organizationId: string, workflowId: string) =>
           VersionSummarySchema.array(),
         )
       ).data,
+  });
+
+/** A published version never changes, so it is fetched once. */
+export const versionQuery = (organizationId: string, workflowId: string, versionNumber: number) =>
+  queryOptions({
+    queryKey: ['workflow-version', organizationId, workflowId, versionNumber] as const,
+    queryFn: async () =>
+      (
+        await request(
+          `${base(organizationId)}/workflows/${workflowId}/versions/${versionNumber}`,
+          VersionSchema,
+        )
+      ).data,
+    staleTime: Infinity,
   });
 
 export const limitsQuery = (organizationId: string) =>
