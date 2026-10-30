@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 import type { SessionInfo } from '@cognitive-dag/contracts';
-import { featuresQuery, isIdentityEnabled } from '../flags';
+import { featuresQuery, isDagEditorEnabled, isIdentityEnabled } from '../flags';
 import { sessionQuery } from './session';
 
 /** The screens of F1 do not exist for the user while `identity-enabled` is off (FR-033). */
@@ -34,4 +34,18 @@ export async function requireGuest(queryClient: QueryClient): Promise<void> {
   await requireIdentity(queryClient);
   const info = await queryClient.fetchQuery(sessionQuery);
   if (info) throw homeRedirect(info);
+}
+
+/**
+ * The workflows screens do not exist for the user while `dag-editor-enabled` is off (F2). The flag
+ * only hides the screens; the API authorizes every call regardless of it.
+ */
+export async function requireDagEditor(
+  queryClient: QueryClient,
+  organizationId: string,
+): Promise<void> {
+  const features = await queryClient.ensureQueryData(featuresQuery);
+  if (!isDagEditorEnabled(features)) {
+    throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
+  }
 }

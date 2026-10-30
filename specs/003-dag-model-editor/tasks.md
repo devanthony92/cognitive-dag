@@ -21,7 +21,7 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 - [X] T001 Crear `packages/dag-schema` (ESM, Zod, condición de export `@cognitive-dag/source`, Vitest)
 - [X] T002 [P] Agregar el flag `dag-editor-enabled` al catálogo y a `.env.example` _(hecho en el PR 2 de F2, junto con los endpoints de la API; la web lo usa desde el PR 3)_
-- [ ] T003 [P] Agregar `@xyflow/react` 12.12 y `@dagrejs/dagre` 3.1 a `apps/web` (versiones con más de un día) _(diferido al PR 3 de F2: sin código que las use en el PR 1)_
+- [X] T003 [P] Agregar `@xyflow/react` 12.12 y `@dagrejs/dagre` 3.1 a `apps/web` (versiones con más de un día) _(hecho en el PR 3 de F2: `@xyflow/react` 12.12.0 y `@dagrejs/dagre` 3.1.3; dagre se usa desde el PR 4)_
 
 ---
 
@@ -70,21 +70,21 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 ## Phase 4: User Story 1 - Editor básico (P1) 🎯 MVP
 
-- [ ] T025 [P] [US1] Pruebas de componentes: paleta, lienzo, conexión, panel por tipo, Guardar, aviso al salir, viewer en solo lectura
-- [ ] T026 [US1] Lista de workflows y creación (`/orgs/$organizationId/workflows`)
-- [ ] T027 [US1] Editor con React Flow: paleta con los 11 tipos (indicando "se ejecuta desde F3/F5/F7"), nodos y conexiones con handles del catálogo
-- [ ] T028 [US1] Panel lateral con formulario generado desde `configSchema` (React Hook Form)
-- [ ] T029 [US1] Guardar con `If-Match`, último guardado visible, confirmación al salir con cambios
+- [X] T025 [P] [US1] Pruebas de componentes: paleta, lienzo, conexión, panel por tipo, Guardar, aviso al salir, viewer en solo lectura
+- [X] T026 [US1] Lista de workflows y creación (`/orgs/$organizationId/workflows`)
+- [X] T027 [US1] Editor con React Flow: paleta con los 11 tipos (indicando "se ejecuta desde F3/F5/F7"), nodos y conexiones con handles del catálogo
+- [X] T028 [US1] Panel lateral con formulario generado desde `configSchema` (React Hook Form)
+- [X] T029 [US1] Guardar con `If-Match`, último guardado visible, confirmación al salir con cambios
 
 ## Phase 5: User Story 2 - Validación en vivo (P1)
 
-- [ ] T030 [P] [US2] Pruebas: errores marcados en nodos, conexiones y campos; lista de problemas; Publicar deshabilitado con errores
-- [ ] T031 [US2] Validación en vivo con debounce de 200 ms usando `dag-schema`
+- [X] T030 [P] [US2] Pruebas: errores marcados en nodos, conexiones y campos; lista de problemas; Publicar deshabilitado con errores
+- [X] T031 [US2] Validación en vivo con debounce de 200 ms usando `dag-schema`
 
 ## Phase 6: User Story 3 - Versiones (P1)
 
-- [ ] T032 [P] [US3] Pruebas: publicar con nota, historial, activar, copiar al borrador con confirmación
-- [ ] T033 [US3] Botón Publicar con nota opcional e historial de versiones con activar y copiar al borrador
+- [X] T032 [P] [US3] Pruebas: publicar con nota, historial, activar, copiar al borrador con confirmación
+- [X] T033 [US3] Botón Publicar con nota opcional e historial de versiones con activar y copiar al borrador
 
 ## Phase 7: User Story 4 - Referencias, plantillas y condiciones (P2)
 
