@@ -44,6 +44,9 @@ export function AppHeader() {
           {identity && info && (
             <>
               <span className="text-muted-foreground">{info.user.name}</span>
+              <Link to="/account/password" className="underline">
+                Contraseña
+              </Link>
               <Button
                 variant="outline"
                 onClick={() => signOut.mutate()}
