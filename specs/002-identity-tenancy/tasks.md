@@ -163,6 +163,23 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ---
 
+## Phase 10: Refinamientos de UX decididos por el autor (2026-10-29, PR 4)
+
+Cada tarea de prueba va antes de su implementación (TDD).
+
+- [ ] T064 [P] Pruebas del contrato y de la política: contraseña 7 rechazada, 8 y 25 aceptadas, 26 rechazada; login acepta hasta 128; contraseña común de 8 caracteres rechazada (`packages/contracts/test/auth.test.ts`, `password-policy.test.ts`)
+- [ ] T065 Aplicar la política 8–25 en `PasswordSchema`, `password-policy.ts`, formularios web y pruebas existentes; regenerar `common-passwords.txt` (8–25 caracteres)
+- [ ] T066 [P] Pruebas web de confirmación de contraseña y de mostrar/ocultar (`apps/web/test`)
+- [ ] T067 Confirmación de contraseña (Zod en el formulario, fuera del contrato) y botón de ojo con SVG propio en login, registro, restablecimiento y cambio
+- [ ] T068 [P] Pruebas de `organizationName` en registro (contrato e integración: por defecto, personalizado, recortado, inválido) y del campo prellenado en la web
+- [ ] T069 `organizationName` en `RegisterRequestSchema`, `RegistrationService` y `RegisterForm`
+- [ ] T070 [P] Pruebas de `PATCH /organizations/{id}`: owner 200, editor y viewer 403, no miembro 404, sin CSRF 403, nombre inválido 422, evento `org.renamed`, invitación mostrando el nombre actual
+- [ ] T071 Endpoint de renombrado, evento `org.renamed` y contrato Zod `RenameOrganizationRequestSchema`
+- [ ] T072 Web: sección "Ajustes de la organización" solo para owner; selector y cabeceras se actualizan al renombrar
+- [ ] T073 [P] ADR de la política de contraseñas 8–25 con la desviación de NIST 800-63B-4 y fila en el modelo de amenazas
+
+---
+
 ## Dependencies & Execution Order
 
 - Setup → Foundational → historias.
