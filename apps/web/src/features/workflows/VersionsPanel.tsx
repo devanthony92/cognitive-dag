@@ -13,9 +13,12 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { downloadDefinition, exportFileName } from './export';
+import { toEditableDefinition } from './model';
 import {
   activateVersion,
   copyVersionToDraft,
+  versionQuery,
   versionsKey,
   versionsQuery,
   workflowsKey,
@@ -25,6 +28,8 @@ interface Props {
   organizationId: string;
   workflowId: string;
   canWrite: boolean;
+  /** Name of the workflow, for the name of the exported file. */
+  workflowName: string;
   /** Revision of the draft the editor is working on, sent as `If-Match` when copying. */
   revision: number;
   /** The server replaced the draft: the editor must start again from this one. */
@@ -44,6 +49,7 @@ export function VersionsPanel({
   organizationId,
   workflowId,
   canWrite,
+  workflowName,
   revision,
   onDraftReplaced,
   onReload,
@@ -74,10 +80,20 @@ export function VersionsPanel({
     },
   });
 
+  const exportVersion = useMutation<void, Error, number>({
+    mutationFn: async (number) => {
+      const body = await queryClient.fetchQuery(versionQuery(organizationId, workflowId, number));
+      downloadDefinition(
+        toEditableDefinition(body.definition).definition,
+        exportFileName(workflowName, number),
+      );
+    },
+  });
+
   const copyConflict = isConflict(copy.error) ? copy.error : undefined;
   const activateConflict = isConflict(activate.error) ? activate.error : undefined;
   const conflict = copyConflict ?? activateConflict;
-  const failure = [copy.error, activate.error, versions.error].find(
+  const failure = [copy.error, activate.error, exportVersion.error, versions.error].find(
     (error) => error != null && !isConflict(error),
   );
 
@@ -129,6 +145,17 @@ export function VersionsPanel({
               {version.nodeCount} nodos · {version.edgeCount} conexiones
             </p>
             {version.note && <p className="mt-1">{version.note}</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                aria-label={`Exportar versión ${version.number} como JSON`}
+                disabled={exportVersion.isPending}
+                onClick={() => exportVersion.mutate(version.number)}
+              >
+                Exportar JSON
+              </Button>
+            </div>
             {canWrite && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {!version.active && (
