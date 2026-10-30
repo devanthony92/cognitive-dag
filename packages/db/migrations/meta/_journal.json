@@ -15,6 +15,13 @@
       "when": 1793310171236,
       "tag": "0001_rls_triggers_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793318864494,
+      "tag": "0002_organizations_read_by_invitation",
+      "breakpoints": true
     }
   ]
 }
