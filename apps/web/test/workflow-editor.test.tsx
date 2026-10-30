@@ -378,18 +378,19 @@ describe('editor: live validation (US2)', () => {
     expect(within(problems).getAllByRole('listitem').length).toBeGreaterThan(0);
   });
 
-  it('reports invalid JSON in a field', async () => {
-    setup();
-    fireEvent.click(await screen.findByText('Disparo'));
-    const field = await within(panel()).findByLabelText('Campos de entrada');
-    fireEvent.change(field, { target: { value: '[{' } });
+  it('reports invalid JSON in the free-form condition field', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Condición/ }));
+    const field = await within(panel()).findByLabelText('Condición');
+    fireEvent.change(field, { target: { value: '{"op":' } });
 
     expect(await within(panel()).findByText('JSON no válido.')).toBeDefined();
   });
 });
 
 describe('editor: versions (US3)', () => {
-  it('publishes with an optional note, saving first when there are unsaved changes', async () => {
+  it('publishes the saved draft with an optional note', async () => {
     const { user, fetchMock } = setup({
       versions: [version(1, false)],
       extra: [
@@ -401,7 +402,10 @@ describe('editor: versions (US3)', () => {
     });
     fireEvent.click(await screen.findByText('Resumir'));
     await user.type(await within(panel()).findByLabelText('Nombre del nodo'), ' 2');
-    // Publishing waits for the validation of the latest change.
+
+    // Unsaved changes: nothing to publish yet.
+    expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', true);
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', false),
     );
@@ -412,11 +416,77 @@ describe('editor: versions (US3)', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Publicar versión' }));
 
     expect(await screen.findByText(/Versión 2 publicada/)).toBeDefined();
-    const [[, put]] = calls(fetchMock, 'PUT', /\/draft$/) as [[string, RequestInit]];
-    expect(new Headers(put.headers).get('If-Match')).toBe('"3"');
     const [[, post]] = calls(fetchMock, 'POST', /\/versions$/) as [[string, RequestInit]];
     expect(new Headers(post.headers).get('If-Match')).toBe('"4"');
     expect(JSON.parse(post.body as string)).toEqual({ note: 'Segunda' });
+  });
+
+  it('shows the publication as a floating toast that can be closed', async () => {
+    const { user } = setup({
+      versions: [version(1, false)],
+      extra: [whenPath(/\/versions$/, 'POST', () => json(version(2, true), 201))],
+    });
+    await screen.findByText('Resumir');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', false),
+    );
+    await user.click(screen.getByRole('button', { name: 'Publicar' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Publicar versión' }),
+    );
+
+    const toast = (await screen.findByText(/Versión 2 publicada/)).closest('[role="status"]')!;
+    expect(toast.className).toContain('fixed');
+    await user.click(within(toast as HTMLElement).getByRole('button', { name: 'Cerrar aviso' }));
+    expect(screen.queryByText(/Versión 2 publicada/)).toBeNull();
+  });
+
+  it('disables publishing while the saved draft equals the active version', async () => {
+    const { fetchMock } = setup({
+      versions: [version(1, true)],
+      extra: [
+        whenPath(/\/versions\/1$/, 'GET', () =>
+          json({ ...version(1, true), definition: VALID_DRAFT }),
+        ),
+      ],
+    });
+    await screen.findByText('Resumir');
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', true),
+    );
+    expect(screen.getByTitle('No hay cambios desde la versión activa')).toBeDefined();
+    expect(calls(fetchMock, 'GET', /\/versions\/1$/).length).toBeGreaterThan(0);
+  });
+
+  it('enables publishing again after a saved change, and blocks it once published', async () => {
+    const { user } = setup({
+      versions: [version(1, true)],
+      extra: [
+        whenPath(/\/versions\/1$/, 'GET', () =>
+          json({ ...version(1, true), definition: VALID_DRAFT }),
+        ),
+        whenPath(/\/draft$/, 'PUT', () =>
+          json({ revision: 4, validation: { valid: true, errors: [] } }),
+        ),
+        whenPath(/\/versions$/, 'POST', () => json(version(2, true), 201)),
+      ],
+    });
+    fireEvent.click(await screen.findByText('Resumir'));
+    await user.type(await within(panel()).findByLabelText('Nombre del nodo'), ' 2');
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', false),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Publicar' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Publicar versión' }),
+    );
+
+    await screen.findByText(/Versión 2 publicada/);
+    expect(screen.getByRole('button', { name: 'Publicar' })).toHaveProperty('disabled', true);
+    expect(screen.getByTitle('No hay cambios desde la versión activa')).toBeDefined();
   });
 
   it('lists the history with number, date, publisher, note and the active badge', async () => {
@@ -508,5 +578,130 @@ describe('editor: versions (US3)', () => {
     expect(await within(panel()).findAllByRole('listitem')).toHaveLength(2);
     expect(within(panel()).queryByRole('button', { name: /Activar versión/ })).toBeNull();
     expect(within(panel()).queryByRole('button', { name: /Copiar versión/ })).toBeNull();
+  });
+});
+
+describe('editor: list fields', () => {
+  const saveStub = whenPath(/\/draft$/, 'PUT', () =>
+    json({ revision: 4, validation: { valid: true, errors: [] } }),
+  );
+
+  async function savedConfig(
+    user: ReturnType<typeof userEvent.setup>,
+    fetchMock: ReturnType<typeof stubApi>,
+    id: string,
+  ) {
+    await user.click(screen.getByRole('button', { name: 'Guardar' }));
+    await waitFor(() => expect(calls(fetchMock, 'PUT', /\/draft$/)).toHaveLength(1));
+    const init = calls(fetchMock, 'PUT', /\/draft$/)[0]![1] as RequestInit;
+    const body = JSON.parse(init.body as string) as { definition: typeof VALID_DRAFT };
+    return body.definition.nodes.find((n) => n.id === id)?.config;
+  }
+
+  it('edits a list of strings with one input per item: add, remove and reorder', async () => {
+    const { user, fetchMock } = setup({ extra: [saveStub] });
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Clasificar/ }));
+
+    expect(await within(panel()).findByLabelText('Etiquetas 1')).toHaveProperty(
+      'value',
+      'positivo',
+    );
+    expect(within(panel()).getByLabelText('Etiquetas 2')).toHaveProperty('value', 'negativo');
+
+    await user.click(within(panel()).getByRole('button', { name: 'Agregar a Etiquetas' }));
+    await user.type(within(panel()).getByLabelText('Etiquetas 3'), 'neutro');
+    await user.click(within(panel()).getByRole('button', { name: 'Subir Etiquetas 3' }));
+    await user.click(within(panel()).getByRole('button', { name: 'Quitar Etiquetas 1' }));
+
+    expect(await savedConfig(user, fetchMock, 'classify_1')).toMatchObject({
+      labels: ['neutro', 'negativo'],
+    });
+  });
+
+  it('marks the item that is wrong, not the whole list', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Clasificar/ }));
+    await user.clear(await within(panel()).findByLabelText('Etiquetas 2'));
+
+    await waitFor(
+      () =>
+        expect(within(panel()).getByLabelText('Etiquetas 2').getAttribute('aria-invalid')).toBe(
+          'true',
+        ),
+      { timeout: 1500 },
+    );
+    expect(within(panel()).getByLabelText('Etiquetas 1').getAttribute('aria-invalid')).toBe(
+      'false',
+    );
+  });
+
+  it('edits typed fields as rows with a name, a type select and enum values', async () => {
+    const { user, fetchMock } = setup({ extra: [saveStub] });
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Disparador manual/ }));
+    const add = () => within(panel()).getByRole('button', { name: 'Agregar a Campos de entrada' });
+
+    await user.click(
+      await within(panel()).findByRole('button', { name: 'Agregar a Campos de entrada' }),
+    );
+    await user.type(within(panel()).getByLabelText('Campos de entrada 1: nombre'), 'cliente');
+    await user.click(add());
+    await user.type(within(panel()).getByLabelText('Campos de entrada 2: nombre'), 'prioridad');
+    await user.selectOptions(within(panel()).getByLabelText('Campos de entrada 2: tipo'), 'enum');
+    await user.click(
+      within(panel()).getByRole('button', { name: 'Agregar a Campos de entrada 2: valores' }),
+    );
+    await user.type(within(panel()).getByLabelText('Campos de entrada 2: valores 1'), 'alta');
+    await user.click(add());
+    await user.type(within(panel()).getByLabelText('Campos de entrada 3: nombre'), 'edades');
+    await user.selectOptions(within(panel()).getByLabelText('Campos de entrada 3: tipo'), 'list');
+    await user.selectOptions(
+      within(panel()).getByLabelText('Campos de entrada 3: elementos'),
+      'number',
+    );
+
+    expect(await savedConfig(user, fetchMock, 'manual_2')).toEqual({
+      inputSchema: [
+        { name: 'cliente', type: { kind: 'string' } },
+        { name: 'prioridad', type: { kind: 'enum', values: ['alta'] } },
+        { name: 'edades', type: { kind: 'list', item: { kind: 'number' } } },
+      ],
+    });
+  });
+
+  it('marks the name of a typed field that is not valid', async () => {
+    const { user } = setup();
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Disparador manual/ }));
+    await user.click(
+      await within(panel()).findByRole('button', { name: 'Agregar a Campos de entrada' }),
+    );
+    await user.type(within(panel()).getByLabelText('Campos de entrada 1: nombre'), 'Cliente');
+
+    await waitFor(
+      () =>
+        expect(
+          within(panel())
+            .getByLabelText('Campos de entrada 1: nombre')
+            .getAttribute('aria-invalid'),
+        ).toBe('true'),
+      { timeout: 1500 },
+    );
+  });
+
+  it('edits HTTP headers as name and value rows', async () => {
+    const { user, fetchMock } = setup({ extra: [saveStub] });
+    await screen.findByText('Resumir');
+    await user.click(within(palette()).getByRole('button', { name: /Petición HTTP/ }));
+
+    await user.click(await within(panel()).findByRole('button', { name: 'Agregar a Cabeceras' }));
+    await user.type(within(panel()).getByLabelText('Cabeceras 1: nombre'), 'Accept');
+    await user.type(within(panel()).getByLabelText('Cabeceras 1: valor'), 'application/json');
+
+    expect(await savedConfig(user, fetchMock, 'request_1')).toMatchObject({
+      headers: { Accept: 'application/json' },
+    });
   });
 });

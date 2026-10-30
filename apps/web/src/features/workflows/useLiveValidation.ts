@@ -14,6 +14,11 @@ interface Snapshot {
   result: ValidationResult;
 }
 
+const sameLimits = (a: DagLimits, b: DagLimits) =>
+  a.maxNodes === b.maxNodes &&
+  a.maxEdges === b.maxEdges &&
+  a.maxDefinitionBytes === b.maxDefinitionBytes;
+
 const run = (definition: DagDefinition, limits: DagLimits): Snapshot => ({
   definition,
   limits,
@@ -27,7 +32,7 @@ const run = (definition: DagDefinition, limits: DagLimits): Snapshot => ({
  */
 export function useLiveValidation(definition: DagDefinition, limits: DagLimits) {
   const [snapshot, setSnapshot] = useState(() => run(definition, limits));
-  const pending = snapshot.definition !== definition || snapshot.limits !== limits;
+  const pending = snapshot.definition !== definition || !sameLimits(snapshot.limits, limits);
 
   useEffect(() => {
     if (!pending) return;
