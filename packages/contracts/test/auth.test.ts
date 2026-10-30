@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ChangePasswordRequestSchema,
   EmailRequestSchema,
+  LoginRequestSchema,
   PasswordResetConfirmRequestSchema,
   PasswordSchema,
   ProblemCodeSchema,
@@ -15,27 +16,36 @@ const VALID_UUID = '3f2b0c1e-5d6a-4b7c-8d9e-0f1a2b3c4d5e';
 const TOKEN = 'A'.repeat(43);
 
 describe('PasswordSchema', () => {
-  it('rejects 14 characters and accepts 15', () => {
-    expect(PasswordSchema.safeParse('a'.repeat(14)).success).toBe(false);
-    expect(PasswordSchema.safeParse('a'.repeat(15)).success).toBe(true);
+  it('rejects 7 characters and accepts 8', () => {
+    expect(PasswordSchema.safeParse('a'.repeat(7)).success).toBe(false);
+    expect(PasswordSchema.safeParse('a'.repeat(8)).success).toBe(true);
   });
 
-  it('accepts 128 characters and rejects 129', () => {
-    expect(PasswordSchema.safeParse('a'.repeat(128)).success).toBe(true);
-    expect(PasswordSchema.safeParse('a'.repeat(129)).success).toBe(false);
+  it('accepts 25 characters and rejects 26', () => {
+    expect(PasswordSchema.safeParse('a'.repeat(25)).success).toBe(true);
+    expect(PasswordSchema.safeParse('a'.repeat(26)).success).toBe(false);
   });
 
   it('counts Unicode characters, not UTF-16 units', () => {
     const emoji = '\u{1F600}';
-    expect(PasswordSchema.safeParse(emoji.repeat(15)).success).toBe(true);
-    expect(PasswordSchema.safeParse(emoji.repeat(14)).success).toBe(false);
-    expect(PasswordSchema.safeParse(emoji.repeat(128)).success).toBe(true);
-    expect(PasswordSchema.safeParse(emoji.repeat(129)).success).toBe(false);
+    expect(PasswordSchema.safeParse(emoji.repeat(8)).success).toBe(true);
+    expect(PasswordSchema.safeParse(emoji.repeat(7)).success).toBe(false);
+    expect(PasswordSchema.safeParse(emoji.repeat(25)).success).toBe(true);
+    expect(PasswordSchema.safeParse(emoji.repeat(26)).success).toBe(false);
   });
 
   it('accepts spaces and does not require composition rules', () => {
-    expect(PasswordSchema.safeParse(' '.repeat(15)).success).toBe(true);
+    expect(PasswordSchema.safeParse(' '.repeat(8)).success).toBe(true);
     expect(PasswordSchema.safeParse('todo en minusculas ok').success).toBe(true);
+  });
+});
+
+describe('LoginRequestSchema', () => {
+  it('keeps accepting passwords up to 128 characters so it never reveals the policy', () => {
+    const email = 'ana@example.com';
+    expect(LoginRequestSchema.safeParse({ email, password: 'a'.repeat(128) }).success).toBe(true);
+    expect(LoginRequestSchema.safeParse({ email, password: 'a'.repeat(3) }).success).toBe(true);
+    expect(LoginRequestSchema.safeParse({ email, password: 'a'.repeat(257) }).success).toBe(false);
   });
 });
 
@@ -91,6 +101,18 @@ describe('RegisterRequestSchema', () => {
     expect(RegisterRequestSchema.safeParse(valid).success).toBe(true);
   });
 
+  it('trims the optional organization name and bounds it to 1-100 characters', () => {
+    const parsed = RegisterRequestSchema.parse({ ...valid, organizationName: '  Acme  ' });
+    expect(parsed.organizationName).toBe('Acme');
+    expect(RegisterRequestSchema.parse(valid).organizationName).toBeUndefined();
+    expect(RegisterRequestSchema.safeParse({ ...valid, organizationName: '   ' }).success).toBe(
+      false,
+    );
+    expect(
+      RegisterRequestSchema.safeParse({ ...valid, organizationName: 'o'.repeat(101) }).success,
+    ).toBe(false);
+  });
+
   it.each([
     ['empty name', { name: '' }],
     ['name over 100 characters', { name: 'n'.repeat(101) }],
@@ -143,32 +165,32 @@ describe('PasswordResetConfirmRequestSchema and ChangePasswordRequestSchema', ()
 
   it('applies the password policy length to the new password only', () => {
     expect(
-      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(14) }).success,
+      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(7) }).success,
     ).toBe(false);
     expect(
-      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(15) }).success,
+      PasswordResetConfirmRequestSchema.safeParse({ token, password: 'x'.repeat(8) }).success,
     ).toBe(true);
     expect(
       ChangePasswordRequestSchema.safeParse({
         currentPassword: 'corta',
-        newPassword: 'x'.repeat(15),
+        newPassword: 'x'.repeat(8),
       }).success,
     ).toBe(true);
     expect(
-      ChangePasswordRequestSchema.safeParse({ currentPassword: '', newPassword: 'x'.repeat(15) })
+      ChangePasswordRequestSchema.safeParse({ currentPassword: '', newPassword: 'x'.repeat(8) })
         .success,
     ).toBe(false);
   });
 
   it('rejects unknown fields and malformed tokens', () => {
     expect(
-      PasswordResetConfirmRequestSchema.safeParse({ token: 'short', password: 'x'.repeat(15) })
+      PasswordResetConfirmRequestSchema.safeParse({ token: 'short', password: 'x'.repeat(8) })
         .success,
     ).toBe(false);
     expect(
       ChangePasswordRequestSchema.safeParse({
         currentPassword: 'a',
-        newPassword: 'x'.repeat(15),
+        newPassword: 'x'.repeat(8),
         extra: 1,
       }).success,
     ).toBe(false);
