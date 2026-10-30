@@ -7,9 +7,7 @@ export const SCHEMA_VERSION = 1;
 export const NODE_ID_PATTERN = /^[a-z][a-z0-9_]{0,39}$/;
 
 /** Node id: also the name used in references, so it is restricted to a safe identifier. */
-export const NodeIdSchema = z
-  .string()
-  .regex(NODE_ID_PATTERN, 'Debe empezar con una letra minúscula y usar a-z, 0-9 o _ (máx. 40).');
+export const NodeIdSchema = z.string().regex(NODE_ID_PATTERN);
 
 export const EdgeIdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,80}$/);
 

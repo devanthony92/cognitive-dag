@@ -15,6 +15,7 @@ export const humanApproval = defineNode({
   acceptsInput: true,
   handles: ['approved', 'rejected', 'timeout'],
   templatableFields: ['message'],
+  fieldLabels: { message: 'Mensaje', timeoutSeconds: 'Plazo (segundos)' },
   configSchema: ApprovalConfigSchema,
   defaultConfig: () => ({ message: 'Revisa y aprueba para continuar.', timeoutSeconds: 86_400 }),
   outputSchema: () =>

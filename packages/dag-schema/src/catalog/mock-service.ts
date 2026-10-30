@@ -16,6 +16,11 @@ export const mockService = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: [],
+  fieldLabels: {
+    latencyMs: 'Latencia (ms)',
+    failureRate: 'Tasa de fallos (0 a 1)',
+    failureKind: 'Tipo de fallo',
+  },
   configSchema: MockConfigSchema,
   defaultConfig: () => ({
     latencyMs: 100,

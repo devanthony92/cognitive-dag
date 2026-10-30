@@ -22,6 +22,8 @@ export const llmClassify = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['text'],
+  fieldLabels: { text: 'Texto', labels: 'Etiquetas' },
+  itemLabels: { labels: 'La etiqueta' },
   configSchema: ClassifyConfigSchema,
   defaultConfig: () => ({ text: 'Texto a clasificar', labels: ['positivo', 'negativo'] }),
   outputSchema: (config: { labels: string[] }) =>
