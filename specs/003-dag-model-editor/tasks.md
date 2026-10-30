@@ -19,9 +19,9 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 ## Phase 1: Setup
 
-- [ ] T001 Crear `packages/dag-schema` (ESM, Zod, condición de export `@cognitive-dag/source`, Vitest)
-- [ ] T002 [P] Agregar el flag `dag-editor-enabled` al catálogo y a `.env.example`
-- [ ] T003 [P] Agregar `@xyflow/react` 12.12 y `@dagrejs/dagre` 3.1 a `apps/web` (versiones con más de un día)
+- [X] T001 Crear `packages/dag-schema` (ESM, Zod, condición de export `@cognitive-dag/source`, Vitest)
+- [ ] T002 [P] Agregar el flag `dag-editor-enabled` al catálogo y a `.env.example` _(diferido al PR 3 de F2: exige código en API y web)_
+- [ ] T003 [P] Agregar `@xyflow/react` 12.12 y `@dagrejs/dagre` 3.1 a `apps/web` (versiones con más de un día) _(diferido al PR 3 de F2: sin código que las use en el PR 1)_
 
 ---
 
@@ -29,21 +29,21 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 ### Tests (primero, fallando)
 
-- [ ] T004 [P] `test/definition.test.ts`: forma de R2, ids `^[a-z][a-z0-9_]{0,39}$` únicos, objetos estrictos sin campos desconocidos, `schemaVersion` 1
-- [ ] T005 [P] `test/catalog.test.ts`: los 11 tipos con config por defecto válida, `handles`, `templatableFields`, `executableFrom`; salidas calculadas desde la configuración (`llm.extract`, `trigger.*`); `http.request` rechaza URL no https y cabeceras de autorización (FR-005)
-- [ ] T006 [P] `test/types.test.ts`: compatibilidad de R4 (`enum`→`string` sí, `string`→`enum` no, objetos y listas)
-- [ ] T007 [P] `test/references.test.ts`: rutas válidas, nodo inexistente, nodo no ancestro, campo inexistente, tipo incompatible
-- [ ] T008 [P] `test/templates.test.ts`: tokenización de `{{...}}`, marcadores mal formados, campos no plantillables literales, sin evaluación
-- [ ] T009 [P] `test/conditions.test.ts`: operaciones de R6, profundidad 5, máximo 20 operaciones, tipos de operandos
-- [ ] T010 [P] `test/validate.test.ts`: un caso por regla de R7 (disparador único, sin entradas al disparador, conexiones a handles existentes, ciclos con los nodos del ciclo, inalcanzables, límites); orden de errores determinista
-- [ ] T011 [P] `test/performance.test.ts`: validar 50 nodos y 100 conexiones en < 100 ms (SC-003)
+- [X] T004 [P] `test/definition.test.ts`: forma de R2, ids `^[a-z][a-z0-9_]{0,39}$` únicos, objetos estrictos sin campos desconocidos, `schemaVersion` 1
+- [X] T005 [P] `test/catalog.test.ts`: los 11 tipos con config por defecto válida, `handles`, `templatableFields`, `executableFrom`; salidas calculadas desde la configuración (`llm.extract`, `trigger.*`); `http.request` rechaza URL no https y cabeceras de autorización (FR-005)
+- [X] T006 [P] `test/types.test.ts`: compatibilidad de R4 (`enum`→`string` sí, `string`→`enum` no, objetos y listas)
+- [X] T007 [P] `test/references.test.ts`: rutas válidas, nodo inexistente, nodo no ancestro, campo inexistente, tipo incompatible
+- [X] T008 [P] `test/templates.test.ts`: tokenización de `{{...}}`, marcadores mal formados, campos no plantillables literales, sin evaluación
+- [X] T009 [P] `test/conditions.test.ts`: operaciones de R6, profundidad 5, máximo 20 operaciones, tipos de operandos
+- [X] T010 [P] `test/validate.test.ts`: un caso por regla de R7 (disparador único, sin entradas al disparador, conexiones a handles existentes, ciclos con los nodos del ciclo, inalcanzables, límites); orden de errores determinista
+- [X] T011 [P] `test/performance.test.ts`: validar 50 nodos y 100 conexiones en < 100 ms (SC-003)
 
 ### Implementation
 
-- [ ] T012 `src/definition.ts` y `src/types.ts`
-- [ ] T013 `src/catalog/` un archivo por tipo según R3
-- [ ] T014 `src/references.ts`, `src/templates.ts`, `src/conditions.ts`
-- [ ] T015 `src/validate.ts` y `src/limits.ts` (errores con `code`, `message` en español, `location`)
+- [X] T012 `src/definition.ts` y `src/types.ts`
+- [X] T013 `src/catalog/` un archivo por tipo según R3
+- [X] T014 `src/references.ts`, `src/templates.ts`, `src/conditions.ts`
+- [X] T015 `src/validate.ts` y `src/limits.ts` (errores con `code`, `message` en español, `location`)
 
 **Checkpoint**: `dag-schema` completo y en verde
 
