@@ -10,6 +10,8 @@ export type FieldKind =
   | 'string-list'
   | 'field-list'
   | 'key-value'
+  | 'template'
+  | 'condition'
   | 'json';
 
 export interface FieldDescriptor {
@@ -74,8 +76,9 @@ function listKind(property: JsonProperty): FieldKind | undefined {
 
 /**
  * One form field per top-level key of the node's `configSchema`. Scalars get their own control,
- * lists of strings, lists of typed fields and text maps get row editors, and only what has no
- * other shape (the condition tree, until PR 4's builder) falls back to JSON.
+ * lists of strings, lists of typed fields and text maps get row editors, text that accepts
+ * references gets the template editor and the condition tree gets its builder. JSON is only the
+ * last resort for a shape nobody has an editor for.
  */
 export function describeConfig(type: NodeType): FieldDescriptor[] {
   const known = cache.get(type);
@@ -104,8 +107,12 @@ export function describeConfig(type: NodeType): FieldDescriptor[] {
           ...(property.maximum !== undefined ? { max: property.maximum } : {}),
         };
       }
+      if (key === 'condition' && type === 'logic.condition') return { ...base, kind: 'condition' };
+      if (property.type === 'string' && entry.templatableFields.includes(key)) {
+        return { ...base, kind: 'template' };
+      }
       if (property.type === 'string') {
-        const long = entry.templatableFields.includes(key) || (property.maxLength ?? 0) >= 500;
+        const long = (property.maxLength ?? 0) >= 500;
         return { ...base, kind: long ? 'textarea' : 'text' };
       }
       return { ...base, kind: listKind(property) ?? 'json' };
