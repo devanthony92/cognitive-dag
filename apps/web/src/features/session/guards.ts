@@ -25,3 +25,13 @@ export function homeRedirect(info: SessionInfo) {
     ? redirect({ to: '/orgs/$organizationId', params: { organizationId: first.id } })
     : redirect({ to: '/' });
 }
+
+/**
+ * For screens meant for visitors (login, registration, password recovery): a signed-in user is sent
+ * to their organization. Runs in `beforeLoad`, so the form never flashes while the session loads.
+ */
+export async function requireGuest(queryClient: QueryClient): Promise<void> {
+  await requireIdentity(queryClient);
+  const info = await queryClient.fetchQuery(sessionQuery);
+  if (info) throw homeRedirect(info);
+}
