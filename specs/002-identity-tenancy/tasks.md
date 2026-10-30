@@ -147,16 +147,16 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 ## Phase 8: User Story 6 - Eventos de seguridad (P3)
 
-- [ ] T056 [P] [US6] Prueba `security-events.test.ts`: cada acción de FR-026 emite su evento con los campos de FR-027, capturado con un logger de prueba; ningún evento contiene contraseña, token ni id de sesión (SC-007)
-- [ ] T057 [US6] Completar los eventos que falten según la prueba
+- [X] T056 [P] [US6] Prueba `security-events.test.ts`: cada acción de FR-026 emite su evento con los campos de FR-027, capturado con un logger de prueba; ningún evento contiene contraseña, token ni id de sesión (SC-007)
+- [X] T057 [US6] Completar los eventos que falten según la prueba
 
 ---
 
 ## Phase 9: Polish
 
-- [ ] T058 [P] ADRs: Drizzle, argon2 y política de contraseñas, sesiones opacas y CSRF, organización activa en la ruta, RLS con claves de contexto, dos roles de PostgreSQL, borrado lógico, rate-limiter-flexible, Mailpit y nodemailer, TanStack Router, React Hook Form, Tailwind y shadcn/ui, eventos de seguridad en logs
-- [ ] T059 [P] Actualizar `docs/threat-model.md`: nuevos elementos (sesiones, correo, Mailpit), filas `planned:F1` pasan a `mitigated` con evidencia
-- [ ] T060 [P] Actualizar `docs/PLAN.md` (O1 y O2 cerradas) y `README.md` (F1, Mailpit, migraciones)
+- [X] T058 [P] ADRs: Drizzle, argon2 y política de contraseñas, sesiones opacas y CSRF, organización activa en la ruta, RLS con claves de contexto, dos roles de PostgreSQL, borrado lógico, rate-limiter-flexible, Mailpit y nodemailer, TanStack Router, React Hook Form, Tailwind y shadcn/ui, eventos de seguridad en logs
+- [X] T059 [P] Actualizar `docs/threat-model.md`: nuevos elementos (sesiones, correo, Mailpit), filas `planned:F1` pasan a `mitigated` con evidencia
+- [X] T060 [P] Actualizar `docs/PLAN.md` (O1 y O2 cerradas) y `README.md` (F1, Mailpit, migraciones)
 - [ ] T061 Issue de eliminación del flag `identity-enabled` y del ping de F0 sin organización
 - [ ] T062 Ejecutar los 17 escenarios de `quickstart.md` y registrar resultados en la PR
 - [ ] T063 Revisar la tabla "Security Considerations" de la spec contra el código y registrar el checklist en la PR
@@ -167,16 +167,16 @@ ping vive solo bajo `/api/v1/organizations/{id}/pings` y exige sesión.
 
 Cada tarea de prueba va antes de su implementación (TDD).
 
-- [ ] T064 [P] Pruebas del contrato y de la política: contraseña 7 rechazada, 8 y 25 aceptadas, 26 rechazada; login acepta hasta 128; contraseña común de 8 caracteres rechazada (`packages/contracts/test/auth.test.ts`, `password-policy.test.ts`)
-- [ ] T065 Aplicar la política 8–25 en `PasswordSchema`, `password-policy.ts`, formularios web y pruebas existentes; regenerar `common-passwords.txt` (8–25 caracteres)
-- [ ] T066 [P] Pruebas web de confirmación de contraseña y de mostrar/ocultar (`apps/web/test`)
-- [ ] T067 Confirmación de contraseña (Zod en el formulario, fuera del contrato) y botón de ojo con SVG propio en login, registro, restablecimiento y cambio
-- [ ] T068 [P] Pruebas de `organizationName` en registro (contrato e integración: por defecto, personalizado, recortado, inválido) y del campo prellenado en la web
-- [ ] T069 `organizationName` en `RegisterRequestSchema`, `RegistrationService` y `RegisterForm`
-- [ ] T070 [P] Pruebas de `PATCH /organizations/{id}`: owner 200, editor y viewer 403, no miembro 404, sin CSRF 403, nombre inválido 422, evento `org.renamed`, invitación mostrando el nombre actual
-- [ ] T071 Endpoint de renombrado, evento `org.renamed` y contrato Zod `RenameOrganizationRequestSchema`
-- [ ] T072 Web: sección "Ajustes de la organización" solo para owner; selector y cabeceras se actualizan al renombrar
-- [ ] T073 [P] ADR de la política de contraseñas 8–25 con la desviación de NIST 800-63B-4 y fila en el modelo de amenazas
+- [X] T064 [P] Pruebas del contrato y de la política: contraseña 7 rechazada, 8 y 25 aceptadas, 26 rechazada; login acepta hasta 128; contraseña común de 8 caracteres rechazada (`packages/contracts/test/auth.test.ts`, `password-policy.test.ts`)
+- [X] T065 Aplicar la política 8–25 en `PasswordSchema`, `password-policy.ts`, formularios web y pruebas existentes; regenerar `common-passwords.txt` (8–25 caracteres)
+- [X] T066 [P] Pruebas web de confirmación de contraseña y de mostrar/ocultar (`apps/web/test`)
+- [X] T067 Confirmación de contraseña (Zod en el formulario, fuera del contrato) y botón de ojo con SVG propio en login, registro, restablecimiento y cambio
+- [X] T068 [P] Pruebas de `organizationName` en registro (contrato e integración: por defecto, personalizado, recortado, inválido) y del campo prellenado en la web
+- [X] T069 `organizationName` en `RegisterRequestSchema`, `RegistrationService` y `RegisterForm`
+- [X] T070 [P] Pruebas de `PATCH /organizations/{id}`: owner 200, editor y viewer 403, no miembro 404, sin CSRF 403, nombre inválido 422, evento `org.renamed`, invitación mostrando el nombre actual
+- [X] T071 Endpoint de renombrado, evento `org.renamed` y contrato Zod `RenameOrganizationRequestSchema`
+- [X] T072 Web: sección "Ajustes de la organización" solo para owner; selector y cabeceras se actualizan al renombrar
+- [X] T073 [P] ADR de la política de contraseñas 8–25 con la desviación de NIST 800-63B-4 y fila en el modelo de amenazas
 
 ---
 
