@@ -92,7 +92,7 @@ apps/api/src/
 │   ├── session.service.ts    # PostgreSQL + Valkey, rotación, revocación
 │   ├── csrf.guard.ts
 │   ├── session.guard.ts
-│   └── password-policy.ts    # 15–128, NFKC, lista de comunes
+│   └── password-policy.ts    # 8–25, NFKC, lista de comunes
 ├── organizations/            # organizaciones, miembros, invitaciones
 │   └── organization.guard.ts # membresía + rol + contexto RLS
 ├── rate-limit/

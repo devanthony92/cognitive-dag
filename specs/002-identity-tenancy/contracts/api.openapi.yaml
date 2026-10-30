@@ -160,6 +160,31 @@ paths:
         '401': { $ref: '#/components/responses/Problem' }
         '403': { $ref: '#/components/responses/Problem' }
         '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}:
+    parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
+    patch:
+      operationId: renameOrganization
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 100 }
+      responses:
+        '200':
+          description: Organización renombrada (solo owner)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrganizationSummary' }
+        '401': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
   /api/v1/organizations/{organizationId}/members:
     parameters: [{ $ref: '#/components/parameters/OrganizationId' }]
     get:
@@ -343,9 +368,12 @@ components:
   schemas:
     Password:
       type: string
-      minLength: 15
-      maxLength: 128
-      description: Cualquier carácter Unicode; sin reglas de composición; se rechazan contraseñas comunes.
+      minLength: 8
+      maxLength: 25
+      description: >-
+        Cualquier carácter Unicode (cuenta puntos de código tras NFKC); sin reglas de composición; se
+        rechazan contraseñas comunes. Rango decidido por el autor (ADR-0026), distinto del de NIST
+        800-63B-4. El inicio de sesión sigue aceptando hasta 128 para no revelar la política.
     Role:
       type: string
       enum: [owner, editor, viewer]
@@ -357,6 +385,11 @@ components:
         name: { type: string, minLength: 1, maxLength: 100 }
         email: { type: string, format: email, maxLength: 254 }
         password: { $ref: '#/components/schemas/Password' }
+        organizationName:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: Nombre de la organización personal (opcional; se recorta). Por defecto "Organización de <nombre>".
     LoginRequest:
       type: object
       additionalProperties: false

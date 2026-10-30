@@ -17,9 +17,9 @@ pnpm dev
 
 | # | Historia | Pasos | Resultado esperado |
 |---|---|---|---|
-| 1 | US1 | Registrarse en la web con una contraseña de 15+ caracteres | Mensaje "revisa tu correo"; correo de verificación en Mailpit |
+| 1 | US1 | Registrarse en la web con una contraseña de 8 a 25 caracteres (el nombre de la organización viene propuesto y es editable) | Mensaje "revisa tu correo"; correo de verificación en Mailpit |
 | 2 | US1 | Registrarse otra vez con el mismo email | Misma respuesta; el titular recibe un correo de aviso |
-| 3 | US1 | Registrarse con `password123456789` (común) o con 14 caracteres | Rechazo con el motivo |
+| 3 | US1 | Registrarse con `password123` (común), con 7 o con 26 caracteres | Rechazo con el motivo |
 | 4 | US1 | Iniciar sesión sin verificar | "Credenciales inválidas" (igual que una contraseña errónea) |
 | 5 | US1/US2 | Abrir el enlace del correo e iniciar sesión | Sesión iniciada; se ve la organización personal como owner |
 | 6 | US2 | 6 intentos fallidos seguidos | Desde el 6.º, 429 `RATE_LIMITED` con `Retry-After` creciente |
@@ -34,6 +34,9 @@ pnpm dev
 | 15 | US5 | Viewer intenta invitar | 403 `FORBIDDEN` |
 | 16 | US6 | Revisar los logs del API tras los escenarios anteriores | Un evento por acción con `event`, `outcome`, `correlationId`; sin contraseñas ni tokens |
 | 17 | FR-033 | `identity-enabled=false` | Endpoints de F1 404 `FEATURE_NOT_AVAILABLE`; la web oculta registro y login |
+| 18 | FR-034/035 | En registro, restablecimiento y cambio escribir confirmaciones distintas; pulsar el ojo de cada campo | Mensaje "Las contraseñas no coinciden" sin enviar la petición; el ojo muestra y oculta con etiqueta accesible |
+| 19 | FR-001 | Registrarse cambiando el nombre de la organización propuesto; verificar e iniciar sesión | La organización personal se llama como se escribió |
+| 20 | FR-036 | Como owner abrir "Ajustes de la organización" y renombrar; repetir como editor y como viewer | El selector y la cabecera muestran el nombre nuevo; editor y viewer no ven los ajustes y la API responde 403 |
 
 ## Pruebas automatizadas
 

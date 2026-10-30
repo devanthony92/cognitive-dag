@@ -11,7 +11,7 @@ cierre de sesión con sesiones opacas en cookie, recuperación y cambio de contr
 con membresías y roles (owner, editor, viewer), organización personal al registrarse, aislamiento
 entre organizaciones en dos capas (aplicación y Row-Level Security), eventos de seguridad en logs
 estructurados, rate limit progresivo por cuenta e IP, mensajes genéricos que no revelan si un email
-existe, contraseñas de 15 a 128 caracteres sin reglas de composición y con rechazo de contraseñas
+existe, contraseñas de 8 a 25 caracteres sin reglas de composición y con rechazo de contraseñas
 comunes, correo de desarrollo capturado localmente. MFA queda para F8."
 
 ## User Scenarios & Testing *(mandatory)*
@@ -38,10 +38,20 @@ verificar e iniciar sesión.
 
 1. **Given** un visitante, **When** se registra con datos válidos, **Then** recibe un correo de
    verificación y la respuesta le indica que revise su correo.
+7. **Given** el formulario de registro, **When** el visitante lo abre, **Then** el nombre de la
+   organización personal viene propuesto como "Organización de <nombre>", puede editarlo antes de
+   enviar y la organización se crea con el nombre enviado (1–100 caracteres). Si el API no recibe
+   nombre, usa el valor por defecto.
+8. **Given** el formulario de registro, restablecimiento o cambio de contraseña, **When** la
+   contraseña y su confirmación no coinciden, **Then** la web lo indica en español y no envía la
+   petición; la confirmación nunca viaja al API.
+9. **Given** cualquier campo de contraseña de la web, **When** el usuario pulsa el icono de ojo,
+   **Then** la contraseña se muestra u oculta y el botón tiene una etiqueta accesible ("Mostrar
+   contraseña" / "Ocultar contraseña").
 2. **Given** un email que ya tiene cuenta, **When** alguien se registra con él, **Then** la
    respuesta es idéntica a la de un registro nuevo y el titular de la cuenta recibe un correo
    avisándole del intento.
-3. **Given** una contraseña de menos de 15 caracteres, de más de 128 o incluida en la lista de
+3. **Given** una contraseña de menos de 8 caracteres, de más de 25 o incluida en la lista de
    contraseñas comunes, **When** el visitante se registra, **Then** el registro se rechaza con un
    mensaje que explica la regla incumplida.
 4. **Given** un enlace de verificación válido, **When** el usuario lo abre, **Then** su email queda
@@ -161,6 +171,11 @@ luego lo quita; se verifica cada estado.
    **Then** se rechaza por falta de permisos.
 7. **Given** cualquier miembro, **When** abre la página de miembros, **Then** ve nombres, emails y
    roles de los miembros de la organización activa.
+8. **Given** un owner, **When** renombra la organización (1–100 caracteres), **Then** el nuevo
+   nombre se ve de inmediato en el selector y en las cabeceras, y las invitaciones pendientes
+   muestran el nombre actual.
+9. **Given** un editor o un viewer, **When** intenta renombrar la organización, **Then** se rechaza
+   con 403; si no es miembro, con 404.
 
 ---
 
@@ -204,11 +219,16 @@ campos esperados y sin datos sensibles.
 
 **Cuentas y contraseñas**
 
-- **FR-001**: El sistema DEBE permitir registrarse con nombre, email y contraseña, y crear en la
-  misma operación una organización personal con el usuario como owner.
-- **FR-002**: Las contraseñas DEBEN tener entre 15 y 128 caracteres, aceptar cualquier carácter
-  Unicode (incluidos espacios), no exigir reglas de composición y rechazarse si figuran en una lista
-  de contraseñas comunes incluida en el proyecto (sin llamadas externas).
+- **FR-001**: El sistema DEBE permitir registrarse con nombre, email, contraseña y, opcionalmente,
+  el nombre de la organización personal (1–100 caracteres, recortado; por defecto "Organización de
+  <nombre>"), y crear en la misma operación esa organización con el usuario como owner.
+- **FR-002**: Las contraseñas DEBEN tener entre 8 y 25 caracteres (puntos de código tras NFKC),
+  aceptar cualquier carácter Unicode (incluidos espacios), no exigir reglas de composición y
+  rechazarse si figuran en una lista de contraseñas comunes incluida en el proyecto (sin llamadas
+  externas). El inicio de sesión sigue aceptando hasta 128 caracteres para no revelar la política.
+  Este rango es decisión del autor (2026-10-29) y se aparta de NIST 800-63B-4 (mínimo 15 para un
+  solo factor, máximo de al menos 64): desviación aceptada y documentada en ADR-0026 y en el modelo
+  de amenazas, a revisar cuando llegue MFA (F8).
 - **FR-003**: Las contraseñas DEBEN almacenarse solo como hash con un algoritmo resistente a
   ataques por fuerza bruta y parámetros vigentes de OWASP.
 - **FR-004**: El email DEBE normalizarse (minúsculas, sin espacios) y ser único entre cuentas.
@@ -273,7 +293,7 @@ campos esperados y sin datos sensibles.
 - **FR-026**: El sistema DEBE registrar en los logs estructurados: registro, verificación de email,
   inicio de sesión exitoso y fallido, cierre de sesión, bloqueo por rate limit, solicitud y uso de
   restablecimiento, cambio de contraseña, invitación enviada, aceptada y revocada, cambio de rol y
-  expulsión.
+  expulsión y renombrado de organización (`org.renamed`).
 - **FR-027**: Cada evento DEBE incluir tipo, momento, resultado, IP, identificador de correlación y,
   si aplica, usuario y organización. NO DEBE incluir contraseñas, tokens ni identificadores de sesión.
 - **FR-028**: Los eventos DEBEN tener un nombre de tipo estable para poder filtrarlos.
@@ -291,7 +311,16 @@ campos esperados y sin datos sensibles.
 
 - **FR-032**: La web DEBE ofrecer: registro, verificación de email, inicio y cierre de sesión,
   solicitud y restablecimiento de contraseña, cambio de contraseña, selector de organización activa
-  y página de miembros (lista para todos; invitar, cambiar rol y quitar solo para owners).
+  y página de miembros (lista para todos; invitar, cambiar rol y quitar solo para owners), y
+  ajustes de la organización (renombrar, solo owners).
+- **FR-034**: Los formularios de registro, restablecimiento y cambio de contraseña DEBEN pedir la
+  contraseña nueva dos veces y validar la coincidencia solo en el navegador; la confirmación no se
+  envía al API.
+- **FR-035**: Todo campo de contraseña de la web DEBE ofrecer un botón de icono para mostrar u
+  ocultar el texto, con etiqueta accesible.
+- **FR-036**: Un owner DEBE poder renombrar una organización (1–100 caracteres, recortado).
+  `PATCH /api/v1/organizations/{organizationId}` exige CSRF, responde 403 a editor y viewer y 404 a
+  quien no es miembro, y registra el evento `org.renamed`. No cambia el modelo de datos.
 
 **Entrega**
 
@@ -321,12 +350,15 @@ campos esperados y sin datos sensibles.
 | A04 Cryptographic Failures | Hash de contraseñas resistente a fuerza bruta; identificadores de sesión y tokens aleatorios ≥ 128 bits guardados como hash |
 | A05 Injection | Validación de toda entrada con los contratos compartidos; consultas parametrizadas |
 | A06 Insecure Design | Mensajes genéricos anti-enumeración; organización que nunca queda sin owner; invitaciones ligadas al email |
-| A07 Authentication Failures | Política de contraseñas NIST (15–128, lista de comunes); rate limit progresivo; rotación de sesión al iniciar; revocación al cerrar sesión y al cambiar contraseña; expiración por inactividad y absoluta; CSRF |
+| A07 Authentication Failures | Política de contraseñas de 8–25 caracteres, sin composición y con lista de comunes (desviación aceptada de NIST 800-63B-4, ADR-0026; mitigada por la lista, el rate limit progresivo y Argon2id); rate limit progresivo; rotación de sesión al iniciar; revocación al cerrar sesión y al cambiar contraseña; expiración por inactividad y absoluta; CSRF |
+| A03 Software Supply Chain / A08 Integrity | Sin dependencias nuevas de ejecución en el cierre; el icono de ojo es un SVG propio |
 | A09 Security Logging and Alerting Failures | Eventos de seguridad en logs estructurados, con tipo estable, correlación y sin datos sensibles |
 | A10 Mishandling of Exceptional Conditions | Fallo cerrado si el almacén de sesiones o la base de datos no responden |
 
 - OWASP LLM Top 10: no aplica (sin uso de LLM en F1).
 - MFA: fuera de alcance; planificado para F8. El modelo de usuario queda preparado.
+- Renombrar una organización es un cambio de un campo visible; solo lo hace el owner (A01) y usa la
+  política de RLS `organizations_update` existente.
 
 ## Success Criteria *(mandatory)*
 

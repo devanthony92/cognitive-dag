@@ -41,10 +41,14 @@ reemplazan por el parche anterior (política de pnpm, ADR-0020). Cada dependenci
 ## R4. Contraseñas
 
 - **Decision**: `argon2` 0.45.1 con Argon2id, parámetros mínimos de OWASP Password Storage Cheat
-  Sheet (m = 19 MiB, t = 2, p = 1), revisables por configuración. Política: 15–128 caracteres,
+  Sheet (m = 19 MiB, t = 2, p = 1), revisables por configuración. Política: 8–25 caracteres,
   normalización Unicode NFKC, sin reglas de composición, rechazo contra una lista de 100 000
-  contraseñas comunes incluida en el repo.
-- **Rationale**: NIST 800-63B-4 para contraseña como único factor (decisión del autor).
+  contraseñas comunes incluida en el repo (8–25 caracteres, SecLists `Pwdb_top-1000000`, MIT).
+  El inicio de sesión acepta hasta 128 para no revelar la política.
+- **Rationale**: decisión del autor (2026-10-29), que **reemplaza** el rango 15–128 original, el
+  cual seguía NIST 800-63B-4 para contraseña como único factor (mínimo 15, máximo de al menos 64).
+  El nuevo rango es una desviación aceptada: riesgo residual y mitigaciones (lista de comunes,
+  rate limit progresivo, Argon2id) en ADR-0026 y en el modelo de amenazas; se revisa con MFA (F8).
 - **Nota**: `argon2` trae binarios precompilados para linux-arm64 (glibc) y win32-x64; no necesita
   scripts de build.
 
