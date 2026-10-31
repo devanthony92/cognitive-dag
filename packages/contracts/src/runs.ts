@@ -49,6 +49,17 @@ export const RunStatusSchema = z.enum([
 ]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
+/**
+ * Taxonomy of node failures (research R1). The rules that use it live in `@cognitive-dag/dag-schema`;
+ * this is the wire format, and the worker keeps both lists in sync under test.
+ */
+export const ErrorClassSchema = z.enum(['transient', 'rate_limited', 'timeout', 'permanent']);
+export type ErrorClass = z.infer<typeof ErrorClassSchema>;
+
+/** Why a running step is not progressing. */
+export const WaitingReasonSchema = z.enum(['rate_limited']);
+export type WaitingReason = z.infer<typeof WaitingReasonSchema>;
+
 export const FINAL_RUN_STATUSES = ['succeeded', 'failed', 'cancelled', 'timed_out'] as const;
 export type FinalRunStatus = (typeof FINAL_RUN_STATUSES)[number];
 
@@ -59,6 +70,7 @@ export const StepStatusSchema = z.enum([
   'failed',
   'skipped',
   'cancelled',
+  'reused',
 ]);
 export type StepStatus = z.infer<typeof StepStatusSchema>;
 
@@ -82,6 +94,7 @@ export const RUN_ERROR_CODE_MAX = 64;
 
 const ErrorSummarySchema = z.object({
   errorCode: z.string().min(1).max(RUN_ERROR_CODE_MAX).optional(),
+  errorClass: ErrorClassSchema.optional(),
   errorMessage: z.string().min(1).max(RUN_ERROR_MESSAGE_MAX).optional(),
 });
 
@@ -113,7 +126,11 @@ export const RunEventSchema = z.discriminatedUnion('transition', [
     status: z.enum(FINAL_RUN_STATUSES),
     ...ErrorSummarySchema.shape,
   }),
-  EventBaseSchema.extend({ transition: z.literal('step.running') }).extend(NodeRefSchema.shape),
+  EventBaseSchema.extend({
+    transition: z.literal('step.running'),
+    /** Set while the step waits for the rate limit; a later `step.running` without it clears it. */
+    waitingReason: WaitingReasonSchema.optional(),
+  }).extend(NodeRefSchema.shape),
   EventBaseSchema.extend({
     transition: z.enum(['step.succeeded', 'step.failed', 'step.skipped', 'step.cancelled']),
     attempts: z.int().min(0).max(1000).optional(),
@@ -137,6 +154,8 @@ export const RunLiveEventSchema = z.object({
   stepStatus: StepStatusSchema.optional(),
   attempts: z.int().optional(),
   durationMs: z.int().optional(),
+  waitingReason: WaitingReasonSchema.optional(),
+  errorClass: ErrorClassSchema.optional(),
   errorCode: z.string().optional(),
   errorMessage: z.string().optional(),
 });
@@ -151,7 +170,11 @@ export const StartRunRequestSchema = z.strictObject({
 });
 export type StartRunRequest = z.infer<typeof StartRunRequestSchema>;
 
-const ErrorBodySchema = z.object({ code: z.string(), message: z.string() });
+const ErrorBodySchema = z.object({
+  code: z.string(),
+  message: z.string(),
+  class: ErrorClassSchema.optional(),
+});
 
 export const RunSchema = z.object({
   id: z.uuid(),
@@ -160,6 +183,8 @@ export const RunSchema = z.object({
   status: RunStatusSchema,
   triggeredBy: z.object({ id: z.uuid(), name: z.string() }),
   rerunOf: z.uuid().nullable(),
+  /** Node a rerun started from; null for a complete run or a complete rerun. */
+  rerunFromNodeId: z.string().nullable(),
   correlationId: CorrelationIdSchema,
   error: ErrorBodySchema.nullable(),
   createdAt: z.iso.datetime(),
@@ -177,6 +202,7 @@ export const RunStepSchema = z.object({
   finishedAt: z.iso.datetime().nullable(),
   durationMs: z.int().min(0).nullable(),
   error: ErrorBodySchema.nullable(),
+  waitingReason: WaitingReasonSchema.nullable(),
 });
 export type RunStep = z.infer<typeof RunStepSchema>;
 

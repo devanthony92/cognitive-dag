@@ -49,6 +49,10 @@ export const workflowRuns = pgTable(
     errorCode: text('error_code'),
     /** Short summary without input data. */
     errorMessage: text('error_message'),
+    /** Node a rerun started from (F4); only on reruns. */
+    rerunFromNodeId: text('rerun_from_node_id'),
+    /** Taxonomy class of the failure that ended the run (F4). */
+    errorClass: text('error_class'),
     startedAt: timestamp('started_at', { withTimezone: true }),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -70,6 +74,29 @@ export const workflowRuns = pgTable(
     check('workflow_runs_version_number_positive', sql`${table.versionNumber} >= 1`),
     check('workflow_runs_error_code_length', sql`char_length(${table.errorCode}) <= 64`),
     check('workflow_runs_error_message_length', sql`char_length(${table.errorMessage}) <= 500`),
+    index('workflow_runs_organization_created_idx').on(
+      table.organizationId,
+      table.createdAt.desc(),
+    ),
+    index('workflow_runs_organization_failed_idx')
+      .on(table.organizationId, table.createdAt.desc())
+      .where(sql`${table.status} = 'failed'`),
+    check(
+      'workflow_runs_rerun_from_node_id_format',
+      sql`${table.rerunFromNodeId} ~ '^[a-z][a-z0-9_]{0,39}$'`,
+    ),
+    check(
+      'workflow_runs_rerun_from_requires_rerun',
+      sql`${table.rerunFromNodeId} IS NULL OR ${table.rerunOf} IS NOT NULL`,
+    ),
+    check(
+      'workflow_runs_error_class_valid',
+      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent')`,
+    ),
+    check(
+      'workflow_runs_error_class_status',
+      sql`${table.errorClass} IS NULL OR ${table.status} IN ('failed', 'timed_out')`,
+    ),
     check(
       'workflow_runs_finished_consistent',
       sql`(${table.status} IN ('queued', 'running') AND ${table.finishedAt} IS NULL)

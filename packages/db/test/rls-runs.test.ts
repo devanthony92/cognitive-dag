@@ -233,7 +233,7 @@ describe('catalog of the run tables', () => {
       },
       {
         typname: 'step_status',
-        labels: ['pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled'],
+        labels: ['pending', 'running', 'succeeded', 'failed', 'skipped', 'cancelled', 'reused'],
       },
     ]);
   });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseRateLimits, type RateLimits } from '../resilience/rate-limit-config';
 
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -13,7 +14,10 @@ export const EnvSchema = z.object({
   PING_ACTIVITY_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(0),
 });
 
-export type WorkerConfig = z.infer<typeof EnvSchema>;
+export type WorkerConfig = z.infer<typeof EnvSchema> & {
+  /** Token bucket by node type, from `RATE_LIMIT_<NODE_TYPE>`. */
+  rateLimits: RateLimits;
+};
 
 export class InvalidConfigError extends Error {
   constructor(readonly variables: string[]) {
@@ -25,9 +29,13 @@ export class InvalidConfigError extends Error {
 /** Validates the environment and names offending variables only, never their values. */
 export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
   const result = EnvSchema.safeParse(env);
-  if (!result.success) {
-    const variables = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
-    throw new InvalidConfigError(variables.sort());
+  const rateLimits = parseRateLimits(env);
+  if (!result.success || rateLimits.invalid.length > 0) {
+    const variables = new Set(rateLimits.invalid);
+    if (!result.success) {
+      for (const issue of result.error.issues) variables.add(String(issue.path[0]));
+    }
+    throw new InvalidConfigError([...variables].sort());
   }
-  return result.data;
+  return { ...result.data, rateLimits: rateLimits.limits };
 }

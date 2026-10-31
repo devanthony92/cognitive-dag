@@ -1,5 +1,12 @@
 import { z } from 'zod';
-import { NODE_CATALOG, NODE_TYPES, type NodeType } from './catalog/index.js';
+import {
+  NODE_CATALOG,
+  NODE_TYPES,
+  RetrySettingSchema,
+  supportsRetry,
+  type NodeType,
+  type RetrySetting,
+} from './catalog/index.js';
 import { ABSOLUTE_LIMITS } from './limits.js';
 
 export const SCHEMA_VERSION = 1;
@@ -16,15 +23,22 @@ const PositionSchema = z.strictObject({
   y: z.number().finite().min(-1_000_000).max(1_000_000),
 });
 
-const nodeSchemas = NODE_TYPES.map((type) =>
-  z.strictObject({
+function nodeSchema<T extends NodeType>(type: T) {
+  const shape = {
     id: NodeIdSchema,
     type: z.literal(type),
     label: z.string().min(1).max(100),
     position: PositionSchema,
     config: NODE_CATALOG[type].configSchema,
-  }),
-);
+    retry: RetrySettingSchema.optional(),
+  };
+  // Only nodes with an effect accept `retry`: for the others it is an unknown field.
+  if (supportsRetry(type)) return z.strictObject(shape);
+  const { retry: _retry, ...withoutRetry } = shape;
+  return z.strictObject(withoutRetry) as unknown as ReturnType<typeof z.strictObject<typeof shape>>;
+}
+
+const nodeSchemas = NODE_TYPES.map((type) => nodeSchema(type));
 
 export const DagNodeSchema = z.discriminatedUnion(
   'type',
@@ -55,6 +69,8 @@ export interface DagNode {
   position: { x: number; y: number };
   /** Valid for `type` once parsed; see `NODE_CATALOG[type].configSchema`. */
   config: unknown;
+  /** Retry setting of a node with an effect; absent means the defaults of its type. */
+  retry?: RetrySetting;
 }
 
 export interface DagEdge {

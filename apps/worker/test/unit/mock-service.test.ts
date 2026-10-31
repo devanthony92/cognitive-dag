@@ -87,3 +87,76 @@ describe('mock service activity', () => {
     expect(error.message).toBe('The simulated service failed (transient).');
   });
 });
+
+describe('mock service fault injection (F4)', () => {
+  const attemptRun = (attempt: number, config: Partial<MockServiceInput['config']>) => {
+    const env = new MockActivityEnvironment({ attempt });
+    const activities = createMockServiceActivities({ logger });
+    return env.run((value) => activities.mockService(value), input(config));
+  };
+
+  it('fails a limited error as retryable, asking to wait what was configured', async () => {
+    const error = (await attemptRun(1, {
+      failureRate: 1,
+      failureKind: 'rate_limited',
+      retryAfterMs: 3000,
+    }).catch((e: unknown) => e)) as ApplicationFailure;
+    expect(error).toMatchObject({
+      type: 'MOCK_SERVICE_RATE_LIMITED',
+      nonRetryable: false,
+      nextRetryDelay: 3000,
+      details: [{ attempt: 1, errorClass: 'rate_limited' }],
+    });
+  });
+
+  it('labels transient and permanent failures with their class', async () => {
+    const transient = (await attemptRun(1, { failureRate: 1 }).catch(
+      (e: unknown) => e,
+    )) as ApplicationFailure;
+    const permanent = (await attemptRun(1, { failureRate: 1, failureKind: 'permanent' }).catch(
+      (e: unknown) => e,
+    )) as ApplicationFailure;
+    expect(transient.details).toEqual([{ attempt: 1, errorClass: 'transient' }]);
+    expect(permanent.details).toEqual([{ attempt: 1, errorClass: 'permanent' }]);
+  });
+
+  it('fails the first N attempts and then works, without chance', async () => {
+    const config = { failFirstAttempts: 2, failureRate: 0 };
+    await expect(attemptRun(1, config)).rejects.toBeInstanceOf(ApplicationFailure);
+    await expect(attemptRun(2, config)).rejects.toBeInstanceOf(ApplicationFailure);
+    await expect(attemptRun(3, config)).resolves.toMatchObject({ output: { ok: true } });
+  });
+
+  it('lets failFirstAttempts win over failureRate', async () => {
+    const config = { failFirstAttempts: 1, failureRate: 1 };
+    await expect(attemptRun(1, config)).rejects.toBeInstanceOf(ApplicationFailure);
+    await expect(attemptRun(2, config)).resolves.toMatchObject({ output: { ok: true } });
+  });
+
+  it('fails with the configured kind during the first attempts', async () => {
+    const error = (await attemptRun(1, {
+      failFirstAttempts: 1,
+      failureKind: 'permanent',
+    }).catch((e: unknown) => e)) as ApplicationFailure;
+    expect(error).toMatchObject({ type: 'MOCK_SERVICE_PERMANENT', nonRetryable: true });
+  });
+});
+
+describe('mock service heartbeats under a policy', () => {
+  it('re-sends the attempt state in every heartbeat, so a long wait never erases the counters', async () => {
+    const env = new MockActivityEnvironment({ attempt: 1 });
+    const beats: unknown[] = [];
+    env.on('heartbeat', (details: unknown) => beats.push(details));
+    const activities = createMockServiceActivities({ logger });
+    await env.run((value) => activities.mockService(value), {
+      ...input({ latencyMs: 4_500 }),
+      organizationId: randomUUID(),
+      policy: { maxAttempts: 2, timeoutSeconds: 12, initialIntervalMs: 100 },
+    });
+    // The wait heartbeats every 2 s: at least the start of the attempt and two beats of the wait.
+    expect(beats.length).toBeGreaterThanOrEqual(3);
+    for (const details of beats) {
+      expect(details).toMatchObject({ spent: 0, executed: 1, inFlight: true });
+    }
+  });
+});

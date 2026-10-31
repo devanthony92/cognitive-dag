@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DagType } from '../types.js';
+import type { RetryPolicy } from './retry.js';
 
 /** Phase in which a node type becomes executable (FR-002). */
 export type ExecutableFrom = 'F3' | 'F5' | 'F7';
@@ -24,6 +25,8 @@ export interface NodeTypeDefinition<TType extends string = string, TConfig = unk
   fieldLabels: Readonly<Record<string, string>>;
   /** For list fields, how one item reads in a message, with its article: `La etiqueta`. */
   itemLabels?: Readonly<Record<string, string>>;
+  /** Default retry policy; only nodes with an effect have one, and only they accept `retry`. */
+  retryDefaults?: RetryPolicy;
   configSchema: z.ZodType<TConfig>;
   defaultConfig(): TConfig;
   /** Type of the node output computed from its configuration, or null when it has none. */

@@ -48,3 +48,41 @@ describe('worker environment validation', () => {
     );
   });
 });
+
+describe('worker rate limit variables', () => {
+  it('has no limits by default', () => {
+    expect(parseEnv(VALID_ENV).rateLimits).toEqual({});
+  });
+
+  it('reads RATE_LIMIT_<NODE_TYPE> by node type', () => {
+    const config = parseEnv({
+      ...VALID_ENV,
+      RATE_LIMIT_MOCK_SERVICE: 'capacity:10,refillPerSecond:2.5',
+    });
+    expect(config.rateLimits).toEqual({
+      'mock.service': { capacity: 10, refillPerSecond: 2.5 },
+    });
+  });
+
+  it.each([
+    'capacity:0,refillPerSecond:1',
+    'capacity:10',
+    'capacity:10,refillPerSecond:0',
+    'capacity:abc,refillPerSecond:1',
+    'capacity:10000000,refillPerSecond:1',
+  ])('rejects the malformed value «%s», naming only the variable', (value) => {
+    try {
+      parseEnv({ ...VALID_ENV, RATE_LIMIT_MOCK_SERVICE: value });
+      expect.unreachable();
+    } catch (error) {
+      expect((error as InvalidConfigError).variables).toEqual(['RATE_LIMIT_MOCK_SERVICE']);
+      expect((error as Error).message).not.toContain(value);
+    }
+  });
+
+  it('rejects a variable for a node type that does not exist', () => {
+    expect(() =>
+      parseEnv({ ...VALID_ENV, RATE_LIMIT_NOPE: 'capacity:1,refillPerSecond:1' }),
+    ).toThrow(/RATE_LIMIT_NOPE/);
+  });
+});

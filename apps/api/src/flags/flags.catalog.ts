@@ -28,6 +28,11 @@ export const FLAG_CATALOG = {
     owner: 'devanthony92',
     removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/27',
   },
+  'resilience-enabled': {
+    public: true,
+    owner: 'devanthony92',
+    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/32',
+  },
 } as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAG_CATALOG;

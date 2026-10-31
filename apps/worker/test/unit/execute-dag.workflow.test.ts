@@ -13,6 +13,7 @@ import {
 } from '@cognitive-dag/contracts';
 import { condition, definition, edge, merge, mock, node, trigger } from '../helpers/dags';
 import type { MockServiceInput, MockServiceResult } from '../../src/activities/mock-service';
+import { NodeFailure, runWithPolicy } from '../../src/resilience/attempts';
 
 const workflowsPath = path.resolve(__dirname, '../../src/workflows');
 
@@ -28,6 +29,10 @@ interface Harness {
   maxConcurrent: () => number;
   /** Time from the start of the workflow to its result (the worker shutdown is not included). */
   elapsedMs: number;
+  /** When each node's behavior ran, in ms since the start of the test. */
+  callTimes: Record<string, number[]>;
+  /** Events of the workflow history, for what only the history shows (timeouts, policies). */
+  historyEvents: Array<Record<string, unknown>>;
 }
 
 describe('executeDag', () => {
@@ -46,6 +51,8 @@ describe('executeDag', () => {
     options: {
       triggerInput?: Record<string, unknown>;
       behavior?: MockBehavior;
+      /** Stands in for the rate limiter: runs before each attempt and may deny it. */
+      gate?: (input: MockServiceInput) => Promise<void>;
       maxDurationMs?: number;
       during?: (handle: WorkflowHandle<ExecuteDagWorkflow>, harness: Harness) => Promise<void>;
     } = {},
@@ -55,7 +62,16 @@ describe('executeDag', () => {
     const calls: string[] = [];
     let active = 0;
     let peak = 0;
-    const harness: Harness = { events, calls, maxConcurrent: () => peak, elapsedMs: 0 };
+    const callTimes: Record<string, number[]> = {};
+    const t0 = Date.now();
+    const harness: Harness = {
+      events,
+      calls,
+      maxConcurrent: () => peak,
+      elapsedMs: 0,
+      callTimes,
+      historyEvents: [],
+    };
 
     const worker = await Worker.create({
       connection: env.nativeConnection,
@@ -67,17 +83,26 @@ describe('executeDag', () => {
           return Promise.resolve();
         },
         mockService: async (input: MockServiceInput): Promise<MockServiceResult> => {
-          calls.push(input.nodeId);
-          active += 1;
-          peak = Math.max(peak, active);
-          try {
-            const attempt = Context.current().info.attempt;
-            return options.behavior
-              ? await options.behavior(input, attempt)
-              : { output: { ok: true }, attempts: attempt };
-          } finally {
-            active -= 1;
-          }
+          const behave = async (attempt: number): Promise<MockServiceResult> => {
+            calls.push(input.nodeId);
+            (callTimes[input.nodeId] ??= []).push(Date.now() - t0);
+            active += 1;
+            peak = Math.max(peak, active);
+            try {
+              return options.behavior
+                ? await options.behavior(input, attempt)
+                : { output: { ok: true }, attempts: attempt };
+            } finally {
+              active -= 1;
+            }
+          };
+          // The engine runs the node the way the real activity does: counting its own attempts.
+          if (!input.policy) return behave(Context.current().info.attempt);
+          return runWithPolicy({
+            policy: input.policy,
+            gate: () => options.gate?.(input) ?? Promise.resolve(),
+            body: ({ executed }) => behave(executed),
+          });
         },
       },
     });
@@ -109,6 +134,9 @@ describe('executeDag', () => {
         .result()
         .catch((error: unknown) => (error instanceof Error ? error : new Error(String(error))));
       harness.elapsedMs = Date.now() - startedAt;
+      harness.historyEvents = ((await handle.fetchHistory()).events ?? []) as Array<
+        Record<string, unknown>
+      >;
       return { result, harness, input };
     });
   }
@@ -404,6 +432,239 @@ describe('executeDag', () => {
       expect(result).toBeInstanceOf(WorkflowFailedError);
       expect(finished(harness)).toMatchObject({ status: 'cancelled' });
       expect(stepEvents(harness, 'step.cancelled')).toEqual(['slow']);
+    });
+  });
+
+  describe('resilience (F4)', () => {
+    const transient = (attempt: number) =>
+      ApplicationFailure.create({
+        type: 'MOCK_SERVICE_TRANSIENT',
+        message: 'The simulated service failed (transient).',
+        details: [{ attempt }],
+      });
+    const failed = (h: Harness, nodeId: string) =>
+      h.events.find((e) => e.transition === 'step.failed' && e.nodeId === nodeId);
+    const gaps = (times: number[] = []) => times.slice(1).map((t, i) => t - (times[i] as number));
+
+    it('retries a transient failure with a growing wait up to the maximum of attempts', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { maxAttempts: 3, initialIntervalMs: 1000 })],
+        [edge('trigger', 'a')],
+      );
+      const { result, harness } = await execute(dag, {
+        behavior: (_input, attempt) => Promise.reject(transient(attempt)),
+      });
+      expect(result).toBeInstanceOf(WorkflowFailedError);
+      expect(harness.calls).toEqual(['a', 'a', 'a']);
+      // 1 s and 2 s, each varied by at most 20 %; the server schedules retries in whole seconds.
+      const [first, second] = gaps(harness.callTimes['a']) as [number, number];
+      expect(first).toBeGreaterThanOrEqual(800);
+      expect(second).toBeGreaterThan(first + 300);
+      expect(failed(harness, 'a')).toMatchObject({
+        attempts: 3,
+        errorCode: 'MOCK_SERVICE_TRANSIENT',
+        errorClass: 'transient',
+      });
+      expect(finished(harness)).toMatchObject({
+        status: 'failed',
+        errorCode: 'MOCK_SERVICE_TRANSIENT',
+        errorClass: 'transient',
+      });
+    });
+
+    it('does not retry a permanent failure and records its class', async () => {
+      const dag = definition([trigger(), mock('a')], [edge('trigger', 'a')]);
+      const { result, harness } = await execute(dag, {
+        behavior: (_input, attempt) =>
+          Promise.reject(
+            ApplicationFailure.create({
+              type: 'MOCK_SERVICE_PERMANENT',
+              message: 'The simulated service failed (permanent).',
+              nonRetryable: true,
+              details: [{ attempt }],
+            }),
+          ),
+      });
+      expect(result).toBeInstanceOf(WorkflowFailedError);
+      expect(harness.calls).toEqual(['a']);
+      expect(failed(harness, 'a')).toMatchObject({
+        attempts: 1,
+        errorCode: 'MOCK_SERVICE_PERMANENT',
+        errorClass: 'permanent',
+      });
+      expect(finished(harness)).toMatchObject({ status: 'failed', errorClass: 'permanent' });
+    });
+
+    it('classifies an unknown failure as transient', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { maxAttempts: 2, initialIntervalMs: 100 })],
+        [edge('trigger', 'a')],
+      );
+      const { harness } = await execute(dag, {
+        behavior: () => Promise.reject(new Error('socket hang up')),
+      });
+      expect(harness.calls).toEqual(['a', 'a']);
+      expect(failed(harness, 'a')).toMatchObject({ attempts: 2, errorClass: 'transient' });
+    });
+
+    it('waits what a limited failure asks, without spending attempts', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { maxAttempts: 1, initialIntervalMs: 100 })],
+        [edge('trigger', 'a')],
+      );
+      const { result, harness } = await execute(dag, {
+        behavior: (_input, attempt) =>
+          attempt === 1
+            ? Promise.reject(
+                new NodeFailure({
+                  errorClass: 'rate_limited',
+                  code: 'MOCK_SERVICE_RATE_LIMITED',
+                  message: 'The simulated service asked to wait.',
+                  retryAfterMs: 1_000,
+                }),
+              )
+            : Promise.resolve({ output: { ok: true }, attempts: attempt }),
+      });
+      // maxAttempts is 1 and the node still got a second try: the wait is not an attempt.
+      expect((result as ExecuteDagResult).status).toBe('succeeded');
+      const [wait] = gaps(harness.callTimes['a']) as [number];
+      expect(wait).toBeGreaterThanOrEqual(950);
+      expect(wait).toBeLessThan(2_500);
+      expect(
+        harness.events.find((e) => e.transition === 'step.succeeded' && e.nodeId === 'a'),
+      ).toMatchObject({ attempts: 2 });
+    });
+
+    it('waits for the rate limit between attempts without spending them', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { maxAttempts: 1, initialIntervalMs: 100 })],
+        [edge('trigger', 'a')],
+      );
+      let denied = 0;
+      const { result, harness } = await execute(dag, {
+        gate: () => {
+          if (denied++ < 3) {
+            return Promise.reject(
+              new NodeFailure({
+                errorClass: 'rate_limited',
+                code: 'NODE_RATE_LIMITED',
+                message: 'No capacity.',
+                retryAfterMs: 200,
+              }),
+            );
+          }
+          return Promise.resolve();
+        },
+      });
+      expect((result as ExecuteDagResult).status).toBe('succeeded');
+      expect(denied).toBe(4);
+      expect(harness.calls).toEqual(['a']);
+      expect(harness.elapsedMs).toBeGreaterThanOrEqual(600);
+      expect(
+        harness.events.find((e) => e.transition === 'step.succeeded' && e.nodeId === 'a'),
+      ).toMatchObject({ attempts: 1 });
+    });
+
+    it('retries an attempt that exceeds its time as a transient failure', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { timeoutSeconds: 1, maxAttempts: 2, initialIntervalMs: 100 })],
+        [edge('trigger', 'a')],
+      );
+      const { result, harness } = await execute(dag, {
+        behavior: async (_input, attempt) => {
+          if (attempt === 1) await new Promise((resolve) => setTimeout(resolve, 2_500));
+          return { output: { ok: true }, attempts: attempt };
+        },
+      });
+      expect((result as ExecuteDagResult).status).toBe('succeeded');
+      expect(harness.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('fails with the class timeout when every attempt exceeds its time', async () => {
+      const dag = definition(
+        [trigger(), mock('a', {}, { timeoutSeconds: 1, maxAttempts: 2, initialIntervalMs: 100 })],
+        [edge('trigger', 'a')],
+      );
+      const { result, harness } = await execute(dag, {
+        behavior: async (_input, attempt) => {
+          await new Promise((resolve) => setTimeout(resolve, 2_500));
+          return { output: { ok: true }, attempts: attempt };
+        },
+      });
+      expect(result).toBeInstanceOf(WorkflowFailedError);
+      expect(harness.calls).toHaveLength(2);
+      expect(failed(harness, 'a')).toMatchObject({
+        errorCode: 'ACTIVITY_TIMED_OUT',
+        errorClass: 'timeout',
+      });
+      expect(finished(harness)).toMatchObject({ status: 'failed', errorClass: 'timeout' });
+    });
+
+    describe('policy of each node', () => {
+      interface Duration {
+        seconds?: unknown;
+        nanos?: number | null;
+      }
+      interface Scheduled {
+        activityType?: { name?: string };
+        startToCloseTimeout?: Duration;
+        scheduleToCloseTimeout?: Duration;
+        retryPolicy?: {
+          initialInterval?: Duration;
+          backoffCoefficient?: number;
+          maximumAttempts?: number | null;
+        };
+      }
+      const scheduled = (h: Harness): Scheduled[] =>
+        h.historyEvents
+          .map((event) => event['activityTaskScheduledEventAttributes'] as Scheduled | undefined)
+          .filter((attrs): attrs is Scheduled => attrs?.activityType?.name === 'mockService');
+      const seconds = (duration: Duration | undefined) => Number(duration?.seconds);
+
+      it('applies the setting of the node over the defaults of its type', async () => {
+        const dag = definition(
+          [trigger(), mock('a', {}, { maxAttempts: 2, timeoutSeconds: 7, initialIntervalMs: 250 })],
+          [edge('trigger', 'a')],
+        );
+        const { harness } = await execute(dag);
+        const [attrs] = scheduled(harness) as [Scheduled];
+        expect(seconds(attrs.startToCloseTimeout)).toBe(7);
+        // FR-007: attempts × time per attempt + 5 minutes of margin for the waits.
+        expect(seconds(attrs.scheduleToCloseTimeout)).toBe(2 * 7 + 300);
+        expect(attrs.retryPolicy).toMatchObject({ backoffCoefficient: 2 });
+        expect(Number(attrs.retryPolicy?.initialInterval?.nanos)).toBe(250_000_000);
+        // The attempts are counted by the activity, so Temporal never gives up first.
+        expect(Number(attrs.retryPolicy?.maximumAttempts ?? 0)).toBe(0);
+      });
+
+      it('uses the defaults of the node type when the node has no setting', async () => {
+        const dag = definition([trigger(), mock('a')], [edge('trigger', 'a')]);
+        const { harness } = await execute(dag);
+        const [attrs] = scheduled(harness) as [Scheduled];
+        expect(seconds(attrs.startToCloseTimeout)).toBe(30);
+        expect(seconds(attrs.scheduleToCloseTimeout)).toBe(3 * 30 + 300);
+        expect(seconds(attrs.retryPolicy?.initialInterval)).toBe(1);
+      });
+
+      it('passes the effective policy and the organization to the activity', async () => {
+        const dag = definition(
+          [trigger(), mock('a', {}, { maxAttempts: 6 })],
+          [edge('trigger', 'a')],
+        );
+        let seen: MockServiceInput | undefined;
+        await execute(dag, {
+          behavior: (input, attempt) => {
+            seen = input;
+            return Promise.resolve({ output: { ok: true }, attempts: attempt });
+          },
+        });
+        expect(seen?.policy).toEqual({
+          maxAttempts: 6,
+          timeoutSeconds: 30,
+          initialIntervalMs: 1000,
+        });
+        expect(seen?.organizationId).toMatch(/^[0-9a-f-]{36}$/);
+      });
     });
   });
 

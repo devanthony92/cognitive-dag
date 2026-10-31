@@ -72,6 +72,8 @@ async function run(): Promise<void> {
       runs: {
         withContext: database.withContext,
         publish: (channel, message) => valkey.publish(channel, message),
+        valkey,
+        rateLimits: config.rateLimits,
       },
     });
     logger.info({ taskQueue: config.TEMPORAL_TASK_QUEUE }, 'Worker started');

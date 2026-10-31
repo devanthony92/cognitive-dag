@@ -30,6 +30,10 @@ export const workflowRunSteps = pgTable(
     durationMs: integer('duration_ms'),
     errorCode: text('error_code'),
     errorMessage: text('error_message'),
+    /** Taxonomy class of the failure (F4); only on `failed` steps. */
+    errorClass: text('error_class'),
+    /** Why a running step is not progressing; only on `running` steps. */
+    waitingReason: text('waiting_reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -43,6 +47,22 @@ export const workflowRunSteps = pgTable(
     check(
       'workflow_run_steps_error_message_length',
       sql`char_length(${table.errorMessage}) <= 500`,
+    ),
+    check(
+      'workflow_run_steps_error_class_valid',
+      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent')`,
+    ),
+    check(
+      'workflow_run_steps_error_class_failed',
+      sql`${table.errorClass} IS NULL OR ${table.status} = 'failed'`,
+    ),
+    check(
+      'workflow_run_steps_waiting_reason_valid',
+      sql`${table.waitingReason} IN ('rate_limited')`,
+    ),
+    check(
+      'workflow_run_steps_waiting_reason_running',
+      sql`${table.waitingReason} IS NULL OR ${table.status} = 'running'`,
     ),
   ],
 );
