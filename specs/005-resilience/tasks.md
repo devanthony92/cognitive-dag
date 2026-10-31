@@ -20,23 +20,23 @@ reejecutar desde un nodo y el listado de la organización).
 
 ## Phase 1: Setup
 
-- [ ] T001 Flag `resilience-enabled` en el catálogo y `.env.example`
-- [ ] T002 [P] Variables del worker `RATE_LIMIT_<NODE_TYPE>` (`capacity:N,refillPerSecond:M`), validadas al arrancar; ejemplo comentado en `.env.example`
+- [X] T001 Flag `resilience-enabled` en el catálogo y `.env.example`
+- [X] T002 [P] Variables del worker `RATE_LIMIT_<NODE_TYPE>` (`capacity:N,refillPerSecond:M`), validadas al arrancar; ejemplo comentado en `.env.example`
 
 ## Phase 2: Foundational
 
 ### Tests
 
-- [ ] T003 [P] `packages/dag-schema/test/runtime/errors.test.ts`: clases, códigos y `classify` para cada fallo (transitorio, limitado con espera, tiempo, permanente, desconocido → transitorio)
-- [ ] T004 [P] `packages/dag-schema/test/catalog/retry-policy.test.ts`: `retry` aceptado solo en nodos con efecto, límites 1–10 / 1–120 s / 100–30000 ms con mensajes en español, valores por defecto por tipo, `mock.service` ampliado (`rate_limited` + `retryAfterMs`, `failFirstAttempts`)
-- [ ] T005 [P] `packages/dag-schema/test/runtime/rerun.test.ts`: nodos reutilizables (efecto, `succeeded`, no descendientes del elegido ni el elegido), desde un disparador, desde un nodo omitido, nodo inexistente
-- [ ] T006 [P] `packages/db/test/rls-effects.test.ts` como `app_runtime`: aislamiento de `node_effects`, sin `DELETE`, misma organización, clave = `run_id:node_id`, `committed` inmutable, `committed_at` coherente; `reused`, `error_class`, `waiting_reason` y `rerun_from_node_id` con sus `CHECK`
+- [X] T003 [P] `packages/dag-schema/test/runtime/errors.test.ts`: clases, códigos y `classify` para cada fallo (transitorio, limitado con espera, tiempo, permanente, desconocido → transitorio)
+- [X] T004 [P] `packages/dag-schema/test/catalog/retry-policy.test.ts`: `retry` aceptado solo en nodos con efecto, límites 1–10 / 1–120 s / 100–30000 ms con mensajes en español, valores por defecto por tipo, `mock.service` ampliado (`rate_limited` + `retryAfterMs`, `failFirstAttempts`)
+- [X] T005 [P] `packages/dag-schema/test/runtime/rerun.test.ts`: nodos reutilizables (efecto, `succeeded`, no descendientes del elegido ni el elegido), desde un disparador, desde un nodo omitido, nodo inexistente
+- [X] T006 [P] `packages/db/test/rls-effects.test.ts` como `app_runtime`: aislamiento de `node_effects`, sin `DELETE`, misma organización, clave = `run_id:node_id`, `committed` inmutable, `committed_at` coherente; `reused`, `error_class`, `waiting_reason` y `rerun_from_node_id` con sus `CHECK`
 
 ### Implementation
 
-- [ ] T007 `packages/dag-schema/src/runtime/errors.ts` y `rerun.ts` (puros); `retry` y valores por defecto en el catálogo; `mock.service` ampliado; validación en `validate.ts`
-- [ ] T008 Esquema Drizzle y migraciones (tabla, enum, columnas, índices, RLS, privilegios, triggers) exactamente como `data-model.md`
-- [ ] T009 Contratos Zod en `packages/contracts`: `StepStatus` con `reused`, `ErrorClass`, error con `class`, `waitingReason`, `rerunFromNodeId`, códigos nuevos
+- [X] T007 `packages/dag-schema/src/runtime/errors.ts` y `rerun.ts` (puros); `retry` y valores por defecto en el catálogo; `mock.service` ampliado; validación en `validate.ts`
+- [X] T008 Esquema Drizzle y migraciones (tabla, enum, columnas, índices, RLS, privilegios, triggers) exactamente como `data-model.md`
+- [X] T009 Contratos Zod en `packages/contracts`: `StepStatus` con `reused`, `ErrorClass`, error con `class`, `waitingReason`, `rerunFromNodeId`, códigos nuevos
 
 ---
 
@@ -44,17 +44,17 @@ reejecutar desde un nodo y el listado de la organización).
 
 ### Tests
 
-- [ ] T010 [P] [US1] `apps/worker/test/unit/execute-dag.workflow.test.ts` (tiempo simulado): transitorio con backoff hasta el máximo; permanente sin reintentos; limitado respeta `nextRetryDelay`; tiempo reintentado; paso fallido con clase y código
-- [ ] T011 [P] [US2] Workflow: política efectiva por nodo (`retry` o por defecto) y `scheduleToCloseTimeout` total
-- [ ] T012 [P] [US3] `apps/worker/test/integration/rate-limiter.test.ts` (Valkey real): token bucket atómico, reposición, aislamiento por organización y tipo, Valkey caído → transitorio; las esperas no gastan `maxAttempts`; `waiting_reason` puesto y limpiado
-- [ ] T013 [P] [US4] `apps/worker/test/integration/effects.test.ts`: misma clave en reintentos; efecto `committed` no se repite; `started` se reintenta; destino simulado deduplica por clave
+- [X] T010 [P] [US1] `apps/worker/test/unit/execute-dag.workflow.test.ts` (tiempo simulado): transitorio con backoff hasta el máximo; permanente sin reintentos; limitado respeta `nextRetryDelay`; tiempo reintentado; paso fallido con clase y código
+- [X] T011 [P] [US2] Workflow: política efectiva por nodo (`retry` o por defecto) y `scheduleToCloseTimeout` total
+- [X] T012 [P] [US3] `apps/worker/test/integration/rate-limiter.test.ts` (Valkey real): token bucket atómico, reposición, aislamiento por organización y tipo, Valkey caído → transitorio; las esperas no gastan `maxAttempts`; `waiting_reason` puesto y limpiado
+- [X] T013 [P] [US4] `apps/worker/test/integration/effects.test.ts`: misma clave en reintentos; efecto `committed` no se repite; `started` se reintenta; destino simulado deduplica por clave
 
 ### Implementation
 
-- [ ] T014 [US1] Traducción de errores de `mock.service` a la taxonomía; registro de `error_class` en paso y ejecución (`record-run-event`)
-- [ ] T015 [US2] Políticas por nodo en `execute-dag.workflow.ts` (un `proxyActivities` por política efectiva, con `patched()` para no romper historiales de F3)
-- [ ] T016 [US3] `apps/worker/src/resilience/rate-limiter.ts` (script Lua) y su uso en la activity con contador propio de intentos en heartbeat details
-- [ ] T017 [US4] `apps/worker/src/resilience/effects.ts` (protocolo de R4) y registro del destino simulado en Valkey
+- [X] T014 [US1] Traducción de errores de `mock.service` a la taxonomía; registro de `error_class` en paso y ejecución (`record-run-event`)
+- [X] T015 [US2] Políticas por nodo en `execute-dag.workflow.ts` (un `proxyActivities` por política efectiva, con `patched()` para no romper historiales de F3)
+- [X] T016 [US3] `apps/worker/src/resilience/rate-limiter.ts` (script Lua) y su uso en la activity con contador propio de intentos en heartbeat details
+- [X] T017 [US4] `apps/worker/src/resilience/effects.ts` (protocolo de R4) y registro del destino simulado en Valkey
 
 ---
 
