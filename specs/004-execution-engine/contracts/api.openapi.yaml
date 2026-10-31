@@ -1,0 +1,200 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F3 execution engine
+  version: 0.4.0
+  description: >
+    Extiende los contratos de F0–F2. Todos los endpoints exigen sesión y membresía en la organización
+    de la ruta (cualquier rol, decisión del autor) y X-CSRF-Token en las peticiones que cambian estado.
+    Con el flag execution-enabled apagado responden 404 FEATURE_NOT_AVAILABLE.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/runs:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    post:
+      operationId: startRun
+      description: Ejecuta la versión activa con la entrada del disparador manual.
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [input]
+              properties:
+                input: { type: object, description: Campos declarados por trigger.manual }
+      responses:
+        '202':
+          description: Ejecución creada
+          headers: { Location: { schema: { type: string } } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Run' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: listRuns
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Ejecuciones, la más reciente primero
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Run' } }
+                  nextCursor: { type: [string, 'null'] }
+  /api/v1/organizations/{organizationId}/runs/{runId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+    get:
+      operationId: getRun
+      responses:
+        '200':
+          description: Ejecución con sus pasos y la definición de su versión
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Run'
+                  - type: object
+                    required: [steps, definition]
+                    properties:
+                      steps: { type: array, items: { $ref: '#/components/schemas/Step' } }
+                      definition: { type: object, description: DagDefinition de la versión ejecutada }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/steps/{nodeId}/io:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+      - { name: nodeId, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getStepIo
+      description: Entrada y salida del nodo leídas del historial de Temporal (decisión 5C).
+      responses:
+        '200':
+          description: Contenido disponible
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  input: {}
+                  output: {}
+                  truncated: { type: boolean }
+        '404': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/events:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+    get:
+      operationId: streamRunEvents
+      description: Server-Sent Events. Primero un evento snapshot y luego un evento por cambio de estado; admite Last-Event-ID; latido cada 15 s; termina tras el estado terminal.
+      responses:
+        '200':
+          description: text/event-stream con eventos RunEvent
+          content:
+            text/event-stream:
+              schema: { $ref: '#/components/schemas/RunEvent' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+    post:
+      operationId: cancelRun
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '202': { description: Cancelación solicitada }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/rerun:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+    post:
+      operationId: rerunRun
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      responses:
+        '202':
+          description: Nueva ejecución con la misma entrada sobre la versión activa actual
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Run' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: __Host-session }
+  parameters:
+    OrganizationId: { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
+    WorkflowId: { name: workflowId, in: path, required: true, schema: { type: string, format: uuid } }
+    RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    CsrfHeader: { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
+  schemas:
+    RunStatus: { type: string, enum: [queued, running, succeeded, failed, cancelled, timed_out] }
+    StepStatus: { type: string, enum: [pending, running, succeeded, failed, skipped, cancelled] }
+    Run:
+      type: object
+      required: [id, workflowId, versionNumber, status, triggeredBy, correlationId, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        workflowId: { type: string, format: uuid }
+        versionNumber: { type: integer }
+        status: { $ref: '#/components/schemas/RunStatus' }
+        triggeredBy: { type: object, properties: { id: { type: string }, name: { type: string } } }
+        rerunOf: { type: [string, 'null'], format: uuid }
+        correlationId: { type: string, format: uuid }
+        error: { type: [object, 'null'], properties: { code: { type: string }, message: { type: string } } }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    Step:
+      type: object
+      required: [nodeId, nodeType, status, attempts]
+      properties:
+        nodeId: { type: string }
+        nodeType: { type: string }
+        status: { $ref: '#/components/schemas/StepStatus' }
+        attempts: { type: integer }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        durationMs: { type: [integer, 'null'] }
+        error: { type: [object, 'null'], properties: { code: { type: string }, message: { type: string } } }
+    RunEvent:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string, enum: [snapshot, run, step] }
+        run: { $ref: '#/components/schemas/Run' }
+        step: { $ref: '#/components/schemas/Step' }
+    Problem:
+      type: object
+      description: >
+        RFC 9457 como en F1/F2. Códigos nuevos: WORKFLOW_NOT_RUNNABLE (409, con reason: no_active_version,
+        archived, unsupported_nodes y la lista de nodos), RUN_INPUT_INVALID (422, con errors[]),
+        RUN_LIMIT_REACHED (429, con retryAfterSeconds), RUN_NOT_CANCELLABLE (409), RUN_INPUT_EXPIRED (410),
+        STEP_IO_EXPIRED (410).
+  responses:
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
