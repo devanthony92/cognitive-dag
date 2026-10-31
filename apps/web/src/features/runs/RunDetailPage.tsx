@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
 import { RunGraph } from './RunGraph';
@@ -41,6 +42,12 @@ export function RunDetailPage({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const run = useQuery(runQuery(organizationId, runId));
+  // The run carries no workflow name: reuse the workflow query (the header degrades without it).
+  const workflowId = run.data?.workflowId;
+  const workflow = useQuery({
+    ...workflowQuery(organizationId, workflowId ?? ''),
+    enabled: workflowId !== undefined,
+  });
   const final = run.data ? isFinalRun(run.data.status) : false;
   const active = run.isSuccess && !final;
   const mode = useRunLive(organizationId, runId, active);
@@ -108,7 +115,21 @@ export function RunDetailPage({
         >
           Ejecuciones
         </Link>
-        <h1 className="text-lg font-semibold tracking-tight">Ejecución</h1>
+        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
+          {workflow.data ? (
+            <>
+              <Link
+                to="/orgs/$organizationId/workflows/$workflowId"
+                params={{ organizationId, workflowId: data.workflowId }}
+                className="underline"
+              >
+                {workflow.data.name}
+              </Link>
+              <span className="font-normal text-muted-foreground"> · </span>
+            </>
+          ) : null}
+          Ejecución
+        </h1>
         <StatusBadge status={data.status} />
         <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <div className="flex gap-1">

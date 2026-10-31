@@ -95,6 +95,11 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
   const typeLabel = (NODE_CATALOG as Record<string, { label: string } | undefined>)[step.nodeType]
     ?.label;
 
+  // Only activities have attempts: logic nodes run inside the engine, and skipped or pending
+  // nodes never started.
+  const showAttempts =
+    !step.nodeType.startsWith('logic.') && step.status !== 'skipped' && step.status !== 'pending';
+
   return (
     <div className="grid gap-4">
       <div className="min-w-0">
@@ -110,8 +115,12 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
         <dd>
           <StatusBadge status={step.status} kind="step" />
         </dd>
-        <dt className="text-muted-foreground">Intentos</dt>
-        <dd>{step.attempts}</dd>
+        {showAttempts && (
+          <>
+            <dt className="text-muted-foreground">Intentos</dt>
+            <dd>{step.attempts}</dd>
+          </>
+        )}
         <dt className="text-muted-foreground">Duración</dt>
         <dd>{duration === null ? '—' : formatDuration(duration)}</dd>
         <dt className="text-muted-foreground">Inicio</dt>
