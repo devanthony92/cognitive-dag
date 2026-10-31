@@ -4,6 +4,8 @@ import { InvalidConfigError, parseEnv } from '../../src/config/env.schema';
 const VALID_ENV = {
   TEMPORAL_ADDRESS: '127.0.0.1:7233',
   TEMPORAL_TASK_QUEUE: 'cognitive-dag',
+  DATABASE_URL: 'postgres://app_runtime:secret-pw@127.0.0.1:5433/cognitive_dag',
+  VALKEY_URL: 'redis://127.0.0.1:6379',
 };
 
 describe('worker environment validation', () => {
@@ -15,13 +17,29 @@ describe('worker environment validation', () => {
 
   it('names a missing variable without revealing values', () => {
     try {
-      parseEnv({ TEMPORAL_TASK_QUEUE: 'cognitive-dag' });
+      parseEnv({ ...VALID_ENV, TEMPORAL_ADDRESS: undefined });
       expect.unreachable();
     } catch (error) {
       expect(error).toBeInstanceOf(InvalidConfigError);
       expect((error as InvalidConfigError).variables).toEqual(['TEMPORAL_ADDRESS']);
       expect((error as Error).message).not.toContain('cognitive-dag');
     }
+  });
+
+  it.each(['DATABASE_URL', 'VALKEY_URL'])('fails closed without %s', (name) => {
+    const { [name]: _removed, ...rest } = VALID_ENV as Record<string, string>;
+    try {
+      parseEnv(rest);
+      expect.unreachable();
+    } catch (error) {
+      expect((error as InvalidConfigError).variables).toEqual([name]);
+      expect((error as Error).message).not.toContain('secret-pw');
+    }
+  });
+
+  it('rejects connection strings with the wrong scheme', () => {
+    expect(() => parseEnv({ ...VALID_ENV, DATABASE_URL: 'mysql://x' })).toThrow(/DATABASE_URL/);
+    expect(() => parseEnv({ ...VALID_ENV, VALKEY_URL: 'http://x' })).toThrow(/VALKEY_URL/);
   });
 
   it('rejects an out-of-range health port', () => {
