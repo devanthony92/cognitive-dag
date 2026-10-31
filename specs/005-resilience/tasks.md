@@ -60,21 +60,21 @@ reejecutar desde un nodo y el listado de la organización).
 
 ## Phase 4: User Story 5 - Reejecutar desde un nodo (P2)
 
-- [ ] T018 [P] [US5] `apps/api/test/integration/runs-rerun-from-node.test.ts`: misma versión de la original, reutilizables `reused` sin intentos, lógica recalculada, `rerun_from_node_id`, 422 `RERUN_NODE_INVALID`, 409 `RUN_NOT_FINISHED`, 410 `RUN_INPUT_EXPIRED`, otra organización 404, flag apagado 404
-- [ ] T019 [P] [US5] Workflow: `memoized` registra `reused` sin activity y entrega las salidas a los descendientes
-- [ ] T020 [US5] API: `fromNodeId` en `rerunRun` (lectura de salidas del historial de Temporal), `memoized` en la entrada de `executeDag`, evento de seguridad `run.rerun` con el nodo
-- [ ] T021 [US5] Web: acción "Reejecutar desde aquí" en el panel del nodo de una ejecución terminada; estado "Reutilizado" en grafo y panel; enlace a la original con el nodo
+- [X] T018 [P] [US5] `apps/api/test/integration/runs-rerun-from-node.test.ts`: misma versión de la original, reutilizables `reused` sin intentos, lógica recalculada, `rerun_from_node_id`, 422 `RERUN_NODE_INVALID`, 409 `RUN_NOT_FINISHED`, 410 `RUN_INPUT_EXPIRED`, otra organización 404, flag apagado 404
+- [X] T019 [P] [US5] Workflow: `memoized` registra `reused` sin activity y entrega las salidas a los descendientes
+- [X] T020 [US5] API: `fromNodeId` en `rerunRun` (lectura de salidas del historial de Temporal), `memoized` en la entrada de `executeDag`, evento de seguridad `run.rerun` con el nodo
+- [X] T021 [US5] Web: acción "Reejecutar desde aquí" en el panel del nodo de una ejecución terminada; estado "Reutilizado" en grafo y panel; enlace a la original con el nodo
 
 ## Phase 5: User Story 6 - Ejecuciones de la organización (P2)
 
-- [ ] T022 [P] [US6] Integración: `GET /organizations/{org}/runs` paginado, filtros `status` y `workflowId`, `workflowName` y `failedNodeId`, filtros inválidos 422, otra organización vacía, flag apagado 404
-- [ ] T023 [US6] Endpoint del listado de la organización
-- [ ] T024 [US6] Web: página "Ejecuciones" de la organización en la navegación, filtros por estado y workflow, clase del error en fallidas, acciones Reejecutar y Reejecutar desde el nodo fallido
+- [X] T022 [P] [US6] Integración: `GET /organizations/{org}/runs` paginado, filtros `status` y `workflowId`, `workflowName` y `failedNodeId`, filtros inválidos 422, otra organización vacía, flag apagado 404
+- [X] T023 [US6] Endpoint del listado de la organización
+- [X] T024 [US6] Web: página "Ejecuciones" de la organización en la navegación, filtros por estado y workflow, clase del error en fallidas, acciones Reejecutar y Reejecutar desde el nodo fallido
 
 ## Phase 6: User Story 2 - Editor (P1, web)
 
-- [ ] T025 [US2] Web: sección "Reintentos" en el panel de nodos con efecto (valores por defecto como marcador, errores por campo); oculta en lógica y disparadores; detrás del flag
-- [ ] T026 [US1] Web: clase del error en el panel del paso y "Esperando por el límite" cuando `waitingReason = rate_limited`
+- [X] T025 [US2] Web: sección "Reintentos" en el panel de nodos con efecto (valores por defecto como marcador, errores por campo); oculta en lógica y disparadores; detrás del flag
+- [X] T026 [US1] Web: clase del error en el panel del paso y "Esperando por el límite" cuando `waitingReason = rate_limited`
 
 ## Phase 7: User Story 7 - Verificación (P2)
 
