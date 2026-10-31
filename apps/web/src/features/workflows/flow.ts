@@ -5,6 +5,7 @@ import {
   type DagNode,
   type NodeType,
 } from '@cognitive-dag/dag-schema';
+import type { StepStatus } from '@cognitive-dag/contracts';
 import type { GroupedErrors } from './model';
 
 export interface DagNodeData extends Record<string, unknown> {
@@ -12,6 +13,8 @@ export interface DagNodeData extends Record<string, unknown> {
   label: string;
   errorCount: number;
   errorTitle: string;
+  /** State of the node in a run; only the run view sets it. */
+  status?: StepStatus;
 }
 
 export type FlowNode = Node<DagNodeData, 'dag'>;

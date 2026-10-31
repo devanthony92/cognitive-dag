@@ -3,7 +3,16 @@ import { TriangleAlert } from 'lucide-react';
 import { memo } from 'react';
 import { NODE_CATALOG } from '@cognitive-dag/dag-schema';
 import { cn } from '../../lib/utils';
+import { StatusBadge } from '../runs/StatusBadge';
 import { HANDLE_LABELS, type FlowNode } from './flow';
+
+const STATUS_BORDER: Record<string, string> = {
+  running: 'border-sky-400 shadow-sky-200 shadow-md',
+  succeeded: 'border-emerald-400',
+  failed: 'border-destructive',
+  cancelled: 'border-amber-400',
+  skipped: 'border-dashed opacity-60',
+};
 
 const CATEGORY_ACCENT: Record<string, string> = {
   trigger: 'border-l-emerald-500',
@@ -26,6 +35,7 @@ function DagNodeViewBase({ data, selected }: NodeProps<FlowNode>) {
         CATEGORY_ACCENT[entry.category],
         selected && 'ring-2 ring-ring',
         data.errorCount > 0 && 'border-destructive',
+        data.status && STATUS_BORDER[data.status],
       )}
       style={branching ? { minHeight: 28 + outputs.length * 22 } : undefined}
     >
@@ -47,6 +57,7 @@ function DagNodeViewBase({ data, selected }: NodeProps<FlowNode>) {
           </span>
         )}
       </div>
+      {data.status && <StatusBadge status={data.status} kind="step" className="mt-1.5" />}
       {outputs.map((handle, index) => (
         <Handle
           key={handle}

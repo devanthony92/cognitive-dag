@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import { featuresQuery, isDagEditorEnabled } from '../flags';
+import { featuresQuery, isDagEditorEnabled, isExecutionEnabled } from '../flags';
 import { limitsQuery } from '../workflows/api';
 
 const formatBytes = (bytes: number): string => {
@@ -25,13 +25,16 @@ export function OrganizationLimits({ organizationId }: { organizationId: string 
   const limits = useQuery({ ...limitsQuery(organizationId), enabled });
 
   if (!enabled || !limits.data) return null;
-  const { maxNodes, maxEdges, maxDefinitionBytes, source } = limits.data;
+  const { maxNodes, maxEdges, maxDefinitionBytes, maxConcurrentRuns, source } = limits.data;
 
   const rows: Array<[string, string]> = [
     ['Nodos por workflow', String(maxNodes)],
     ['Conexiones por workflow', String(maxEdges)],
     ['Tamaño de la definición', formatBytes(maxDefinitionBytes)],
   ];
+  if (isExecutionEnabled(features.data)) {
+    rows.push(['Ejecuciones simult�neas', String(maxConcurrentRuns)]);
+  }
 
   return (
     <Card>
@@ -45,7 +48,7 @@ export function OrganizationLimits({ organizationId }: { organizationId: string 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid gap-2 text-sm sm:grid-cols-3">
+        <dl className="grid gap-2 text-sm sm:grid-cols-2">
           {rows.map(([name, value]) => (
             <div key={name} className="rounded-md border p-3">
               <dt className="text-muted-foreground">{name}</dt>
