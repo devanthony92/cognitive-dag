@@ -123,6 +123,20 @@ describe('organization runs (US6)', () => {
     );
   });
 
+  it('names the status filters in the plural, all the same way', async () => {
+    open([orgRun()]);
+    const select = await screen.findByLabelText<HTMLSelectElement>('Estado');
+    expect([...select.options].map((option) => option.text)).toEqual([
+      'Todos',
+      'En cola',
+      'En curso',
+      'Completadas',
+      'Fallidas',
+      'Canceladas',
+      'Vencidas',
+    ]);
+  });
+
   it('opens with the filters of the address', async () => {
     const { fetchMock } = open([], undefined, `${LIST}?status=failed`);
     expect(await screen.findByText('Ninguna ejecución coincide con los filtros.')).toBeDefined();
@@ -280,6 +294,38 @@ describe('run detail with resilience (US5)', () => {
     expect(screen.queryByText(/Clase de error/)).toBeNull();
   });
 
+  it('writes the error in Spanish, keeping the code, and falls back by class', async () => {
+    const english = (code: string, errorClass: 'permanent' | 'transient') =>
+      step('servicio_a', {
+        status: 'failed',
+        attempts: 1,
+        error: { code, message: 'The simulated service failed (permanent).', class: errorClass },
+      });
+    const { user } = open(() =>
+      detail(
+        {
+          status: 'failed',
+          finishedAt: FINISHED,
+          error: {
+            code: 'MOCK_SERVICE_PERMANENT',
+            message: 'The simulated service failed (permanent).',
+            class: 'permanent',
+          },
+        },
+        [
+          step('inicio', { status: 'succeeded' }),
+          step('alto', { status: 'succeeded' }),
+          english('MOCK_SERVICE_PERMANENT', 'permanent'),
+        ],
+      ),
+    );
+    await selectNode(user, 'Servicio A');
+    const panel = await screen.findByLabelText('Detalle del nodo');
+    expect(within(panel).getByText(/rechazó la solicitud/)).toBeDefined();
+    expect(within(panel).getByText('MOCK_SERVICE_PERMANENT')).toBeDefined();
+    expect(screen.queryByText(/The simulated service/)).toBeNull();
+  });
+
   it('shows the class of the error in the panel of the step', async () => {
     const { user } = open(() =>
       detail({ status: 'failed', finishedAt: FINISHED }, finishedSteps()),
@@ -313,6 +359,7 @@ describe('run detail with resilience (US5)', () => {
     await selectNode(user, 'Servicio A');
     const panel = await screen.findByLabelText('Detalle del nodo');
     expect(within(panel).getByText(/no se ejecutó de nuevo/)).toBeDefined();
+    expect(within(panel).queryByText('Intentos')).toBeNull();
     await user.click(
       within(panel).getByRole('link', { name: 'Ver este nodo en la ejecución original' }),
     );

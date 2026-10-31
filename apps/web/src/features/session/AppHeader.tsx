@@ -33,7 +33,7 @@ export function AppHeader() {
 
   return (
     <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 whitespace-nowrap">
         <Link to="/" className="font-semibold tracking-tight">
           CognitiveDAG
         </Link>
@@ -78,10 +78,12 @@ export function AppHeader() {
             Miembros
           </Link>
         )}
-        <div className="ml-auto flex items-center gap-3 text-sm">
+        <div className="ml-auto flex min-w-0 items-center gap-3 text-sm whitespace-nowrap">
           {identity && info && (
             <>
-              <span className="text-muted-foreground">{info.user.name}</span>
+              <span className="min-w-0 truncate text-muted-foreground" title={info.user.name}>
+                {info.user.name}
+              </span>
               <Link to="/account/password" className="underline">
                 Contraseña
               </Link>
