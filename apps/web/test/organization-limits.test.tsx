@@ -9,10 +9,15 @@ const ORG_ID = '0192f0a0-0000-7000-8000-0000000000aa';
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-function stub(limits: unknown, editorEnabled = true) {
+function stub(limits: unknown, editorEnabled = true, executionEnabled = false) {
   const fetchMock = vi.fn((url: string) => {
     if (url.endsWith('/features')) {
-      return Promise.resolve(json({ [FEATURE_FLAGS.dagEditorEnabled]: editorEnabled }));
+      return Promise.resolve(
+        json({
+          [FEATURE_FLAGS.dagEditorEnabled]: editorEnabled,
+          [FEATURE_FLAGS.executionEnabled]: executionEnabled,
+        }),
+      );
     }
     if (url.endsWith('/limits')) return Promise.resolve(json(limits));
     return Promise.resolve(json({}, 404));
@@ -95,5 +100,27 @@ describe('OrganizationLimits (US7)', () => {
 
     expect(screen.queryByText('LÃ­mites de los workflows')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/limits'))).toBe(false);
+  });
+
+  it('shows the concurrent run limit only with execution-enabled on', async () => {
+    const limits = {
+      maxNodes: 50,
+      maxEdges: 100,
+      maxDefinitionBytes: 262144,
+      maxConcurrentRuns: 3,
+      source: 'organization',
+    };
+    stub(limits, true, true);
+    renderLimits();
+    expect(
+      (await screen.findByText('Ejecuciones simultáneas')).parentElement?.textContent,
+    ).toContain('3');
+    expect(screen.queryAllByRole('button')).toHaveLength(0);
+    cleanup();
+
+    stub(limits, true, false);
+    renderLimits();
+    await screen.findByText('Nodos por workflow');
+    expect(screen.queryByText('Ejecuciones simultáneas')).toBeNull();
   });
 });
