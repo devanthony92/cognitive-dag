@@ -84,6 +84,13 @@ export function triggerInputOf(
   return isRecord(input) && isRecord(input['triggerInput']) ? input['triggerInput'] : undefined;
 }
 
+/** Outputs a rerun from a node was started with: the first argument of the interpreter. */
+export function memoizedOf(events: readonly HistoryEvent[]): Record<string, unknown> {
+  const started = events.find((event) => event.workflowExecutionStartedEventAttributes);
+  const input = firstPayload(started?.workflowExecutionStartedEventAttributes?.input);
+  return isRecord(input) && isRecord(input['memoized']) ? input['memoized'] : {};
+}
+
 /**
  * Input and output of one node, from the history. `trigger.manual` receives and hands on the run
  * input; `mock.service` is an activity, so its content is in its scheduled and completed events.

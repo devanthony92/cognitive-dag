@@ -3,6 +3,7 @@ import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { LimitsService } from '../workflows/limits.service';
 import { ExecutionEnabledGuard } from './execution-enabled.guard';
+import { ResilienceEnabledGuard } from './resilience-enabled.guard';
 import { RunEventsService } from './run-events.service';
 import { RunTemporalService } from './run-history.service';
 import { RunsController } from './runs.controller';
@@ -15,6 +16,7 @@ import { RunsService } from './runs.service';
     ExecutionEnabledGuard,
     IdentityEnabledGuard,
     LimitsService,
+    ResilienceEnabledGuard,
     RunEventsService,
     RunTemporalService,
     RunsService,
