@@ -18,32 +18,32 @@ prueba se escribe primero y DEBE fallar antes de implementar.
 
 ## Phase 1: Setup
 
-- [ ] T001 Flag `execution-enabled` en el catálogo y `.env.example`
-- [ ] T002 [P] Variables del worker para Postgres (`DATABASE_URL` como `app_runtime`) y Valkey, validadas al arrancar
+- [X] T001 Flag `execution-enabled` en el catálogo y `.env.example`
+- [X] T002 [P] Variables del worker para Postgres (`DATABASE_URL` como `app_runtime`) y Valkey, validadas al arrancar
 
 ## Phase 2: Foundational
 
 ### Tests
 
-- [ ] T003 [P] `packages/dag-schema/test/runtime/conditions.test.ts`: evaluación de cada operación del AST con tipos; sin evaluación de código
-- [ ] T004 [P] `packages/dag-schema/test/runtime/references.test.ts`: resolución de rutas y plantillas contra salidas de nodos
-- [ ] T005 [P] `packages/dag-schema/test/runtime/plan.test.ts`: nodos listos, ramas omitidas, merge `all`/`any`, nodos de fases futuras detectados (`unsupported_nodes`)
-- [ ] T006 [P] `packages/db/test/rls-runs.test.ts` como `app_runtime`: aislamiento de ambas tablas, sin `DELETE`, triggers de misma organización, ejecución terminal inmutable, FK compuesta de versión, `max_concurrent_runs` con default 5
+- [X] T003 [P] `packages/dag-schema/test/runtime/conditions.test.ts`: evaluación de cada operación del AST con tipos; sin evaluación de código
+- [X] T004 [P] `packages/dag-schema/test/runtime/references.test.ts`: resolución de rutas y plantillas contra salidas de nodos
+- [X] T005 [P] `packages/dag-schema/test/runtime/plan.test.ts`: nodos listos, ramas omitidas, merge `all`/`any`, nodos de fases futuras detectados (`unsupported_nodes`)
+- [X] T006 [P] `packages/db/test/rls-runs.test.ts` como `app_runtime`: aislamiento de ambas tablas, sin `DELETE`, triggers de misma organización, ejecución terminal inmutable, FK compuesta de versión, `max_concurrent_runs` con default 5
 
 ### Implementation
 
-- [ ] T007 `packages/dag-schema/src/runtime/` (evaluador, resolución y plan de ejecución, puros)
-- [ ] T008 Esquema Drizzle y migraciones (tablas, columna, RLS, privilegios, triggers) exactamente como `data-model.md`
+- [X] T007 `packages/dag-schema/src/runtime/` (evaluador, resolución y plan de ejecución, puros)
+- [X] T008 Esquema Drizzle y migraciones (tablas, columna, RLS, privilegios, triggers) exactamente como `data-model.md`
 
 ---
 
 ## Phase 3: User Story 2 - Motor (P1)
 
-- [ ] T009 [P] [US2] `apps/worker/test/unit/execute-dag.workflow.test.ts` (`TestWorkflowEnvironment`): paralelismo, condición con rama omitida, merge `all` y `any`, fallo rápido con cancelación, duración máxima, referencias resueltas
-- [ ] T010 [P] [US2] Prueba de replay con historiales guardados del intérprete
-- [ ] T011 [P] [US2] Prueba de caos: matar el worker durante un `mock.service` y verificar que no se repiten pasos completados
-- [ ] T012 [US2] `execute-dag.workflow.ts` según R1 y R2
-- [ ] T013 [US2] Activities `mock-service.ts` y `record-run-event.ts` (Postgres con `withContext`, idempotente, publica en Valkey `run:<runId>`)
+- [X] T009 [P] [US2] `apps/worker/test/unit/execute-dag.workflow.test.ts` (`TestWorkflowEnvironment`): paralelismo, condición con rama omitida, merge `all` y `any`, fallo rápido con cancelación, duración máxima, referencias resueltas
+- [X] T010 [P] [US2] Prueba de replay con historiales guardados del intérprete
+- [X] T011 [P] [US2] Prueba de caos: matar el worker durante un `mock.service` y verificar que no se repiten pasos completados
+- [X] T012 [US2] `execute-dag.workflow.ts` según R1 y R2
+- [X] T013 [US2] Activities `mock-service.ts` y `record-run-event.ts` (Postgres con `withContext`, idempotente, publica en Valkey `run:<runId>`)
 
 ## Phase 4: User Story 1 - Ejecutar (P1)
 
