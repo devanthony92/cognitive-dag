@@ -141,3 +141,22 @@ describe('mock service fault injection (F4)', () => {
     expect(error).toMatchObject({ type: 'MOCK_SERVICE_PERMANENT', nonRetryable: true });
   });
 });
+
+describe('mock service heartbeats under a policy', () => {
+  it('re-sends the attempt state in every heartbeat, so a long wait never erases the counters', async () => {
+    const env = new MockActivityEnvironment({ attempt: 1 });
+    const beats: unknown[] = [];
+    env.on('heartbeat', (details: unknown) => beats.push(details));
+    const activities = createMockServiceActivities({ logger });
+    await env.run((value) => activities.mockService(value), {
+      ...input({ latencyMs: 4_500 }),
+      organizationId: randomUUID(),
+      policy: { maxAttempts: 2, timeoutSeconds: 12, initialIntervalMs: 100 },
+    });
+    // The wait heartbeats every 2 s: at least the start of the attempt and two beats of the wait.
+    expect(beats.length).toBeGreaterThanOrEqual(3);
+    for (const details of beats) {
+      expect(details).toMatchObject({ spent: 0, executed: 1, inFlight: true });
+    }
+  });
+});

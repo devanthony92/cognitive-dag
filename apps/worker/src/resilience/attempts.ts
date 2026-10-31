@@ -53,6 +53,21 @@ interface AttemptState {
 
 const INITIAL_STATE: AttemptState = { spent: 0, executed: 0, inFlight: false, waiting: false };
 
+/** Latest state of the attempt in progress, by activity context, for `heartbeatWithState`. */
+const currentStates = new WeakMap<object, AttemptState>();
+
+/**
+ * Heartbeats from inside an attempt. Temporal keeps the details of the last heartbeat it got, so
+ * a heartbeat without them would erase the counters of the attempt; this always sends them.
+ * Outside a policy run (older runs) it is a plain heartbeat.
+ */
+export function heartbeatWithState(): void {
+  const context = Context.current();
+  const state = currentStates.get(context);
+  if (state) context.heartbeat(state);
+  else context.heartbeat();
+}
+
 function readState(details: unknown): AttemptState {
   if (typeof details !== 'object' || details === null) return INITIAL_STATE;
   const raw = details as Record<string, unknown>;
@@ -153,8 +168,11 @@ export async function runWithPolicy<T>(run: PolicyRun<T>): Promise<T> {
     );
   }
 
-  const remember = (state: Partial<AttemptState>): void =>
-    context.heartbeat({ spent: spentBefore, executed, inFlight: false, waiting: false, ...state });
+  const remember = (state: Partial<AttemptState>): void => {
+    const next = { spent: spentBefore, executed, inFlight: false, waiting: false, ...state };
+    currentStates.set(context, next);
+    context.heartbeat(next);
+  };
   // Optimistic: a worker that dies later must still leave this attempt counted. Only the first
   // heartbeat is certain to reach Temporal, and a denied attempt takes the count back below.
   remember({ inFlight: true, executed: executed + 1 });
