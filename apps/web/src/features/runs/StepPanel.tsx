@@ -95,10 +95,15 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
   const typeLabel = (NODE_CATALOG as Record<string, { label: string } | undefined>)[step.nodeType]
     ?.label;
 
-  // Only activities have attempts: logic nodes run inside the engine, and skipped or pending
-  // nodes never started.
+  // Only activities have attempts: triggers and logic nodes run inside the engine, and skipped or
+  // pending nodes never started.
+  const category = (NODE_CATALOG as Record<string, { category: string } | undefined>)[step.nodeType]
+    ?.category;
   const showAttempts =
-    !step.nodeType.startsWith('logic.') && step.status !== 'skipped' && step.status !== 'pending';
+    category !== 'trigger' &&
+    category !== 'logic' &&
+    step.status !== 'skipped' &&
+    step.status !== 'pending';
 
   return (
     <div className="grid gap-4">

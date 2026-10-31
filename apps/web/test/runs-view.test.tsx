@@ -228,7 +228,7 @@ describe('run detail (US3)', () => {
     expect(screen.getByRole('link', { name: 'Ejecuciones' })).toBeDefined();
   });
 
-  it('shows attempts only for activities that ran', async () => {
+  it('hides attempts for triggers, logic, skipped and pending nodes', async () => {
     open(() =>
       detail({}, [
         step('inicio', { status: 'succeeded', attempts: 1 }),
@@ -248,9 +248,13 @@ describe('run detail (US3)', () => {
     await waitFor(() => expect(within(panel).getByText('Pendiente')).toBeDefined());
     expect(within(panel).queryByText('Intentos')).toBeNull();
 
-    // Activity that ran: shown.
+    // Trigger, completed: none either, but its content is still offered.
     fireEvent.click(within(screen.getByLabelText('Grafo de la ejecución')).getByText('Inicio'));
-    await waitFor(() => expect(within(panel).getByText('Intentos')).toBeDefined());
+    await waitFor(() =>
+      expect(within(panel).getByText('Disparador manual · inicio')).toBeDefined(),
+    );
+    expect(within(panel).queryByText('Intentos')).toBeNull();
+    expect(within(panel).getByText('Entrada y salida')).toBeDefined();
   });
 
   it('shows the 404 of a run the user cannot see', async () => {
