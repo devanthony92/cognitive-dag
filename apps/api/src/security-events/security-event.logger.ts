@@ -25,6 +25,9 @@ export const SECURITY_EVENTS = [
   'workflow.published',
   'workflow.version_activated',
   'workflow.archived',
+  'run.started',
+  'run.cancelled',
+  'run.rerun',
 ] as const;
 
 export type SecurityEventType = (typeof SECURITY_EVENTS)[number];

@@ -22,6 +22,8 @@ interface MappedProblem {
   errors?: FieldError[];
   dagErrors?: DagErrorBody[];
   retryAfterSeconds?: number;
+  reason?: ProblemDetails['reason'];
+  nodes?: ProblemDetails['nodes'];
 }
 
 /** Body-parser errors carry a `type` instead of being HttpExceptions. */
@@ -61,6 +63,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       ...(mapped.errors ? { errors: mapped.errors } : {}),
       ...(mapped.dagErrors ? { dagErrors: mapped.dagErrors } : {}),
       ...(mapped.retryAfterSeconds ? { retryAfterSeconds: mapped.retryAfterSeconds } : {}),
+      ...(mapped.reason ? { reason: mapped.reason } : {}),
+      ...(mapped.nodes ? { nodes: mapped.nodes } : {}),
     };
 
     if (mapped.retryAfterSeconds) response.setHeader('Retry-After', mapped.retryAfterSeconds);

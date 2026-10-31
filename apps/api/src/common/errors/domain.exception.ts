@@ -10,6 +10,8 @@ export class DomainException extends Error {
       errors?: FieldError[];
       dagErrors?: DagErrorBody[];
       retryAfterSeconds?: number;
+      reason?: 'no_active_version' | 'archived' | 'unsupported_nodes';
+      nodes?: { nodeId: string; type: string; executableFrom: string }[];
     } = {},
   ) {
     super(detail);
