@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { DEFAULT_LIMITS, type DagLimits } from '@cognitive-dag/dag-schema';
 import { eq, organizationLimits, type DatabaseClient, type Tx } from '@cognitive-dag/db';
-import type { LimitsBody } from '@cognitive-dag/contracts';
+import { DEFAULT_MAX_CONCURRENT_RUNS, type LimitsBody } from '@cognitive-dag/contracts';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
 import { DATABASE } from '../database/database.module';
@@ -37,6 +37,7 @@ export class LimitsService {
         wanted.maxDefinitionBytes,
         this.config.DAG_MAX_DEFINITION_BYTES_CEILING,
       ),
+      maxConcurrentRuns: row?.maxConcurrentRuns ?? DEFAULT_MAX_CONCURRENT_RUNS,
       source: row ? 'organization' : 'default',
     };
   }

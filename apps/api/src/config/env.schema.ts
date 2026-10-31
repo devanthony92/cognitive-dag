@@ -28,6 +28,8 @@ export const EnvSchema = z.object({
   DAG_MAX_NODES_CEILING: ceiling(ABSOLUTE_LIMITS.maxNodes, 1),
   DAG_MAX_EDGES_CEILING: ceiling(ABSOLUTE_LIMITS.maxEdges, 0),
   DAG_MAX_DEFINITION_BYTES_CEILING: ceiling(ABSOLUTE_LIMITS.maxDefinitionBytes, 1024),
+  // Interval of the comment that keeps a live run stream open through proxies (F3, R4).
+  SSE_HEARTBEAT_MS: z.coerce.number().int().min(50).max(60_000).default(15_000),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });

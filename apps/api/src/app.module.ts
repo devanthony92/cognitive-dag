@@ -20,6 +20,7 @@ import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { PingModule } from './ping/ping.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { RunsModule } from './runs/runs.module';
 import { SecurityEventsModule } from './security-events/security-events.module';
 import { TemporalModule } from './temporal/temporal.module';
 import { ValkeyModule } from './valkey/valkey.module';
@@ -46,6 +47,7 @@ export class AppModule implements NestModule {
         PingModule,
         AuthModule,
         WorkflowsModule,
+        RunsModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },
