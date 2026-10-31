@@ -90,6 +90,8 @@ export const LimitsSchema = z.object({
   maxNodes: z.int(),
   maxEdges: z.int(),
   maxDefinitionBytes: z.int(),
+  /** Runs in progress allowed at the same time (F3). */
+  maxConcurrentRuns: z.int(),
   source: z.enum(['default', 'organization']),
 });
 export type LimitsBody = z.infer<typeof LimitsSchema>;

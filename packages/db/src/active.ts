@@ -1,4 +1,4 @@
-import { and, isNull, type SQL } from 'drizzle-orm';
+import { and, isNotNull, isNull, type SQL } from 'drizzle-orm';
 import { memberships, organizations, users, workflows } from './schema/index.js';
 import type { Tx } from './tenant.js';
 
@@ -34,4 +34,16 @@ export const active = {
       .select({ name: organizations.name })
       .from(organizations)
       .where(and(isActive.organizations, where)),
+};
+
+/**
+ * Rows in the opposite state, for the one case that must tell an archived resource from one that
+ * never existed (starting a run answers 409 for the first and 404 for the second).
+ */
+export const archived = {
+  workflows: (tx: Tx, where?: SQL) =>
+    tx
+      .select({ id: workflows.id })
+      .from(workflows)
+      .where(and(isNotNull(workflows.deletedAt), where)),
 };
