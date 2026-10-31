@@ -6,7 +6,10 @@ export const CONDITION_MAX_DEPTH = 5;
 export const CONDITION_MAX_OPERATIONS = 20;
 
 export type ConditionErrorCode =
-  'CONDITION_TOO_DEEP' | 'CONDITION_TOO_MANY_OPERATIONS' | 'CONDITION_TYPE_MISMATCH';
+  | 'CONDITION_TOO_DEEP'
+  | 'CONDITION_TOO_MANY_OPERATIONS'
+  | 'CONDITION_TYPE_MISMATCH'
+  | 'CONDITION_OPERAND_EMPTY';
 
 export interface RefOperand {
   kind: 'ref';
@@ -33,7 +36,8 @@ const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:Z|[+
 
 const RefOperandSchema = z.strictObject({
   kind: z.literal('ref'),
-  path: z.string().min(1).max(200),
+  // An empty path is a field the user has not chosen yet: `checkCondition` says which side.
+  path: z.string().max(200),
 });
 
 const LiteralOperandSchema = z.union([
@@ -157,7 +161,34 @@ export interface ConditionIssue {
 
 type Resolved = { ok: true; type: DagType } | { ok: false; issue: ConditionIssue };
 
-function operandType(operand: Operand, scope: ReferenceScope): Resolved {
+/** True for an operand the user has not filled in: no field chosen, or an empty text. */
+function isEmpty(operand: Operand): boolean {
+  return operand.kind === 'ref'
+    ? operand.path === ''
+    : operand.type === 'string' && operand.value === '';
+}
+
+/** How an operand is named in a message, for a field and for a value: «de la izquierda». */
+interface Side {
+  field: string;
+  value: string;
+}
+
+const LEFT: Side = { field: 'de la izquierda', value: 'la izquierda' };
+const RIGHT: Side = { field: 'de la derecha', value: 'la derecha' };
+
+function emptyIssue(operand: Operand, side: Side): ConditionIssue {
+  return {
+    code: 'CONDITION_OPERAND_EMPTY',
+    message:
+      operand.kind === 'ref'
+        ? `Elige el campo ${side.field}.`
+        : `Elige un valor para ${side.value}.`,
+  };
+}
+
+function operandType(operand: Operand, scope: ReferenceScope, side: Side): Resolved {
+  if (isEmpty(operand)) return { ok: false, issue: emptyIssue(operand, side) };
   if (operand.kind === 'literal') return { ok: true, type: { kind: operand.type } };
   const resolved = resolveReference(operand.path, scope);
   if (resolved.ok) return { ok: true, type: resolved.type };
@@ -174,10 +205,20 @@ function ordered(a: DagType, b: DagType): boolean {
   return (a.kind === 'number' || a.kind === 'datetime') && a.kind === b.kind;
 }
 
+const OP_WORDS: Record<string, string> = {
+  eq: 'es igual a',
+  neq: 'es distinto de',
+  gt: 'es mayor que',
+  gte: 'es mayor o igual que',
+  lt: 'es menor que',
+  lte: 'es menor o igual que',
+  in: 'está entre',
+};
+
 function mismatch(op: string, a: DagType, b: DagType): ConditionIssue {
   return {
     code: 'CONDITION_TYPE_MISMATCH',
-    message: `La operación «${op}» no se puede aplicar entre ${describeType(a)} y ${describeType(b)}.`,
+    message: `La comparación «${OP_WORDS[op] ?? op}» no se puede aplicar entre ${describeType(a)} y ${describeType(b)}.`,
   };
 }
 
@@ -195,26 +236,30 @@ export function checkCondition(condition: Condition, scope: ReferenceScope): Con
         visit(c.operand);
         return;
       case 'exists': {
-        const r = operandType(c.operand, scope);
+        const r = operandType(c.operand, scope, { field: 'que debe existir', value: 'el campo' });
         if (!r.ok) issues.push(r.issue);
         return;
       }
       case 'in': {
-        const value = operandType(c.value, scope);
+        const value = operandType(c.value, scope, { field: 'que se comparará', value: 'el valor' });
         if (!value.ok) {
           issues.push(value.issue);
           return;
         }
-        for (const option of c.options) {
+        c.options.forEach((option, index) => {
+          if (isEmpty(option)) {
+            issues.push(emptyIssue(option, { field: '', value: `la opción ${index + 1}` }));
+            return;
+          }
           const optionType: DagType = { kind: option.type };
           if (!comparable(value.type, optionType))
             issues.push(mismatch(c.op, value.type, optionType));
-        }
+        });
         return;
       }
       default: {
-        const left = operandType(c.left, scope);
-        const right = operandType(c.right, scope);
+        const left = operandType(c.left, scope, LEFT);
+        const right = operandType(c.right, scope, RIGHT);
         if (!left.ok) issues.push(left.issue);
         if (!right.ok) issues.push(right.issue);
         if (!left.ok || !right.ok) return;

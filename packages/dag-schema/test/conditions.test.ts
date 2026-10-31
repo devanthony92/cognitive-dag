@@ -208,3 +208,45 @@ describe('checkCondition operand types', () => {
     expect(codes({ op: 'eq', left: num(1), right: str('1') })).toEqual(['CONDITION_TYPE_MISMATCH']);
   });
 });
+
+describe('empty operands (review fix)', () => {
+  const messages = (value: unknown) => checkCondition(parse(value), scope).map((i) => i.message);
+
+  it('asks for the field when a reference has no field chosen, naming the side', () => {
+    expect(messages({ op: 'eq', left: { kind: 'ref', path: '' }, right: num(1) })).toEqual([
+      'Elige el campo de la izquierda.',
+    ]);
+    expect(messages({ op: 'eq', left: num(1), right: { kind: 'ref', path: '' } })).toEqual([
+      'Elige el campo de la derecha.',
+    ]);
+  });
+
+  it('asks for a value when a text literal is left empty, naming the side', () => {
+    expect(messages({ op: 'eq', left: ref('tone'), right: str('') })).toEqual([
+      'Elige un valor para la derecha.',
+    ]);
+    expect(messages({ op: 'neq', left: str(''), right: ref('tone') })).toEqual([
+      'Elige un valor para la izquierda.',
+    ]);
+  });
+
+  it('covers exists, in and its options', () => {
+    expect(messages({ op: 'exists', operand: { kind: 'ref', path: '' } })).toEqual([
+      'Elige el campo que debe existir.',
+    ]);
+    expect(messages({ op: 'in', value: { kind: 'ref', path: '' }, options: [str('a')] })).toEqual([
+      'Elige el campo que se comparará.',
+    ]);
+    expect(messages({ op: 'in', value: ref('tone'), options: [str('happy'), str('')] })).toEqual([
+      'Elige un valor para la opción 2.',
+    ]);
+  });
+
+  it('does not add a type mismatch on top of the empty operand', () => {
+    expect(messages({ op: 'gt', left: { kind: 'ref', path: '' }, right: str('') })).toHaveLength(2);
+  });
+
+  it('still accepts a filled condition', () => {
+    expect(messages({ op: 'eq', left: ref('tone'), right: str('happy') })).toEqual([]);
+  });
+});

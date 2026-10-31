@@ -34,6 +34,22 @@ const EXPECTED: Record<string, string> = {
   object: 'un objeto',
 };
 
+/** Part of a condition tree, in words: «La condición (lado izquierdo)», never `left` or `path`. */
+const CONDITION_SIDES: Record<string, string> = {
+  left: 'lado izquierdo',
+  right: 'lado derecho',
+  value: 'valor',
+  operand: 'campo',
+};
+
+function conditionSubject(below: readonly PropertyKey[]): string {
+  const side = [...below].reverse().find((p) => typeof p === 'string' && p in CONDITION_SIDES);
+  const optionAt = below.indexOf('options');
+  const option = optionAt === -1 ? undefined : below[optionAt + 1];
+  if (typeof option === 'number') return `La opción ${option + 1} de la condición`;
+  return typeof side === 'string' ? `La condición (${CONDITION_SIDES[side]})` : 'La condición';
+}
+
 /** What the issue is about, with its article: «El campo «Texto»», «La etiqueta 3». */
 function subjectOf(path: readonly PropertyKey[], raw: unknown): string {
   const [head, index, ...rest] = path;
@@ -47,6 +63,7 @@ function subjectOf(path: readonly PropertyKey[], raw: unknown): string {
       return named ?? 'El nodo';
     }
     if (typeof key !== 'string') return NODE_PARTS['config'] as string;
+    if (key === 'condition' && below.length > 0) return conditionSubject(below);
     const entry = isNodeType(type) ? NODE_CATALOG[type] : undefined;
     const label = entry?.fieldLabels[key] ?? key;
     const item = entry?.itemLabels?.[key];
