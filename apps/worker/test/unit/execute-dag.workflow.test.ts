@@ -54,6 +54,8 @@ describe('executeDag', () => {
       /** Stands in for the rate limiter: runs before each attempt and may deny it. */
       gate?: (input: MockServiceInput) => Promise<void>;
       maxDurationMs?: number;
+      /** Outputs of nodes a rerun from a node does not run again. */
+      memoized?: Record<string, unknown>;
       during?: (handle: WorkflowHandle<ExecuteDagWorkflow>, harness: Harness) => Promise<void>;
     } = {},
   ): Promise<{ result: ExecuteDagResult | Error; harness: Harness; input: ExecuteDagInput }> {
@@ -117,6 +119,7 @@ describe('executeDag', () => {
       definition: dag,
       triggerInput: options.triggerInput ?? { amount: 150, tone: 'happy' },
       ...(options.maxDurationMs === undefined ? {} : { maxDurationMs: options.maxDurationMs }),
+      ...(options.memoized === undefined ? {} : { memoized: options.memoized }),
     };
 
     return worker.runUntil(async () => {
@@ -665,6 +668,54 @@ describe('executeDag', () => {
         });
         expect(seen?.organizationId).toMatch(/^[0-9a-f-]{36}$/);
       });
+    });
+  });
+
+  describe('rerun from a node (F4)', () => {
+    const chain = definition(
+      [trigger(), mock('a'), mock('b'), mock('c')],
+      [edge('trigger', 'a'), edge('a', 'b'), edge('b', 'c')],
+    );
+
+    it('records memoized nodes as reused, without an activity, and hands on their output', async () => {
+      const seen: Record<string, unknown> = {};
+      const { result, harness } = await execute(chain, {
+        memoized: { a: { ok: true, from: 'original' } },
+        behavior: (input, attempt) => {
+          seen[input.nodeId] = input.config;
+          return Promise.resolve({ output: { ok: true }, attempts: attempt });
+        },
+      });
+      expect((result as ExecuteDagResult).status).toBe('succeeded');
+      expect(harness.calls).toEqual(['b', 'c']);
+      expect(stepEvents(harness, 'step.reused')).toEqual(['a']);
+      expect(stepEvents(harness, 'step.succeeded')).toEqual(['trigger', 'b', 'c']);
+      expect((result as ExecuteDagResult).outputs['a']).toEqual({ ok: true, from: 'original' });
+    });
+
+    it('evaluates again the logic that depends on a reused output', async () => {
+      const dag = definition(
+        [trigger(), mock('a'), condition('big', 100), mock('yes'), mock('no')],
+        [
+          edge('trigger', 'a'),
+          edge('a', 'big'),
+          edge('big', 'yes', 'true'),
+          edge('big', 'no', 'false'),
+        ],
+      );
+      const { harness } = await execute(dag, {
+        memoized: { a: { ok: true } },
+        triggerInput: { amount: 50, tone: 'sad' },
+      });
+      expect(harness.calls).toEqual(['no']);
+      expect(stepEvents(harness, 'step.reused')).toEqual(['a']);
+      expect(stepEvents(harness, 'step.skipped')).toEqual(['yes']);
+    });
+
+    it('runs everything when nothing is memoized', async () => {
+      const { harness } = await execute(chain);
+      expect(harness.calls).toEqual(['a', 'b', 'c']);
+      expect(stepEvents(harness, 'step.reused')).toEqual([]);
     });
   });
 
