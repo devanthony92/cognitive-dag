@@ -44,6 +44,7 @@ describe('feature flags (requires docker compose up)', () => {
       'ping-enabled': false,
       'identity-enabled': false,
       'dag-editor-enabled': false,
+      'execution-enabled': false,
     });
   });
 
@@ -54,6 +55,7 @@ describe('feature flags (requires docker compose up)', () => {
       'ping-enabled': true,
       'identity-enabled': false,
       'dag-editor-enabled': false,
+      'execution-enabled': false,
     });
   });
 });
