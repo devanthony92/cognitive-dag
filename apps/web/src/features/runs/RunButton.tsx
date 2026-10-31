@@ -52,18 +52,19 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
   return (
     <>
       {showHistory && (
-        <Button variant="outline" asChild>
+        <Button variant="outline" size="icon" asChild>
           <Link
+            aria-label="Ejecuciones"
+            title="Ejecuciones: historial de este workflow"
             to="/orgs/$organizationId/workflows/$workflowId/runs"
             params={{ organizationId, workflowId }}
           >
             <History aria-hidden />
-            Ejecuciones
           </Link>
         </Button>
       )}
       {reason && (
-        <p id={reasonId} className="max-w-xs text-xs text-muted-foreground">
+        <p id={reasonId} className="order-last w-full text-right text-xs text-muted-foreground">
           {reason}
         </p>
       )}

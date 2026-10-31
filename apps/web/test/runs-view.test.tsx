@@ -220,6 +220,39 @@ describe('run detail (US3)', () => {
     expect(await screen.findByText(/ya no está disponible/)).toBeDefined();
   });
 
+  it('names the workflow in the header and links to it', async () => {
+    open(() => detail());
+
+    const link = await screen.findByRole('link', { name: 'Soporte' });
+    expect(link.getAttribute('href')).toBe(`/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`);
+    expect(screen.getByRole('link', { name: 'Ejecuciones' })).toBeDefined();
+  });
+
+  it('shows attempts only for activities that ran', async () => {
+    open(() =>
+      detail({}, [
+        step('inicio', { status: 'succeeded', attempts: 1 }),
+        step('alto', { status: 'succeeded' }),
+        step('servicio_a'),
+      ]),
+    );
+
+    // Logic node, completed: no attempts row.
+    fireEvent.click(await screen.findByText('¿Monto alto?'));
+    const panel = await screen.findByRole('complementary', { name: 'Detalle del nodo' });
+    expect(within(panel).getByText('Completado')).toBeDefined();
+    expect(within(panel).queryByText('Intentos')).toBeNull();
+
+    // Pending activity: none either.
+    fireEvent.click(screen.getByText('Servicio A'));
+    await waitFor(() => expect(within(panel).getByText('Pendiente')).toBeDefined());
+    expect(within(panel).queryByText('Intentos')).toBeNull();
+
+    // Activity that ran: shown.
+    fireEvent.click(within(screen.getByLabelText('Grafo de la ejecución')).getByText('Inicio'));
+    await waitFor(() => expect(within(panel).getByText('Intentos')).toBeDefined());
+  });
+
   it('shows the 404 of a run the user cannot see', async () => {
     open(() => problem(404, 'NOT_FOUND', 'No existe.'));
     expect(await screen.findByText('No existe.')).toBeDefined();

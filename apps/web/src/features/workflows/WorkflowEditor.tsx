@@ -429,41 +429,47 @@ function EditorSession({
         >
           Workflows
         </Link>
-        <h1 className="text-lg font-semibold tracking-tight">{workflow.name}</h1>
-        <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
-          {readOnly && (
-            <span className="rounded-full border px-2 py-0.5 text-xs font-medium">
-              Solo lectura
-            </span>
-          )}
-          {dirty && (
-            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
-              Sin guardar
-            </span>
-          )}
-          <span className="text-muted-foreground">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <h1 className="truncate text-lg font-semibold tracking-tight">{workflow.name}</h1>
+            {readOnly && (
+              <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium">
+                Solo lectura
+              </span>
+            )}
+            {dirty && (
+              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                Sin guardar
+              </span>
+            )}
+          </div>
+          <p className="truncate text-xs text-muted-foreground">
             {savedAt
               ? `Guardado a las ${savedAt.toLocaleTimeString('es')}`
               : `Último guardado: ${new Date(workflow.draftUpdatedAt).toLocaleString('es')}`}
-          </span>
+          </p>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
           {canWrite && (
             <Button
               variant="outline"
+              size="icon"
               disabled={definition.nodes.length === 0}
               onClick={arrange}
-              title="Ordena los nodos en capas de izquierda a derecha, sin cambiar la lógica"
+              aria-label="Ordenar"
+              title="Ordenar: coloca los nodos en capas de izquierda a derecha, sin cambiar la lógica"
             >
               <Network aria-hidden />
-              Ordenar
             </Button>
           )}
           <Button
             variant="outline"
+            size="icon"
             onClick={exportJson}
-            title="Descarga la definición como archivo JSON"
+            aria-label="Exportar JSON"
+            title="Exportar JSON: descarga la definición como archivo"
           >
             <Download aria-hidden />
-            Exportar JSON
           </Button>
           <RunButton
             showHistory
