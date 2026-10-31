@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -39,7 +39,18 @@ F1 adds:
 | Observability | Security events as structured logs (`event`, `outcome`, `userId`, `organizationId`, `ip`, `correlationId`)                                                                           |
 | Documentation | 47 architecture decision records; threat model v1.2 with the F1 rows mitigated                                                                                                       |
 
-**Next: F3 — execution engine.** Until F9 the system runs locally only and is not deployed
+F3 adds:
+
+| Area          | What F3 delivers                                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Engine        | One durable Temporal workflow, `executeDag`, runs the active version: parallel branches, conditions, merge `all`/`any`, skipped branches and fail-fast cancellation |
+| Nodes         | `trigger.manual`, `logic.condition`, `logic.merge` and `mock.service` (latency and failures on demand); versions with later-phase nodes cannot run                  |
+| Records       | `workflow_runs` and `workflow_run_steps` in PostgreSQL with forced RLS; input and output content stays in Temporal and expires with its retention                   |
+| Live view     | Server-Sent Events fed by Valkey pub/sub, with polling as a fallback in the web app                                                                                 |
+| Control       | Cancel, rerun with the same input, and a per-organization limit of concurrent runs (5 by default)                                                                   |
+| Documentation | 54 architecture decision records; threat model v1.3 with the F3 rows                                                                                                |
+
+**Next: F4 — resilience.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -175,6 +186,32 @@ side panel; viewers get a read-only canvas.
 - **Tools:** **Ordenar** lays the graph out in layers; **Exportar JSON** downloads the definition.
 - **Conflicts:** if someone saved the draft first, a dialog offers to reload it.
 - **Limits:** the home page of an organization shows the limits in force, read-only.
+
+### Runs (F3, behind `execution-enabled`)
+
+With `execution-enabled` on (default in `.env.example`) the editor header shows **Ejecutar** and
+**Ejecuciones**. **Ejecutar** runs the active version and asks for the fields the manual trigger
+declares (a generated form, validated before it is sent); it is disabled, with the reason next to
+it, when the workflow has no active version or the version has nodes that are not executable yet
+(`llm.*`, `http.request`, `human.approval`, webhook and schedule triggers). Any member, viewers
+included, can run, cancel and rerun (author decision, [ADR-0053](docs/adr/0053-cualquier-miembro-puede-ejecutar.md)).
+
+- **List:** the runs of a workflow, newest first, with state, version, who started it, start and duration.
+- **Detail:** the graph of the version that ran, read-only, with the state of every node updating live
+  over `GET .../runs/{runId}/events` (falls back to polling if the stream drops). The side panel shows
+  attempts, duration, error and, while Temporal keeps it, the input and output of the node.
+- **Cancel / rerun:** **Cancelar** appears while a run is in progress; **Reejecutar** starts a new run
+  with the same input on the current active version, linked to the original.
+- **Limit:** each organization may have 5 runs in progress; the home page shows the limit, read-only.
+  The operator changes it with:
+
+```bash
+pnpm ops:set-limits <organizationId> --max-concurrent-runs 10 --operator ana
+```
+
+The contract is in [specs/004-execution-engine](specs/004-execution-engine/contracts/api.openapi.yaml).
+With the flag off every run endpoint answers `404 FEATURE_NOT_AVAILABLE` and the web app shows
+nothing about runs.
 
 ## Quality checks
 
