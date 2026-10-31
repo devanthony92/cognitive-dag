@@ -35,6 +35,11 @@ export const ExecuteDagInputSchema = z.strictObject({
   definition: z.record(z.string(), z.unknown()),
   triggerInput: z.record(z.string(), z.unknown()),
   maxDurationMs: z.int().min(1).max(86_400_000).optional(),
+  /**
+   * Rerun from a node: outputs of the nodes of the original run that are not run again. Their
+   * steps are recorded as `reused`, with no activity. Absent in a complete run.
+   */
+  memoized: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type ExecuteDagInput = z.infer<typeof ExecuteDagInputSchema>;
@@ -132,7 +137,13 @@ export const RunEventSchema = z.discriminatedUnion('transition', [
     waitingReason: WaitingReasonSchema.optional(),
   }).extend(NodeRefSchema.shape),
   EventBaseSchema.extend({
-    transition: z.enum(['step.succeeded', 'step.failed', 'step.skipped', 'step.cancelled']),
+    transition: z.enum([
+      'step.succeeded',
+      'step.failed',
+      'step.skipped',
+      'step.cancelled',
+      'step.reused',
+    ]),
     attempts: z.int().min(0).max(1000).optional(),
     durationMs: z.int().min(0).optional(),
     ...ErrorSummarySchema.shape,
@@ -169,6 +180,15 @@ export const StartRunRequestSchema = z.strictObject({
   input: z.record(z.string(), z.unknown()),
 });
 export type StartRunRequest = z.infer<typeof StartRunRequestSchema>;
+
+/** Body of `POST .../runs/{runId}/rerun`; without `fromNodeId` the whole run is repeated. */
+export const RerunRequestSchema = z.strictObject({
+  fromNodeId: z
+    .string()
+    .regex(/^[a-z][a-z0-9_]{0,39}$/)
+    .optional(),
+});
+export type RerunRequest = z.infer<typeof RerunRequestSchema>;
 
 const ErrorBodySchema = z.object({
   code: z.string(),
@@ -217,6 +237,19 @@ export const RunListSchema = z.object({
   nextCursor: z.string().nullable(),
 });
 export type RunList = z.infer<typeof RunListSchema>;
+
+/** A run in the review queue of the organization: with its workflow and, if it failed, the node. */
+export const OrganizationRunSchema = RunSchema.extend({
+  workflowName: z.string(),
+  failedNodeId: z.string().nullable(),
+});
+export type OrganizationRun = z.infer<typeof OrganizationRunSchema>;
+
+export const OrganizationRunListSchema = z.object({
+  items: z.array(OrganizationRunSchema),
+  nextCursor: z.string().nullable(),
+});
+export type OrganizationRunList = z.infer<typeof OrganizationRunListSchema>;
 
 /** Content of a step read from the Temporal history; sensitive keys are redacted. */
 export const StepIoSchema = z.object({

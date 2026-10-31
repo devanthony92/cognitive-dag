@@ -36,6 +36,7 @@ const STEP_STATUS: Record<string, StepStatus> = {
   'step.failed': 'failed',
   'step.skipped': 'skipped',
   'step.cancelled': 'cancelled',
+  'step.reused': 'reused',
 };
 
 /** States a step can still leave: a repeated or late write never moves a finished step. */

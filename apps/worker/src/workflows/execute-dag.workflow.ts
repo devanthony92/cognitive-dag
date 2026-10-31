@@ -259,6 +259,14 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
     const node = graph.nodes.get(id) as DagDefinition['nodes'][number];
     const ref = { nodeId: id, nodeType: node.type };
     const startedAt = Date.now();
+    // A rerun from a node: what the original run already did is not done again. Runs without
+    // `memoized` issue the same commands as before, so no patch marker is needed.
+    if (input.memoized && Object.hasOwn(input.memoized, id)) {
+      outputs[id] = input.memoized[id];
+      statuses.set(id, 'succeeded');
+      await record({ ...base(), transition: 'step.reused', ...ref, attempts: 0, durationMs: 0 });
+      return { id, kind: 'succeeded' };
+    }
     try {
       let attempts: number | undefined;
       switch (node.type) {
