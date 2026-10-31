@@ -35,6 +35,7 @@ describe('organization limits (requires docker compose up and pnpm db:migrate)',
       maxNodes: 50,
       maxEdges: 100,
       maxDefinitionBytes: 262_144,
+      maxConcurrentRuns: 5,
       source: 'default',
     });
   });
@@ -54,6 +55,7 @@ describe('organization limits (requires docker compose up and pnpm db:migrate)',
       maxNodes: 3,
       maxEdges: 7,
       maxDefinitionBytes: 4096,
+      maxConcurrentRuns: 5,
       source: 'organization',
     });
     const other = await api(env)
@@ -122,6 +124,7 @@ describe('server ceilings on the limits', () => {
       maxNodes: 10,
       maxEdges: 15,
       maxDefinitionBytes: 8192,
+      maxConcurrentRuns: 5,
       source: 'organization',
     });
   });

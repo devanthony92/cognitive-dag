@@ -26,6 +26,8 @@ import { createOrganization, invite, joinAs } from './members-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
 import { DAG_FLAGS, validDefinition } from './workflows-helpers';
 
+const EVENT_FLAGS = DAG_FLAGS.replace('}', ',"execution-enabled":true}');
+
 const ALLOWED_KEYS = new Set(['event', 'outcome', 'userId', 'organizationId', 'ip']);
 
 describe('security events (requires docker compose up and pnpm db:migrate)', () => {
@@ -33,7 +35,7 @@ describe('security events (requires docker compose up and pnpm db:migrate)', () 
   let database: DatabaseClient;
 
   beforeAll(async () => {
-    app = await startIdentityApp(DAG_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
+    app = await startIdentityApp(EVENT_FLAGS, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
     database = openDatabase();
   });
 
@@ -152,6 +154,16 @@ describe('security events (requires docker compose up and pnpm db:migrate)', () 
       .post(`${workflowsUrl}/${workflowId}/versions/1/activate`)
       .set(authHeaders(ownerSession))
       .expect(200);
+    // run.started, run.cancelled, run.rerun (no worker listens: the run stays queued)
+    const started = await api()
+      .post(`${workflowsUrl}/${workflowId}/runs`)
+      .set(authHeaders(ownerSession))
+      .send({ input: {} })
+      .expect(202);
+    const runUrl = `/api/v1/organizations/${organization.id}/runs/${(started.body as { id: string }).id}`;
+    await api().post(`${runUrl}/cancel`).set(authHeaders(ownerSession)).expect(202);
+    await api().post(`${runUrl}/rerun`).set(authHeaders(ownerSession)).expect(202);
+
     await api().delete(`${workflowsUrl}/${workflowId}`).set(authHeaders(ownerSession)).expect(204);
 
     // auth.rate_limited

@@ -178,7 +178,12 @@ export async function workflowWithValidDraft(
 /** What the operator script does: app_migrator writes through its own policy. */
 export async function setLimitsAsOperator(
   organizationId: string,
-  limits: { maxNodes: number; maxEdges: number; maxDefinitionBytes: number },
+  limits: {
+    maxNodes: number;
+    maxEdges: number;
+    maxDefinitionBytes: number;
+    maxConcurrentRuns?: number;
+  },
 ): Promise<void> {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_MIGRATOR_URL, max: 1 });
   const client = await pool.connect();
@@ -186,12 +191,20 @@ export async function setLimitsAsOperator(
     await client.query('BEGIN');
     await client.query(
       `INSERT INTO organization_limits
-         (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by)
-       VALUES ($1, $2, $3, $4, 'api-test')
+         (organization_id, max_nodes, max_edges, max_definition_bytes, max_concurrent_runs,
+          updated_by)
+       VALUES ($1, $2, $3, $4, $5, 'api-test')
        ON CONFLICT (organization_id) DO UPDATE SET
          max_nodes = EXCLUDED.max_nodes, max_edges = EXCLUDED.max_edges,
-         max_definition_bytes = EXCLUDED.max_definition_bytes, updated_at = now()`,
-      [organizationId, limits.maxNodes, limits.maxEdges, limits.maxDefinitionBytes],
+         max_definition_bytes = EXCLUDED.max_definition_bytes,
+         max_concurrent_runs = EXCLUDED.max_concurrent_runs, updated_at = now()`,
+      [
+        organizationId,
+        limits.maxNodes,
+        limits.maxEdges,
+        limits.maxDefinitionBytes,
+        limits.maxConcurrentRuns ?? 5,
+      ],
     );
     await client.query('COMMIT');
   } catch (error) {

@@ -37,7 +37,13 @@ afterEach(() => {
 
 describe('OrganizationLimits (US7)', () => {
   it('shows the platform defaults to any member, read-only', async () => {
-    stub({ maxNodes: 50, maxEdges: 100, maxDefinitionBytes: 262144, source: 'default' });
+    stub({
+      maxNodes: 50,
+      maxEdges: 100,
+      maxDefinitionBytes: 262144,
+      maxConcurrentRuns: 5,
+      source: 'default',
+    });
     renderLimits();
 
     expect(await screen.findByText('Límites de los workflows')).toBeDefined();
@@ -50,7 +56,13 @@ describe('OrganizationLimits (US7)', () => {
   });
 
   it('says when the limits are the organization own ones, and who sets them', async () => {
-    stub({ maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262144, source: 'organization' });
+    stub({
+      maxNodes: 3,
+      maxEdges: 100,
+      maxDefinitionBytes: 262144,
+      maxConcurrentRuns: 5,
+      source: 'organization',
+    });
     renderLimits();
 
     expect((await screen.findByText('Nodos por workflow')).parentElement?.textContent).toContain(
@@ -61,7 +73,13 @@ describe('OrganizationLimits (US7)', () => {
   });
 
   it('offers no way to change them: no inputs and no buttons', async () => {
-    stub({ maxNodes: 50, maxEdges: 100, maxDefinitionBytes: 262144, source: 'default' });
+    stub({
+      maxNodes: 50,
+      maxEdges: 100,
+      maxDefinitionBytes: 262144,
+      maxConcurrentRuns: 5,
+      source: 'default',
+    });
     renderLimits();
     await screen.findByText('Nodos por workflow');
 
