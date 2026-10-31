@@ -1,6 +1,6 @@
 # Modelo de amenazas — CognitiveDAG (v1, F0)
 
-> Estado: v1.1, F0 (esqueleto ejecutable) actualizado con F1 (identidad y multi-tenant). Fechas: 2026-10-28 y 2026-10-29.
+> Estado: v1.2, F0 (esqueleto ejecutable) actualizado con F1 (identidad y multi-tenant) y F2 (modelo DAG y editor). Fechas: 2026-10-28, 2026-10-29 y 2026-10-30.
 > Método: diagrama de flujo de datos con límites de confianza y análisis STRIDE por elemento y
 > por flujo. Se revisa en cada fase y se cierra en F8 (`docs/PLAN.md` §10).
 > Referencias: `docs/PLAN.md` §6 (seguridad), constitución, principio I.
@@ -199,6 +199,23 @@ E = Elevation of privilege.
 | ---- | --------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | S    | Contraseñas cortas se adivinan o se rompen si se filtra el hash | `accepted` | Decisión del autor (2026-10-29), desviación de NIST 800-63B-4 (mínimo 15, máximo de al menos 64) documentada en [ADR-0026](adr/0026-politica-de-contrasenas-8-25.md). Mitigaciones: lista de 100 000 contraseñas comunes, rate limit progresivo (SC-006), Argon2id y respuestas anti-enumeración. Se revisa cuando llegue MFA en F8. Evidencia: `password-policy.test.ts` |
 
+### 3.2 Amenazas de F2 (modelo DAG y editor, detrás de `dag-editor-enabled`)
+
+| Cat. | Amenaza                                                             | Estado       | Evidencia o razón                                                                                                                                                                                                       |
+| ---- | ------------------------------------------------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E    | Leer o editar workflows y versiones de otra organización            | `mitigated`  | Guard de organización más RLS forzado en las 4 tablas; 404 ante recursos ajenos (`rls-workflows.test.ts`, `workflows.test.ts`)                                                                                          |
+| E    | Un viewer o editor realiza una acción de otro rol                   | `mitigated`  | Owner y editor escriben, viewer lee, solo owner archiva (`workflows.test.ts`, `drafts.test.ts`); el editor oculta paleta, Guardar, Publicar y Ordenar al viewer (`workflow-editor.test.tsx`, `workflow-tools.test.tsx`) |
+| T    | Alterar una versión publicada                                       | `mitigated`  | Sin `UPDATE` ni `DELETE` para `app_runtime` y `definition_hash` ([ADR-0041](adr/0041-versiones-inmutables-y-tabla-puente-de-version-activa.md); `rls-workflows.test.ts`, `versions.test.ts`)                            |
+| T    | Definición manipulada fuera del editor (campos extra, tipos falsos) | `mitigated`  | El servidor valida con el mismo `dag-schema` estricto ([ADR-0039](adr/0039-dag-schema-compartido.md); `drafts.test.ts`, `validate.test.ts`)                                                                             |
+| T    | Sobrescribir en silencio el trabajo de otra sesión                  | `mitigated`  | `If-Match` y `409 DRAFT_CONFLICT` ([ADR-0044](adr/0044-bloqueo-optimista-con-if-match.md); `drafts.test.ts`, `workflow-conflict.test.tsx`)                                                                              |
+| T    | Inyección por condiciones o plantillas (A05)                        | `mitigated`  | AST cerrado, tokenizador propio, sin `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md); `conditions.test.ts`, `templates.test.ts`)                                                         |
+| I    | Secretos o credenciales dentro de la definición                     | `mitigated`  | `SECRET_FIELD`, `HTTP_HEADER_FORBIDDEN` y esquema estricto (`validate.test.ts`); gitleaks en CI                                                                                                                         |
+| D    | Definiciones enormes o condiciones hostiles                         | `mitigated`  | Límites 50/100/256 KB, máximos absolutos, condición ≤ 5 niveles y 20 operaciones con medición iterativa (`limits.test.ts`, `conditions.test.ts`, `performance.test.ts`)                                                 |
+| E    | Un miembro sube los límites de su organización                      | `mitigated`  | `app_runtime` solo lee `organization_limits`; sin endpoint de escritura ([ADR-0042](adr/0042-politica-de-operador-para-organization-limits.md), [ADR-0045](adr/0045-limites-gestionados-por-el-operador.md))            |
+| R    | Publicaciones y archivados sin rastro                               | `mitigated`  | Eventos `workflow.created`, `workflow.published`, `workflow.version_activated`, `workflow.archived` y registro del script de límites (`security-events` de F2)                                                          |
+| E    | Operación sensible tras el flag apagado                             | `mitigated`  | Con `dag-editor-enabled` apagado, 404 `FEATURE_NOT_AVAILABLE`; la autorización se aplica siempre (`flags.test.ts`)                                                                                                      |
+| I/E  | SSRF mediante `http.request`                                        | `planned:F7` | F2 solo valida la forma: https, sin credenciales ni cabeceras de autorización y host fijo (el host no puede ser una plantilla). La protección completa anti-SSRF se aplica al ejecutar, en F7                           |
+
 ## 4. Análisis STRIDE por flujo de datos
 
 | Flujo                                     | Cat.        | Amenaza                                                      | Estado       | Evidencia o razón                                                                                                                                  |
@@ -242,6 +259,8 @@ E = Elevation of privilege.
 
 - Cobertura: los 9 elementos y los 9 flujos del diagrama tienen amenazas analizadas (SC-008).
 - Con F1 quedan mitigadas la autenticación y el aislamiento por tenant (sesiones, guard de organización y RLS). Riesgo aceptado de mayor impacto de F1: la política de contraseñas de 8 a 25 caracteres (sección 3.1). El sistema sigue sin desplegarse públicamente hasta F9.
+- Con F2 quedan mitigadas las amenazas del modelo DAG y del editor (sección 3.2). Pendiente: el
+  anti-SSRF completo de `http.request`, planificado para F7.
 - Riesgos aceptados que deben revisarse antes del despliegue (F9): Temporal, PostgreSQL y Valkey sin
   autenticación fuerte ni TLS; credenciales por defecto de desarrollo.
 - Los controles `mitigated` que dependen de infraestructura (por ejemplo, la protección de `main`)

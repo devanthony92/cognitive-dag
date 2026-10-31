@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -37,9 +37,9 @@ F1 adds:
 | Data          | Drizzle schema and migrations, two PostgreSQL roles (`app_migrator`, `app_runtime`), soft delete                                                                                     |
 | Email         | Mailpit in Compose for development (http://localhost:8025)                                                                                                                           |
 | Observability | Security events as structured logs (`event`, `outcome`, `userId`, `organizationId`, `ip`, `correlationId`)                                                                           |
-| Documentation | 38 architecture decision records; threat model v1.1 with the F1 rows mitigated                                                                                                       |
+| Documentation | 47 architecture decision records; threat model v1.2 with the F1 rows mitigated                                                                                                       |
 
-**Next: F2 — workflows and DAG model.** Until F9 the system runs locally only and is not deployed
+**Next: F3 — execution engine.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -158,6 +158,23 @@ pnpm ops:set-limits <organizationId> --max-nodes 80 --max-edges 160 --max-defini
 
 The ceilings are 500 nodes, 1000 connections and 1 MB; `DAG_MAX_NODES_CEILING`,
 `DAG_MAX_EDGES_CEILING` and `DAG_MAX_DEFINITION_BYTES_CEILING` can lower them for the whole server.
+
+### Visual editor (F2, behind `dag-editor-enabled`)
+
+With the flag on (default in `.env.example`), open an organization and choose **Workflows**. Owners and
+editors create a workflow, drag nodes from the palette, connect them and configure each one in the
+side panel; viewers get a read-only canvas.
+
+- **References and templates:** text fields that accept templates have an **Insertar referencia**
+  list with the fields of earlier nodes; markers show as chips and are validated live.
+- **Conditions:** `logic.condition` has a visual builder (comparisons, Y / O / NO, up to 5 levels and
+  20 operations) that stores a typed tree, never code.
+- **Node ids:** changing the **Identificador** of a node rewrites every reference to it.
+- **Save and publish:** **Guardar** keeps the draft (errors allowed); **Publicar** creates an
+  immutable version and activates it. The **Versiones** tab activates, copies or exports a version.
+- **Tools:** **Ordenar** lays the graph out in layers; **Exportar JSON** downloads the definition.
+- **Conflicts:** if someone saved the draft first, a dialog offers to reload it.
+- **Limits:** the home page of an organization shows the limits in force, read-only.
 
 ## Quality checks
 

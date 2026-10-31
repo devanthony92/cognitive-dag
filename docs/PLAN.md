@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0 y F1 completadas; F2 es la siguiente fase. Fecha: 2026-10-29.
+> Estado: F0, F1 y F2 completadas; F3 es la siguiente fase. Fecha: 2026-10-29.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -68,7 +68,7 @@ Cada decisión de F0 tiene su ADR; aquí solo se listan los cambios que afectan 
 | Web de F1              | TanStack Router, React Hook Form, Tailwind y shadcn/ui                                                                                        | [0035](adr/0035-tanstack-router.md), [0036](adr/0036-react-hook-form.md), [0037](adr/0037-tailwind-y-shadcn-ui.md)                |
 | Eventos de seguridad   | Logs estructurados con tipo estable, sin tabla de auditoría                                                                                   | [0038](adr/0038-eventos-de-seguridad-en-logs.md)                                                                                  |
 
-Modelo de amenazas v1.1: [`threat-model.md`](threat-model.md).
+Modelo de amenazas v1.2: [`threat-model.md`](threat-model.md).
 
 ## 3. Decisiones abiertas
 
@@ -77,7 +77,7 @@ Modelo de amenazas v1.1: [`threat-model.md`](threat-model.md).
 | O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely          | **Cerrada en F1: Drizzle** ([ADR-0024](adr/0024-drizzle-como-orm.md))                                                                                                  |
 | O2  | Autenticación                                   | Propia o librería                | **Cerrada en F1: propia** con Argon2id y sesiones opacas en cookie ([ADR-0025](adr/0025-argon2id-para-contrasenas.md), [ADR-0027](adr/0027-sesiones-opacas-y-csrf.md)) |
 | O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL               | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4  |
-| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | AST propio pequeño y tipado en Zod; nunca `eval`                                                                                                                       |
+| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | **Cerrada en F2: AST propio** pequeño y tipado en Zod; nunca `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md))                           |
 | O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio | Grafana Cloud free para no consumir RAM de la VM                                                                                                                       |
 | O6  | Modelo Gemini concreto                          | Familia Flash / Flash-Lite / Pro | Verificar modelos vigentes al iniciar la fase 5; Flash-Lite para clasificar, Flash para compilar                                                                       |
 
