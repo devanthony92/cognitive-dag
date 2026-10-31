@@ -15,6 +15,8 @@ export const organizationLimits = pgTable(
     maxNodes: integer('max_nodes').notNull(),
     maxEdges: integer('max_edges').notNull(),
     maxDefinitionBytes: integer('max_definition_bytes').notNull(),
+    /** Runs in progress (queued or running) allowed at the same time. */
+    maxConcurrentRuns: integer('max_concurrent_runs').notNull().default(5),
     /** Identifier of the operator who made the change. */
     updatedBy: text('updated_by').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -25,6 +27,10 @@ export const organizationLimits = pgTable(
     check(
       'organization_limits_max_definition_bytes',
       sql`${table.maxDefinitionBytes} BETWEEN 1024 AND 1048576`,
+    ),
+    check(
+      'organization_limits_max_concurrent_runs',
+      sql`${table.maxConcurrentRuns} BETWEEN 1 AND 100`,
     ),
     check(
       'organization_limits_updated_by_length',
