@@ -93,6 +93,7 @@ async function runFinished(
       status: event.status,
       errorCode: event.errorCode ?? null,
       errorMessage: event.errorMessage ?? null,
+      errorClass: event.errorClass ?? null,
       finishedAt: new Date(event.at),
     })
     .where(
@@ -118,6 +119,8 @@ async function stepChanged(tx: Tx, event: StepEvent): Promise<void> {
     durationMs: outcome?.durationMs ?? null,
     errorCode: outcome?.errorCode ?? null,
     errorMessage: outcome?.errorMessage ?? null,
+    errorClass: outcome?.errorClass ?? null,
+    waitingReason: event.transition === 'step.running' ? (event.waitingReason ?? null) : null,
   };
   await tx
     .insert(workflowRunSteps)
@@ -135,6 +138,8 @@ async function stepChanged(tx: Tx, event: StepEvent): Promise<void> {
         durationMs: values.durationMs,
         errorCode: values.errorCode,
         errorMessage: values.errorMessage,
+        errorClass: values.errorClass,
+        waitingReason: values.waitingReason,
       },
       setWhere: inArray(workflowRunSteps.status, [...OPEN_STEP_STATES]),
     });
@@ -155,6 +160,7 @@ function liveEventFor(event: RunEvent): RunLiveEvent {
         ...base,
         runStatus: event.status,
         ...(event.errorCode ? { errorCode: event.errorCode } : {}),
+        ...(event.errorClass ? { errorClass: event.errorClass } : {}),
         ...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
       };
     case 'step.running':
@@ -163,6 +169,7 @@ function liveEventFor(event: RunEvent): RunLiveEvent {
         nodeId: event.nodeId,
         nodeType: event.nodeType,
         stepStatus: 'running',
+        ...(event.waitingReason ? { waitingReason: event.waitingReason } : {}),
       };
     default:
       return {
@@ -173,6 +180,7 @@ function liveEventFor(event: RunEvent): RunLiveEvent {
         ...(event.attempts === undefined ? {} : { attempts: event.attempts }),
         ...(event.durationMs === undefined ? {} : { durationMs: event.durationMs }),
         ...(event.errorCode ? { errorCode: event.errorCode } : {}),
+        ...(event.errorClass ? { errorClass: event.errorClass } : {}),
         ...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
       };
   }

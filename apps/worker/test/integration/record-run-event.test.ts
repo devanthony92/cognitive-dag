@@ -193,6 +193,66 @@ describe('recordRunEvent (requires docker compose up)', () => {
     expect(second).toEqual(first);
   });
 
+  it('records the error class of a failed step and of the run that failed', async () => {
+    const run = await seed();
+    await activities.recordRunEvent({ ...eventBase(run), transition: 'run.started', nodes: NODES });
+    await activities.recordRunEvent({
+      ...eventBase(run),
+      transition: 'step.failed',
+      nodeId: 'b',
+      nodeType: 'mock.service',
+      attempts: 3,
+      errorCode: 'MOCK_SERVICE_TRANSIENT',
+      errorMessage: 'The simulated service failed (transient).',
+      errorClass: 'transient',
+    });
+    await activities.recordRunEvent({
+      ...eventBase(run),
+      transition: 'run.finished',
+      status: 'failed',
+      errorCode: 'MOCK_SERVICE_TRANSIENT',
+      errorClass: 'transient',
+    });
+    const state = await readRun(pool, run);
+    expect(state.run).toMatchObject({ status: 'failed', error_class: 'transient' });
+    expect(state.steps.find((s) => s.node_id === 'b')).toMatchObject({
+      status: 'failed',
+      error_class: 'transient',
+      waiting_reason: null,
+    });
+  });
+
+  it('sets waiting_reason while a step waits for the rate limit and clears it afterwards', async () => {
+    const run = await seed();
+    const a = { nodeId: 'a', nodeType: 'mock.service' };
+    await activities.recordRunEvent({ ...eventBase(run), transition: 'run.started', nodes: NODES });
+    await activities.recordRunEvent({
+      ...eventBase(run),
+      transition: 'step.running',
+      ...a,
+      waitingReason: 'rate_limited',
+    });
+    const stepA = async () => (await readRun(pool, run)).steps.find((s) => s.node_id === 'a');
+    expect(await stepA()).toMatchObject({ status: 'running', waiting_reason: 'rate_limited' });
+
+    await activities.recordRunEvent({ ...eventBase(run), transition: 'step.running', ...a });
+    expect(await stepA()).toMatchObject({ status: 'running', waiting_reason: null });
+
+    await activities.recordRunEvent({
+      ...eventBase(run),
+      transition: 'step.running',
+      ...a,
+      waitingReason: 'rate_limited',
+    });
+    await activities.recordRunEvent({
+      ...eventBase(run),
+      transition: 'step.succeeded',
+      ...a,
+      attempts: 1,
+    });
+    expect(await stepA()).toMatchObject({ status: 'succeeded', waiting_reason: null });
+  });
+
   it('does not let a run leave its final state', async () => {
     const run = await seed();
     await activities.recordRunEvent({ ...eventBase(run), transition: 'run.started', nodes: [] });

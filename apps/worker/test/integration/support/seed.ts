@@ -94,6 +94,7 @@ export interface RunRow {
   status: string;
   error_code: string | null;
   error_message: string | null;
+  error_class: string | null;
   started_at: Date | null;
   finished_at: Date | null;
 }
@@ -107,6 +108,8 @@ export interface StepRow {
   finished_at: Date | null;
   duration_ms: number | null;
   error_code: string | null;
+  error_class: string | null;
+  waiting_reason: string | null;
 }
 
 export async function readRun(
@@ -115,12 +118,13 @@ export async function readRun(
 ): Promise<{ run: RunRow | undefined; steps: StepRow[] }> {
   return inTransaction(pool, { 'app.organization_id': run.organizationId }, async (client) => {
     const runs = await client.query<RunRow>(
-      `SELECT status, error_code, error_message, started_at, finished_at
+      `SELECT status, error_code, error_message, error_class, started_at, finished_at
          FROM workflow_runs WHERE id = $1`,
       [run.runId],
     );
     const steps = await client.query<StepRow>(
-      `SELECT node_id, node_type, status, attempts, started_at, finished_at, duration_ms, error_code
+      `SELECT node_id, node_type, status, attempts, started_at, finished_at, duration_ms, error_code,
+              error_class, waiting_reason
          FROM workflow_run_steps WHERE run_id = $1 ORDER BY node_id`,
       [run.runId],
     );
