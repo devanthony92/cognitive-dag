@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Button, buttonVariants } from '../../components/ui/button';
-import { featuresQuery, isDagEditorEnabled, isIdentityEnabled } from '../flags';
+import {
+  featuresQuery,
+  isDagEditorEnabled,
+  isExecutionEnabled,
+  isIdentityEnabled,
+  isResilienceEnabled,
+} from '../flags';
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher';
 import { forgetSession, logout, sessionQuery } from './session';
 
@@ -49,6 +55,20 @@ export function AppHeader() {
             Workflows
           </Link>
         )}
+        {identity &&
+          info &&
+          organizationId !== undefined &&
+          isDagEditorEnabled(features.data) &&
+          isExecutionEnabled(features.data) &&
+          isResilienceEnabled(features.data) && (
+            <Link
+              to="/orgs/$organizationId/runs"
+              params={{ organizationId }}
+              className="text-sm underline"
+            >
+              Ejecuciones
+            </Link>
+          )}
         {identity && info && organizationId !== undefined && (
           <Link
             to="/orgs/$organizationId/members"

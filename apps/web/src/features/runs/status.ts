@@ -1,4 +1,4 @@
-import type { RunStatus, StepStatus } from '@cognitive-dag/contracts';
+import type { ErrorClass, RunStatus, StepStatus } from '@cognitive-dag/contracts';
 
 export const RUN_STATUS_LABELS: Record<RunStatus, string> = {
   queued: 'En cola',
@@ -18,6 +18,25 @@ export const STEP_STATUS_LABELS: Record<StepStatus, string> = {
   cancelled: 'Cancelado',
   reused: 'Reutilizado',
 };
+
+/** What each class of failure means for the person reading the run (taxonomy of F4). */
+export const ERROR_CLASS_LABELS: Record<ErrorClass, { label: string; hint: string }> = {
+  transient: {
+    label: 'Transitorio',
+    hint: 'Falla pasajera del servicio: se reintentó y siguió fallando.',
+  },
+  rate_limited: {
+    label: 'Límite de uso',
+    hint: 'El servicio o la organización alcanzó su límite y la espera se agotó.',
+  },
+  timeout: { label: 'Tiempo agotado', hint: 'El nodo tardó más de lo permitido.' },
+  permanent: {
+    label: 'Permanente',
+    hint: 'Repetirlo no ayuda: revisa la configuración del nodo.',
+  },
+};
+
+export const WAITING_RATE_LIMIT_LABEL = 'Esperando por el límite';
 
 const FINAL: ReadonlySet<RunStatus> = new Set(['succeeded', 'failed', 'cancelled', 'timed_out']);
 

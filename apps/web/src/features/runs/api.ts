@@ -1,10 +1,12 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 import {
+  OrganizationRunListSchema,
   RunDetailSchema,
   RunListSchema,
   RunSchema,
   StepIoSchema,
   type Run,
+  type RunStatus,
 } from '@cognitive-dag/contracts';
 import { request } from '../../api/client';
 
@@ -29,6 +31,39 @@ export const runsQuery = (organizationId: string, workflowId: string) =>
         await request(
           `${base(organizationId)}/workflows/${workflowId}/runs?${params.toString()}`,
           RunListSchema,
+        )
+      ).data;
+    },
+    getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+
+export interface OrganizationRunFilters {
+  status?: RunStatus;
+  workflowId?: string;
+}
+
+export const organizationRunsKey = (organizationId: string, filters: OrganizationRunFilters) =>
+  [
+    'organization-runs',
+    organizationId,
+    filters.status ?? null,
+    filters.workflowId ?? null,
+  ] as const;
+
+/** Runs of the whole organization (F4), newest first, optionally filtered. */
+export const organizationRunsQuery = (organizationId: string, filters: OrganizationRunFilters) =>
+  infiniteQueryOptions({
+    queryKey: organizationRunsKey(organizationId, filters),
+    initialPageParam: undefined as string | undefined,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({ limit: String(RUNS_PAGE_SIZE) });
+      if (filters.status) params.set('status', filters.status);
+      if (filters.workflowId) params.set('workflowId', filters.workflowId);
+      if (pageParam !== undefined) params.set('cursor', pageParam);
+      return (
+        await request(
+          `${base(organizationId)}/runs?${params.toString()}`,
+          OrganizationRunListSchema,
         )
       ).data;
     },
@@ -84,8 +119,16 @@ export async function cancelRun(organizationId: string, runId: string): Promise<
   ).data;
 }
 
-export async function rerunRun(organizationId: string, runId: string): Promise<Run> {
+/** Without `fromNodeId` the whole run is repeated on the active version; with it, from that node. */
+export async function rerunRun(
+  organizationId: string,
+  runId: string,
+  fromNodeId?: string,
+): Promise<Run> {
   return (
-    await request(`${base(organizationId)}/runs/${runId}/rerun`, RunSchema, { method: 'POST' })
+    await request(`${base(organizationId)}/runs/${runId}/rerun`, RunSchema, {
+      method: 'POST',
+      ...(fromNodeId === undefined ? {} : { body: JSON.stringify({ fromNodeId }) }),
+    })
   ).data;
 }

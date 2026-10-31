@@ -40,6 +40,7 @@ export function RunGraph({ definition, steps, selectedId, onSelect }: Props) {
             errorCount: 0,
             errorTitle: '',
             ...(step ? { status: step.status } : {}),
+            ...(step?.waitingReason === 'rate_limited' ? { waiting: true } : {}),
           },
         };
       }),

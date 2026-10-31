@@ -4,6 +4,7 @@ import { memo } from 'react';
 import { NODE_CATALOG } from '@cognitive-dag/dag-schema';
 import { cn } from '../../lib/utils';
 import { StatusBadge } from '../runs/StatusBadge';
+import { WAITING_RATE_LIMIT_LABEL } from '../runs/status';
 import { HANDLE_LABELS, type FlowNode } from './flow';
 
 const STATUS_BORDER: Record<string, string> = {
@@ -12,6 +13,7 @@ const STATUS_BORDER: Record<string, string> = {
   failed: 'border-destructive',
   cancelled: 'border-amber-400',
   skipped: 'border-dashed opacity-60',
+  reused: 'border-violet-400',
 };
 
 const CATEGORY_ACCENT: Record<string, string> = {
@@ -57,7 +59,16 @@ function DagNodeViewBase({ data, selected }: NodeProps<FlowNode>) {
           </span>
         )}
       </div>
-      {data.status && <StatusBadge status={data.status} kind="step" className="mt-1.5" />}
+      {data.status && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <StatusBadge status={data.status} kind="step" />
+          {data.waiting && (
+            <span className="rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-amber-900">
+              {WAITING_RATE_LIMIT_LABEL}
+            </span>
+          )}
+        </div>
+      )}
       {outputs.map((handle, index) => (
         <Handle
           key={handle}

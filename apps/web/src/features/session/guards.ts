@@ -1,7 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 import type { SessionInfo } from '@cognitive-dag/contracts';
-import { featuresQuery, isDagEditorEnabled, isExecutionEnabled, isIdentityEnabled } from '../flags';
+import {
+  featuresQuery,
+  isDagEditorEnabled,
+  isExecutionEnabled,
+  isIdentityEnabled,
+  isResilienceEnabled,
+} from '../flags';
 import { sessionQuery } from './session';
 
 /** The screens of F1 do not exist for the user while `identity-enabled` is off (FR-033). */
@@ -60,6 +66,21 @@ export async function requireExecution(
 ): Promise<void> {
   const features = await queryClient.ensureQueryData(featuresQuery);
   if (!isDagEditorEnabled(features) || !isExecutionEnabled(features)) {
+    throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
+  }
+}
+
+/**
+ * The organization run list does not exist for the user while `resilience-enabled` is off (F4).
+ * The flag only hides the screens; the API authorizes every call regardless of it.
+ */
+export async function requireResilience(
+  queryClient: QueryClient,
+  organizationId: string,
+): Promise<void> {
+  await requireExecution(queryClient, organizationId);
+  const features = await queryClient.ensureQueryData(featuresQuery);
+  if (!isResilienceEnabled(features)) {
     throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
   }
 }

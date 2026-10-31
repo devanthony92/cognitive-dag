@@ -15,6 +15,8 @@ export interface DagNodeData extends Record<string, unknown> {
   errorTitle: string;
   /** State of the node in a run; only the run view sets it. */
   status?: StepStatus;
+  /** The running node is held back by the rate limit (F4). */
+  waiting?: boolean;
 }
 
 export type FlowNode = Node<DagNodeData, 'dag'>;
