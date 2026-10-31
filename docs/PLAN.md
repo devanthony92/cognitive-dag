@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0, F1 y F2 completadas; F3 es la siguiente fase. Fecha: 2026-10-29.
+> Estado: F0, F1, F2 y F3 completadas; F4 (resiliencia) es la siguiente fase. Fecha: 2026-10-31.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -50,7 +50,7 @@ Cada decisión de F0 tiene su ADR; aquí solo se listan los cambios que afectan 
 | TypeScript             | 6.0.3 (no 7): `typescript-eslint` aún no lo soporta                                                                                           | [0012](adr/0012-typescript-6.md)                                                                                                  |
 | NestJS                 | 11.2.8 (no 12): `nestjs-zod` y `@openfeature/nestjs-sdk` no soportan 12; issue [#10](https://github.com/devanthony92/cognitive-dag/issues/10) | [0013](adr/0013-nestjs-11.md)                                                                                                     |
 | Gestor de paquetes     | pnpm 12.16.1 vía Corepack; Node.js 24.22.1; todas las versiones fijadas de forma exacta                                                       | [0017](adr/0017-tooling-de-calidad-y-ci.md), [0020](adr/0020-politica-de-cadena-de-suministro-de-pnpm.md)                         |
-| Estado de la web       | Polling cada 1 s en F0; SSE en F3                                                                                                             | [0014](adr/0014-polling-en-f0.md)                                                                                                 |
+| Estado de la web       | Polling cada 1 s en F0; SSE para ejecuciones desde F3                                                                                         | [0014](adr/0014-polling-en-f0.md)                                                                                                 |
 | Pruebas de integración | Contra el Compose compartido, no Testcontainers (§8)                                                                                          | [0015](adr/0015-pruebas-con-compose-compartido.md)                                                                                |
 | Librerías del API      | `nestjs-pino`, `nestjs-cls`, `nestjs-zod`, terminus, OpenFeature, `iovalkey`, `pg`                                                            | [0016](adr/0016-librerias-del-api.md)                                                                                             |
 | Tipos entre paquetes   | Condición de exportación `@cognitive-dag/source`                                                                                              | [0018](adr/0018-condicion-de-exportacion-source-para-tipos.md)                                                                    |
@@ -154,6 +154,11 @@ docs/
   corre dentro del workflow, que es determinista.
 - `human.approval` usa signals; el estado en vivo se expone con queries y con una tabla
   de eventos de ejecución que el API transmite por SSE.
+- Implementado en F3: `executeDag` recibe la definición completa en su entrada
+  ([ADR-0048](adr/0048-interprete-unico-con-la-definicion-en-la-entrada.md)); el registro de
+  ejecuciones y pasos vive en PostgreSQL con RLS ([ADR-0049](adr/0049-registro-de-ejecuciones-en-postgresql.md))
+  y el contenido solo en Temporal ([ADR-0050](adr/0050-contenido-de-entradas-y-salidas-solo-en-temporal.md));
+  la vista en vivo usa SSE con Valkey pub/sub ([ADR-0051](adr/0051-vista-en-vivo-por-sse-con-valkey-pub-sub.md)).
 - `workflowId` = clave de idempotencia del evento disparador, para que Temporal descarte
   duplicados.
 - Grafos grandes o bucles futuros: `continueAsNew` y child workflows para respetar los
