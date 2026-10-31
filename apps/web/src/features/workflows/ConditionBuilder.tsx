@@ -186,7 +186,7 @@ function ConditionNode({
       )}
 
       {condition.op === 'not' && (
-        <div className="ml-3 border-l pl-3">
+        <div className="ml-1 border-l pl-2">
           <ConditionNode condition={condition.operand} path={[...path, 0]} context={context} />
         </div>
       )}
@@ -194,7 +194,7 @@ function ConditionNode({
       {(condition.op === 'and' || condition.op === 'or') && (
         <div className="grid gap-2">
           {condition.operands.map((child, index) => (
-            <div key={index} className="ml-3 flex items-start gap-1 border-l pl-3">
+            <div key={index} className="ml-1 flex items-start gap-1 border-l pl-2">
               <div className="min-w-0 flex-1">
                 <ConditionNode condition={child} path={[...path, index]} context={context} />
               </div>
@@ -211,7 +211,7 @@ function ConditionNode({
               </Button>
             </div>
           ))}
-          <div className="ml-3 flex flex-wrap gap-2 pl-3">
+          <div className="ml-1 flex flex-wrap gap-2 pl-2">
             <Button
               type="button"
               variant="outline"
@@ -413,7 +413,8 @@ function OperandEditor({
 
   return (
     <div className="grid gap-1">
-      <div className="flex flex-wrap items-start gap-1">
+      {/* Selectors share a line that wraps; the field or value always gets a full-width line. */}
+      <div data-part="selectors" className="flex flex-wrap gap-1 empty:hidden">
         {allowLiteral && !literalOnly && (
           <NativeSelect
             aria-label={`${name}: origen`}
@@ -431,18 +432,21 @@ function OperandEditor({
             <option value="literal">Valor fijo</option>
           </NativeSelect>
         )}
+        {operand.kind === 'literal' && (
+          <LiteralTypeSelect name={name} literal={operand} onChange={onChange} />
+        )}
+      </div>
+      <div data-part="value" className="min-w-0">
         {operand.kind === 'ref' ? (
-          <div className="min-w-0 flex-1">
-            <ReferenceSelect
-              label={`${name}: campo`}
-              options={options}
-              value={operand.path}
-              invalid={problem !== undefined}
-              onChange={(path) => onChange({ kind: 'ref', path })}
-            />
-          </div>
+          <ReferenceSelect
+            label={`${name}: campo`}
+            options={options}
+            value={operand.path}
+            invalid={problem !== undefined}
+            onChange={(path) => onChange({ kind: 'ref', path })}
+          />
         ) : (
-          <LiteralEditor name={name} literal={operand} choices={choices} onChange={onChange} />
+          <LiteralValue name={name} literal={operand} choices={choices} onChange={onChange} />
         )}
       </div>
       {problem && <p className="text-sm text-destructive">{problem}</p>}
@@ -450,7 +454,38 @@ function OperandEditor({
   );
 }
 
-function LiteralEditor({
+function LiteralTypeSelect({
+  name,
+  literal,
+  onChange,
+}: {
+  name: string;
+  literal: LiteralOperand;
+  onChange: (literal: LiteralOperand) => void;
+}) {
+  const retype = (type: LiteralOperand['type']) =>
+    onChange(
+      type === 'string'
+        ? { ...STRING_LITERAL }
+        : (literalFor({ kind: type }, undefined) as LiteralOperand),
+    );
+  return (
+    <NativeSelect
+      aria-label={`${name}: tipo`}
+      className="w-auto"
+      value={literal.type}
+      onChange={(event) => retype(event.target.value as LiteralOperand['type'])}
+    >
+      {LITERAL_TYPES.map(([type, label]) => (
+        <option key={type} value={type}>
+          {label}
+        </option>
+      ))}
+    </NativeSelect>
+  );
+}
+
+function LiteralValue({
   name,
   literal,
   choices,
@@ -461,72 +496,52 @@ function LiteralEditor({
   choices: string[] | undefined;
   onChange: (literal: LiteralOperand) => void;
 }) {
-  const retype = (type: LiteralOperand['type']) =>
-    onChange(
-      type === 'string'
-        ? { ...STRING_LITERAL }
-        : (literalFor({ kind: type }, undefined) as LiteralOperand),
-    );
   return (
     <>
-      <NativeSelect
-        aria-label={`${name}: tipo`}
-        className="w-auto"
-        value={literal.type}
-        onChange={(event) => retype(event.target.value as LiteralOperand['type'])}
-      >
-        {LITERAL_TYPES.map(([type, label]) => (
-          <option key={type} value={type}>
-            {label}
-          </option>
-        ))}
-      </NativeSelect>
-      <div className="min-w-0 flex-1">
-        {literal.type === 'boolean' ? (
-          <NativeSelect
-            aria-label={`${name}: valor`}
-            value={String(literal.value)}
-            onChange={(event) =>
-              onChange({ kind: 'literal', type: 'boolean', value: event.target.value === 'true' })
-            }
-          >
-            <option value="true">Sí</option>
-            <option value="false">No</option>
-          </NativeSelect>
-        ) : literal.type === 'number' ? (
-          <NumberInput
-            label={`${name}: valor`}
-            value={literal.value}
-            onChange={(value) => onChange({ kind: 'literal', type: 'number', value })}
-          />
-        ) : literal.type === 'string' && choices ? (
-          <NativeSelect
-            aria-label={`${name}: valor`}
-            value={literal.value}
-            onChange={(event) =>
-              onChange({ kind: 'literal', type: 'string', value: event.target.value })
-            }
-          >
-            {!choices.includes(literal.value) && (
-              <option value={literal.value}>{literal.value || 'Elige un valor…'}</option>
-            )}
-            {choices.map((choice) => (
-              <option key={choice} value={choice}>
-                {choice}
-              </option>
-            ))}
-          </NativeSelect>
-        ) : (
-          <Input
-            aria-label={`${name}: valor`}
-            placeholder={literal.type === 'datetime' ? '2026-10-30T12:00:00Z' : undefined}
-            value={literal.value}
-            onChange={(event) =>
-              onChange({ kind: 'literal', type: literal.type, value: event.target.value })
-            }
-          />
-        )}
-      </div>
+      {literal.type === 'boolean' ? (
+        <NativeSelect
+          aria-label={`${name}: valor`}
+          value={String(literal.value)}
+          onChange={(event) =>
+            onChange({ kind: 'literal', type: 'boolean', value: event.target.value === 'true' })
+          }
+        >
+          <option value="true">Sí</option>
+          <option value="false">No</option>
+        </NativeSelect>
+      ) : literal.type === 'number' ? (
+        <NumberInput
+          label={`${name}: valor`}
+          value={literal.value}
+          onChange={(value) => onChange({ kind: 'literal', type: 'number', value })}
+        />
+      ) : literal.type === 'string' && choices ? (
+        <NativeSelect
+          aria-label={`${name}: valor`}
+          value={literal.value}
+          onChange={(event) =>
+            onChange({ kind: 'literal', type: 'string', value: event.target.value })
+          }
+        >
+          {!choices.includes(literal.value) && (
+            <option value={literal.value}>{literal.value || 'Elige un valor…'}</option>
+          )}
+          {choices.map((choice) => (
+            <option key={choice} value={choice}>
+              {choice}
+            </option>
+          ))}
+        </NativeSelect>
+      ) : (
+        <Input
+          aria-label={`${name}: valor`}
+          placeholder={literal.type === 'datetime' ? '2026-10-30T12:00:00Z' : undefined}
+          value={literal.value}
+          onChange={(event) =>
+            onChange({ kind: 'literal', type: literal.type, value: event.target.value })
+          }
+        />
+      )}
     </>
   );
 }

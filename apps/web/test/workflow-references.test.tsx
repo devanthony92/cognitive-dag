@@ -281,6 +281,52 @@ describe('editor: condition builder (US4)', () => {
     expect(within(condition()).getAllByRole('group', { name: /^Condición \d+$/ })).toHaveLength(19);
   });
 
+  it('keeps each operand readable: selectors wrap, the value gets its own full-width line', async () => {
+    const { user } = mountEditor(new FakeServer(draft()));
+    fireEvent.click(await screen.findByText('Decidir'));
+    await user.selectOptions(await screen.findByLabelText('Operación de Condición'), 'and');
+
+    const value = screen.getByLabelText('Condición 1 · derecha: valor');
+    const row = value.closest('[data-part="value"]') as HTMLElement;
+    const selectors = row.previousElementSibling as HTMLElement;
+    // The value is never in the same flex line as origin and type, so it cannot be squeezed.
+    expect(row.parentElement).toBe(selectors.parentElement);
+    expect(selectors.className).toContain('flex-wrap');
+    expect(selectors.contains(value)).toBe(false);
+    expect(within(selectors).getByLabelText('Condición 1 · derecha: origen')).toBeDefined();
+    expect(within(selectors).getByLabelText('Condición 1 · derecha: tipo')).toBeDefined();
+    // Nested groups indent by a few pixels, not by a third of the panel.
+    expect(
+      screen.getByRole('group', { name: 'Condición 1' }).parentElement?.parentElement?.className,
+    ).toContain('pl-2');
+  });
+
+  it('does not call a condition valid while an operand is still empty', async () => {
+    const { user } = mountEditor(new FakeServer(draft()));
+    fireEvent.click(await screen.findByText('Decidir'));
+    await user.selectOptions(await screen.findByLabelText('Operación de Condición'), 'eq');
+    await user.selectOptions(screen.getByLabelText('Condición · izquierda: origen'), 'ref');
+    await user.selectOptions(
+      screen.getByLabelText('Condición · izquierda: campo'),
+      'nodes.classify_1.output.label',
+    );
+    await user.selectOptions(screen.getByLabelText('Condición · derecha: valor'), '');
+
+    expect(
+      await within(panel()).findByText('Elige un valor para la derecha.', undefined, {
+        timeout: 1500,
+      }),
+    ).toBeDefined();
+    expect(screen.queryByText('Sin problemas')).toBeNull();
+
+    await user.selectOptions(screen.getByLabelText('Condición · izquierda: campo'), '');
+    expect(
+      await within(panel()).findByText('Elige el campo de la izquierda.', undefined, {
+        timeout: 1500,
+      }),
+    ).toBeDefined();
+  });
+
   it('shows a reference to a deleted node as invalid instead of dropping it', async () => {
     const broken = draft();
     broken.nodes[2] = node(

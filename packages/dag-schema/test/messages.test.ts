@@ -106,3 +106,44 @@ describe('schema messages are human Spanish tied to the field label', () => {
     }
   });
 });
+
+describe('condition messages never expose internal names', () => {
+  const messagesOf = (condition: unknown) =>
+    errorsOf(withConfig('logic.condition', { condition })).map((e) => e.message);
+
+  it('says which side of the condition is empty, in words', () => {
+    const messages = messagesOf({
+      op: 'eq',
+      left: { kind: 'ref', path: '' },
+      right: { kind: 'literal', type: 'string', value: '' },
+    });
+    expect(messages).toContain('Elige el campo de la izquierda.');
+    expect(messages).toContain('Elige un valor para la derecha.');
+  });
+
+  it('describes schema problems of a condition part without «left» or «path»', () => {
+    const messages = messagesOf({
+      op: 'eq',
+      left: { kind: 'ref', path: 5 },
+      right: { kind: 'literal', type: 'datetime', value: 'mañana' },
+    });
+    expect(messages.length).toBeGreaterThan(0);
+    for (const message of messages) {
+      expect(message).not.toMatch(/«(left|right|path|operand|operands|value|options)»/);
+    }
+  });
+
+  it('writes the operation of a type mismatch in words', () => {
+    const error = errorsOf(
+      withConfig('logic.condition', {
+        condition: {
+          op: 'gt',
+          left: { kind: 'literal', type: 'string', value: 'a' },
+          right: { kind: 'literal', type: 'number', value: 1 },
+        },
+      }),
+    ).find((e) => e.code === 'CONDITION_TYPE_MISMATCH');
+    expect(error?.message).toContain('es mayor que');
+    expect(error?.message).not.toContain('«gt»');
+  });
+});
