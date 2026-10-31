@@ -30,7 +30,7 @@ export interface FailureSignal {
   /** The engine gave up waiting for the node. */
   timedOut?: boolean;
   /** The failure was marked as not retryable. */
-  nonRetryable?: boolean;
+  nonRetryable?: boolean | null;
 }
 
 /** Class of a failure. What nothing explains is treated as transient: trying again is safe. */
