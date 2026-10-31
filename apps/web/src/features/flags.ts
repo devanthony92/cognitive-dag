@@ -16,6 +16,10 @@ export function isDagEditorEnabled(features: Record<string, boolean> | undefined
   return features?.[FEATURE_FLAGS.dagEditorEnabled] === true;
 }
 
+export function isResilienceEnabled(features: Record<string, boolean> | undefined): boolean {
+  return features?.[FEATURE_FLAGS.resilienceEnabled] === true;
+}
+
 export function isExecutionEnabled(features: Record<string, boolean> | undefined): boolean {
   return features?.[FEATURE_FLAGS.executionEnabled] === true;
 }

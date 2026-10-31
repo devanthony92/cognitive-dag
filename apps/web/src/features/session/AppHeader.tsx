@@ -1,7 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Button, buttonVariants } from '../../components/ui/button';
-import { featuresQuery, isDagEditorEnabled, isIdentityEnabled } from '../flags';
+import {
+  featuresQuery,
+  isDagEditorEnabled,
+  isExecutionEnabled,
+  isIdentityEnabled,
+  isResilienceEnabled,
+} from '../flags';
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher';
 import { forgetSession, logout, sessionQuery } from './session';
 
@@ -27,7 +33,7 @@ export function AppHeader() {
 
   return (
     <header className="border-b bg-card">
-      <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-3">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3 whitespace-nowrap">
         <Link to="/" className="font-semibold tracking-tight">
           CognitiveDAG
         </Link>
@@ -49,6 +55,20 @@ export function AppHeader() {
             Workflows
           </Link>
         )}
+        {identity &&
+          info &&
+          organizationId !== undefined &&
+          isDagEditorEnabled(features.data) &&
+          isExecutionEnabled(features.data) &&
+          isResilienceEnabled(features.data) && (
+            <Link
+              to="/orgs/$organizationId/runs"
+              params={{ organizationId }}
+              className="text-sm underline"
+            >
+              Ejecuciones
+            </Link>
+          )}
         {identity && info && organizationId !== undefined && (
           <Link
             to="/orgs/$organizationId/members"
@@ -58,10 +78,12 @@ export function AppHeader() {
             Miembros
           </Link>
         )}
-        <div className="ml-auto flex items-center gap-3 text-sm">
+        <div className="ml-auto flex min-w-0 items-center gap-3 text-sm whitespace-nowrap">
           {identity && info && (
             <>
-              <span className="text-muted-foreground">{info.user.name}</span>
+              <span className="min-w-0 truncate text-muted-foreground" title={info.user.name}>
+                {info.user.name}
+              </span>
               <Link to="/account/password" className="underline">
                 Contraseña
               </Link>

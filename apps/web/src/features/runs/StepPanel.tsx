@@ -1,11 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
+import { RotateCw } from 'lucide-react';
 import { NODE_CATALOG } from '@cognitive-dag/dag-schema';
 import type { RunStep } from '@cognitive-dag/contracts';
 import { ApiProblemError } from '../../api/client';
+import { Button } from '../../components/ui/button';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { errorMessage } from './error-messages';
 import { stepIoQuery } from './api';
 import { StatusBadge } from './StatusBadge';
-import { formatDateTime, formatDuration } from './status';
+import {
+  ERROR_CLASS_LABELS,
+  WAITING_RATE_LIMIT_LABEL,
+  formatDateTime,
+  formatDuration,
+} from './status';
 
 interface Props {
   organizationId: string;
@@ -13,6 +22,13 @@ interface Props {
   step: RunStep;
   label: string;
   now: number;
+  /** F4 behind `resilience-enabled`: error class, rate limit wait, reuse and rerun from a node. */
+  resilience?: boolean;
+  /** The run this one repeats, to follow a reused node back to where it ran. */
+  rerunOf?: string | null;
+  /** Rerun from this node; only offered when the run has finished. */
+  onRerunFrom?: () => void;
+  rerunning?: boolean;
 }
 
 function Json({ title, value }: { title: string; value: unknown }) {
@@ -31,14 +47,39 @@ function Json({ title, value }: { title: string; value: unknown }) {
 }
 
 /** Input and output of a step, read from Temporal on demand (decision 5C). */
-function StepContent({ organizationId, runId, step }: Omit<Props, 'label' | 'now'>) {
+function StepContent({
+  organizationId,
+  runId,
+  step,
+  rerunOf,
+}: Pick<Props, 'organizationId' | 'runId' | 'step' | 'rerunOf'>) {
   // Logic nodes run inside the engine: they leave no payloads to show.
   const evaluatedInEngine = step.nodeType.startsWith('logic.');
+  const reused = step.status === 'reused';
   const waiting = step.status === 'pending' || step.status === 'skipped';
   const io = useQuery({
     ...stepIoQuery(organizationId, runId, step.nodeId, step.status),
-    enabled: !evaluatedInEngine && !waiting,
+    enabled: !evaluatedInEngine && !waiting && !reused,
   });
+
+  // A reused node ran in the original run: its content is read there, not here.
+  if (reused) {
+    return (
+      <div className="grid gap-2 text-sm text-muted-foreground">
+        <p>Este nodo no se ejecutó de nuevo: se reutilizó su salida de la ejecución original.</p>
+        {rerunOf && (
+          <Link
+            to="/orgs/$organizationId/runs/$runId"
+            params={{ organizationId, runId: rerunOf }}
+            search={{ node: step.nodeId }}
+            className="justify-self-start text-foreground underline"
+          >
+            Ver este nodo en la ejecución original
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   if (evaluatedInEngine) {
     return (
@@ -86,7 +127,17 @@ function StepContent({ organizationId, runId, step }: Omit<Props, 'label' | 'now
 }
 
 /** Side panel with the detail of the selected node of a run. */
-export function StepPanel({ organizationId, runId, step, label, now }: Props) {
+export function StepPanel({
+  organizationId,
+  runId,
+  step,
+  label,
+  now,
+  resilience = false,
+  rerunOf = null,
+  onRerunFrom,
+  rerunning = false,
+}: Props) {
   const duration =
     step.durationMs ??
     (step.status === 'running' && step.startedAt
@@ -103,7 +154,12 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
     category !== 'trigger' &&
     category !== 'logic' &&
     step.status !== 'skipped' &&
-    step.status !== 'pending';
+    step.status !== 'pending' &&
+    step.status !== 'reused';
+
+  const errorClass =
+    resilience && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
+  const waitingForLimit = resilience && step.waitingReason === 'rate_limited';
 
   return (
     <div className="grid gap-4">
@@ -119,6 +175,11 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
         <dt className="text-muted-foreground">Estado</dt>
         <dd>
           <StatusBadge status={step.status} kind="step" />
+          {waitingForLimit && (
+            <p role="status" className="mt-1 text-xs font-medium text-amber-900">
+              {WAITING_RATE_LIMIT_LABEL}
+            </p>
+          )}
         </dd>
         {showAttempts && (
           <>
@@ -138,13 +199,30 @@ export function StepPanel({ organizationId, runId, step, label, now }: Props) {
           role="alert"
           className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
         >
-          <p className="font-medium break-words">{step.error.message}</p>
+          <p className="font-medium break-words">{errorMessage(step.error)}</p>
           <p className="mt-1 font-mono text-xs break-all">{step.error.code}</p>
+          {errorClass && (
+            <p className="mt-2 text-xs">
+              <span className="font-medium">Clase de error: {errorClass.label}.</span>{' '}
+              {errorClass.hint}
+            </p>
+          )}
+        </div>
+      )}
+      {onRerunFrom && (
+        <div className="grid gap-1">
+          <Button variant="outline" size="sm" disabled={rerunning} onClick={onRerunFrom}>
+            <RotateCw aria-hidden />
+            {rerunning ? 'Reejecutando…' : 'Reejecutar desde aquí'}
+          </Button>
+          <p className="text-xs text-muted-foreground">
+            Reutiliza lo que ya salió bien antes de este nodo, en la misma versión.
+          </p>
         </div>
       )}
       <section aria-label="Contenido del nodo" className="grid gap-2">
         <h3 className="text-sm font-semibold">Entrada y salida</h3>
-        <StepContent organizationId={organizationId} runId={runId} step={step} />
+        <StepContent organizationId={organizationId} runId={runId} step={step} rerunOf={rerunOf} />
       </section>
     </div>
   );

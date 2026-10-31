@@ -20,6 +20,7 @@ import { Route as InvitationsAcceptRouteImport } from './routes/invitations.acce
 import { Route as OrgsOrganizationIdRouteImport } from './routes/orgs.$organizationId'
 import { Route as OrgsOrganizationIdIndexRouteImport } from './routes/orgs.$organizationId.index'
 import { Route as OrgsOrganizationIdMembersRouteImport } from './routes/orgs.$organizationId.members'
+import { Route as OrgsOrganizationIdRunsIndexRouteImport } from './routes/orgs.$organizationId.runs.index'
 import { Route as OrgsOrganizationIdRunsRunIdRouteImport } from './routes/orgs.$organizationId.runs.$runId'
 import { Route as OrgsOrganizationIdWorkflowsIndexRouteImport } from './routes/orgs.$organizationId.workflows.index'
 import { Route as OrgsOrganizationIdWorkflowsWorkflowIdRouteImport } from './routes/orgs.$organizationId.workflows.$workflowId'
@@ -81,6 +82,12 @@ const OrgsOrganizationIdMembersRoute =
     path: '/members',
     getParentRoute: () => OrgsOrganizationIdRoute,
   } as any)
+const OrgsOrganizationIdRunsIndexRoute =
+  OrgsOrganizationIdRunsIndexRouteImport.update({
+    id: '/runs/',
+    path: '/runs/',
+    getParentRoute: () => OrgsOrganizationIdRoute,
+  } as any)
 const OrgsOrganizationIdRunsRunIdRoute =
   OrgsOrganizationIdRunsRunIdRouteImport.update({
     id: '/runs/$runId',
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
   '/orgs/$organizationId/workflows/$workflowId': typeof OrgsOrganizationIdWorkflowsWorkflowIdRoute
+  '/orgs/$organizationId/runs/': typeof OrgsOrganizationIdRunsIndexRoute
   '/orgs/$organizationId/workflows/': typeof OrgsOrganizationIdWorkflowsIndexRoute
   '/orgs/$organizationId/workflows/$workflowId/runs': typeof OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute
 }
@@ -136,6 +144,7 @@ export interface FileRoutesByTo {
   '/orgs/$organizationId': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
   '/orgs/$organizationId/workflows/$workflowId': typeof OrgsOrganizationIdWorkflowsWorkflowIdRoute
+  '/orgs/$organizationId/runs': typeof OrgsOrganizationIdRunsIndexRoute
   '/orgs/$organizationId/workflows': typeof OrgsOrganizationIdWorkflowsIndexRoute
   '/orgs/$organizationId/workflows/$workflowId/runs': typeof OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute
 }
@@ -154,6 +163,7 @@ export interface FileRoutesById {
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
   '/orgs/$organizationId/workflows/$workflowId': typeof OrgsOrganizationIdWorkflowsWorkflowIdRoute
+  '/orgs/$organizationId/runs/': typeof OrgsOrganizationIdRunsIndexRoute
   '/orgs/$organizationId/workflows/': typeof OrgsOrganizationIdWorkflowsIndexRoute
   '/orgs/$organizationId/workflows_/$workflowId/runs': typeof OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute
 }
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
     | '/orgs/$organizationId/'
     | '/orgs/$organizationId/runs/$runId'
     | '/orgs/$organizationId/workflows/$workflowId'
+    | '/orgs/$organizationId/runs/'
     | '/orgs/$organizationId/workflows/'
     | '/orgs/$organizationId/workflows/$workflowId/runs'
   fileRoutesByTo: FileRoutesByTo
@@ -189,6 +200,7 @@ export interface FileRouteTypes {
     | '/orgs/$organizationId'
     | '/orgs/$organizationId/runs/$runId'
     | '/orgs/$organizationId/workflows/$workflowId'
+    | '/orgs/$organizationId/runs'
     | '/orgs/$organizationId/workflows'
     | '/orgs/$organizationId/workflows/$workflowId/runs'
   id:
@@ -206,6 +218,7 @@ export interface FileRouteTypes {
     | '/orgs/$organizationId/'
     | '/orgs/$organizationId/runs/$runId'
     | '/orgs/$organizationId/workflows/$workflowId'
+    | '/orgs/$organizationId/runs/'
     | '/orgs/$organizationId/workflows/'
     | '/orgs/$organizationId/workflows_/$workflowId/runs'
   fileRoutesById: FileRoutesById
@@ -301,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgsOrganizationIdMembersRouteImport
       parentRoute: typeof OrgsOrganizationIdRoute
     }
+    '/orgs/$organizationId/runs/': {
+      id: '/orgs/$organizationId/runs/'
+      path: '/runs'
+      fullPath: '/orgs/$organizationId/runs/'
+      preLoaderRoute: typeof OrgsOrganizationIdRunsIndexRouteImport
+      parentRoute: typeof OrgsOrganizationIdRoute
+    }
     '/orgs/$organizationId/runs/$runId': {
       id: '/orgs/$organizationId/runs/$runId'
       path: '/runs/$runId'
@@ -337,6 +357,7 @@ interface OrgsOrganizationIdRouteChildren {
   OrgsOrganizationIdIndexRoute: typeof OrgsOrganizationIdIndexRoute
   OrgsOrganizationIdRunsRunIdRoute: typeof OrgsOrganizationIdRunsRunIdRoute
   OrgsOrganizationIdWorkflowsWorkflowIdRoute: typeof OrgsOrganizationIdWorkflowsWorkflowIdRoute
+  OrgsOrganizationIdRunsIndexRoute: typeof OrgsOrganizationIdRunsIndexRoute
   OrgsOrganizationIdWorkflowsIndexRoute: typeof OrgsOrganizationIdWorkflowsIndexRoute
   OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute: typeof OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute
 }
@@ -347,6 +368,7 @@ const OrgsOrganizationIdRouteChildren: OrgsOrganizationIdRouteChildren = {
   OrgsOrganizationIdRunsRunIdRoute: OrgsOrganizationIdRunsRunIdRoute,
   OrgsOrganizationIdWorkflowsWorkflowIdRoute:
     OrgsOrganizationIdWorkflowsWorkflowIdRoute,
+  OrgsOrganizationIdRunsIndexRoute: OrgsOrganizationIdRunsIndexRoute,
   OrgsOrganizationIdWorkflowsIndexRoute: OrgsOrganizationIdWorkflowsIndexRoute,
   OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute:
     OrgsOrganizationIdWorkflowsWorkflowIdRunsRoute,

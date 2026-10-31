@@ -15,9 +15,11 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { featuresQuery, isResilienceEnabled } from '../flags';
 import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
+import { errorMessage } from './error-messages';
 import { RunGraph } from './RunGraph';
 import { StatusBadge } from './StatusBadge';
 import { StepPanel } from './StepPanel';
@@ -35,9 +37,12 @@ const MODE_TEXT = {
 export function RunDetailPage({
   organizationId,
   runId,
+  initialNodeId,
 }: {
   organizationId: string;
   runId: string;
+  /** Node to open, e.g. coming from a reused node of a rerun. */
+  initialNodeId?: string;
 }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -53,7 +58,9 @@ export function RunDetailPage({
   const mode = useRunLive(organizationId, runId, active);
   const now = useNow(active);
 
-  const [selectedId, setSelectedId] = useState<string>();
+  const features = useQuery(featuresQuery);
+  const resilience = isResilienceEnabled(features.data);
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialNodeId);
   const [cancelOpen, setCancelOpen] = useState(false);
 
   const definition = useMemo(
@@ -70,7 +77,7 @@ export function RunDetailPage({
     },
   });
   const rerun = useMutation({
-    mutationFn: () => rerunRun(organizationId, runId),
+    mutationFn: (fromNodeId?: string) => rerunRun(organizationId, runId, fromNodeId),
     onSuccess: async (created) => {
       await queryClient.invalidateQueries({
         queryKey: runsKey(organizationId, created.workflowId),
@@ -155,9 +162,14 @@ export function RunDetailPage({
               <Link
                 to="/orgs/$organizationId/runs/$runId"
                 params={{ organizationId, runId: data.rerunOf }}
+                {...(resilience && data.rerunFromNodeId
+                  ? { search: { node: data.rerunFromNodeId } }
+                  : {})}
                 className="underline"
               >
-                Reejecución de otra ejecución
+                {resilience && data.rerunFromNodeId
+                  ? `Reejecución desde «${labelOf(data.rerunFromNodeId)}» de otra ejecución`
+                  : 'Reejecución de otra ejecución'}
               </Link>
             </div>
           )}
@@ -182,7 +194,11 @@ export function RunDetailPage({
             </Button>
           )}
           {final && (
-            <Button variant="outline" disabled={rerun.isPending} onClick={() => rerun.mutate()}>
+            <Button
+              variant="outline"
+              disabled={rerun.isPending}
+              onClick={() => rerun.mutate(undefined)}
+            >
               <RotateCw aria-hidden />
               {rerun.isPending ? 'Reejecutando…' : 'Reejecutar'}
             </Button>
@@ -196,7 +212,7 @@ export function RunDetailPage({
             <Alert variant="destructive">
               <AlertDescription>
                 <p className="font-medium">La ejecución terminó con un error.</p>
-                <p>{data.error.message}</p>
+                <p>{errorMessage(data.error)}</p>
                 <p className="mt-1 font-mono text-xs">{data.error.code}</p>
               </AlertDescription>
             </Alert>
@@ -247,6 +263,14 @@ export function RunDetailPage({
               step={selectedStep}
               label={labelOf(selectedStep.nodeId)}
               now={now}
+              resilience={resilience}
+              rerunOf={data.rerunOf}
+              {...(resilience && final
+                ? {
+                    onRerunFrom: () => rerun.mutate(selectedStep.nodeId),
+                    rerunning: rerun.isPending,
+                  }
+                : {})}
             />
           ) : (
             <p className="text-sm text-muted-foreground">
