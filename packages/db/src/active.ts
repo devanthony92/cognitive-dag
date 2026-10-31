@@ -47,3 +47,12 @@ export const archived = {
       .from(workflows)
       .where(and(isNotNull(workflows.deletedAt), where)),
 };
+
+/**
+ * Workflows of any state, only id and name: the runs of an archived workflow keep showing which
+ * workflow they belong to (organization runs list).
+ */
+export const named = {
+  workflows: (tx: Tx, where?: SQL) =>
+    tx.select({ id: workflows.id, name: workflows.name }).from(workflows).where(where),
+};

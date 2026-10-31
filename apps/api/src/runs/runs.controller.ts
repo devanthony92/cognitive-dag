@@ -11,16 +11,25 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
-import type { Run, RunDetail, RunList, StepIo } from '@cognitive-dag/contracts';
+import type {
+  OrganizationRunList,
+  Run,
+  RunDetail,
+  RunList,
+  StepIo,
+} from '@cognitive-dag/contracts';
 import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import type { RequestTenant } from '../organizations/tenant-context';
 import { ExecutionEnabledGuard } from './execution-enabled.guard';
+import { ResilienceEnabledGuard } from './resilience-enabled.guard';
 import { RunEventsService } from './run-events.service';
 import {
   ListRunsQueryDto,
+  OrganizationRunsQueryDto,
+  RerunDto,
   RunParamsDto,
   StartRunDto,
   StepIoParamsDto,
@@ -73,6 +82,23 @@ export class RunsController {
     return this.runs.list(actorOf(auth, tenant, req), params.workflowId, query.cursor, query.limit);
   }
 
+  /** Review queue of the organization (F4). Behind `resilience-enabled`. */
+  @Get('runs')
+  @UseGuards(ResilienceEnabledGuard)
+  listOrganization(
+    @Query() query: OrganizationRunsQueryDto,
+    @CurrentAuth() auth: AuthSession,
+    @CurrentTenant() tenant: RequestTenant,
+    @Req() req: Request,
+  ): Promise<OrganizationRunList> {
+    return this.runs.listOrganization(actorOf(auth, tenant, req), {
+      status: query.status,
+      workflowId: query.workflowId,
+      cursor: query.cursor,
+      limit: query.limit,
+    });
+  }
+
   @Get('runs/:runId')
   get(
     @Param() params: RunParamsDto,
@@ -120,12 +146,13 @@ export class RunsController {
   @HttpCode(202)
   async rerun(
     @Param() params: RunParamsDto,
+    @Body() body: RerunDto,
     @CurrentAuth() auth: AuthSession,
     @CurrentTenant() tenant: RequestTenant,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ): Promise<Run> {
-    const run = await this.runs.rerun(actorOf(auth, tenant, req), params.runId);
+    const run = await this.runs.rerun(actorOf(auth, tenant, req), params.runId, body.fromNodeId);
     res.location(`/api/v1/organizations/${tenant.organizationId}/runs/${run.id}`);
     return run;
   }

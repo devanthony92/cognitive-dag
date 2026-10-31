@@ -18,6 +18,9 @@ import {
 } from './workflows-helpers';
 
 export const RUN_FLAGS =
+  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true}';
+/** Runs on, F4 recovery off. */
+export const RUN_FLAGS_WITHOUT_RESILIENCE =
   '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true}';
 
 export interface RunsEnv extends WorkflowsEnv {
@@ -112,18 +115,27 @@ const edge = (source: string, target: string): NodeSpec => ({
   target,
 });
 
+const amountTrigger = () =>
+  trigger([
+    { name: 'monto', type: { kind: 'number' } },
+    { name: 'nota', type: { kind: 'string' } },
+  ]);
+
 /** trigger(monto: number, nota: text) then work. */
 export function amountDefinition(latencyMs = 100) {
   return {
     schemaVersion: 1,
-    nodes: [
-      trigger([
-        { name: 'monto', type: { kind: 'number' } },
-        { name: 'nota', type: { kind: 'string' } },
-      ]),
-      mock('work', latencyMs),
-    ],
+    nodes: [amountTrigger(), mock('work', latencyMs)],
     edges: [edge('trigger', 'work')],
+  };
+}
+
+/** trigger, then services `a`, `b` and `c` in a chain; `c` fails for good when `failC` is set. */
+export function chainDefinition(failC = false) {
+  return {
+    schemaVersion: 1,
+    nodes: [amountTrigger(), mock('a', 0), mock('b', 0), mock('c', 0, failC ? 1 : 0)],
+    edges: [edge('trigger', 'a'), edge('a', 'b'), edge('b', 'c')],
   };
 }
 

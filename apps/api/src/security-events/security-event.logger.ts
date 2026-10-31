@@ -38,6 +38,8 @@ export interface SecurityEvent {
   userId?: string;
   organizationId?: string;
   ip?: string;
+  /** Node a rerun started from (`run.rerun`). */
+  nodeId?: string;
 }
 
 /**
@@ -60,6 +62,7 @@ export class SecurityEventLogger {
         userId: event.userId,
         organizationId: event.organizationId,
         ip: event.ip,
+        nodeId: event.nodeId,
         correlationId: resolveCorrelationId(this.cls.getId()),
       },
       event.event,
