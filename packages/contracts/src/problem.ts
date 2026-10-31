@@ -31,6 +31,8 @@ export const ProblemCodeSchema = z.enum([
   'RUN_LIMIT_REACHED',
   'RUN_NOT_CANCELLABLE',
   'RUN_INPUT_EXPIRED',
+  'RERUN_NODE_INVALID',
+  'RUN_NOT_FINISHED',
   'STEP_IO_EXPIRED',
 ]);
 

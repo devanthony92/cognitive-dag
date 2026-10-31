@@ -16,6 +16,7 @@ export const STEP_STATUS_LABELS: Record<StepStatus, string> = {
   failed: 'Fallido',
   skipped: 'Omitido',
   cancelled: 'Cancelado',
+  reused: 'Reutilizado',
 };
 
 const FINAL: ReadonlySet<RunStatus> = new Set(['succeeded', 'failed', 'cancelled', 'timed_out']);
@@ -32,6 +33,7 @@ export const STATUS_TONE: Record<RunStatus | StepStatus, string> = {
   cancelled: 'border-amber-300 bg-amber-100 text-amber-900',
   timed_out: 'border-amber-300 bg-amber-100 text-amber-900',
   skipped: 'border-dashed border-slate-300 bg-transparent text-slate-600',
+  reused: 'border-violet-300 bg-violet-100 text-violet-900',
 };
 
 /** "850 ms", "3,2 s", "2 min 5 s". */
