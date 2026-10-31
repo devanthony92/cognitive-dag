@@ -1,0 +1,147 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F4 resilience
+  version: 0.5.0
+  description: >
+    Extiende los contratos de F0–F3 (specs/004-execution-engine/contracts/api.openapi.yaml). Solo se
+    listan los endpoints nuevos o cambiados y los esquemas que cambian. Todos exigen sesión y membresía
+    en la organización de la ruta (cualquier rol) y X-CSRF-Token en las peticiones que cambian estado.
+    Lo nuevo (fromNodeId y el listado de la organización) responde 404 FEATURE_NOT_AVAILABLE con el
+    flag resilience-enabled apagado.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/organizations/{organizationId}/runs:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    get:
+      operationId: listOrganizationRuns
+      description: Ejecuciones de toda la organización, la más reciente primero (cola de revisión).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/RunStatus' } }
+        - { name: workflowId, in: query, schema: { type: string, format: uuid } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        '200':
+          description: Página de ejecuciones
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Run'
+                        - type: object
+                          required: [workflowName]
+                          properties:
+                            workflowName: { type: string }
+                            failedNodeId: { type: [string, 'null'], description: Nodo que hizo fallar la ejecución }
+                  nextCursor: { type: [string, 'null'] }
+        '404': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/rerun:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/RunId'
+    post:
+      operationId: rerunRun
+      description: >
+        Sin cuerpo o sin fromNodeId: igual que en F3 (misma entrada, versión activa actual). Con
+        fromNodeId: misma versión de la original; los nodos con efecto exitosos que no dependen del
+        nodo elegido se reutilizan con su salida de la original.
+      parameters: [{ $ref: '#/components/parameters/CsrfHeader' }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                fromNodeId: { type: string, pattern: '^[a-z][a-z0-9_]{0,39}$' }
+      responses:
+        '202':
+          description: Nueva ejecución
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Run' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: __Host-session }
+  parameters:
+    OrganizationId: { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
+    RunId: { name: runId, in: path, required: true, schema: { type: string, format: uuid } }
+    CsrfHeader: { name: X-CSRF-Token, in: header, required: true, schema: { type: string } }
+  schemas:
+    RunStatus: { type: string, enum: [queued, running, succeeded, failed, cancelled, timed_out] }
+    StepStatus:
+      type: string
+      enum: [pending, running, succeeded, failed, skipped, cancelled, reused]
+    ErrorClass: { type: string, enum: [transient, rate_limited, timeout, permanent] }
+    RunError:
+      type: [object, 'null']
+      properties:
+        code: { type: string }
+        message: { type: string }
+        class: { $ref: '#/components/schemas/ErrorClass' }
+    Run:
+      description: Run de F3 con los campos nuevos.
+      type: object
+      properties:
+        rerunFromNodeId: { type: [string, 'null'] }
+        error: { $ref: '#/components/schemas/RunError' }
+    Step:
+      description: Step de F3 con los campos nuevos.
+      type: object
+      properties:
+        status: { $ref: '#/components/schemas/StepStatus' }
+        error: { $ref: '#/components/schemas/RunError' }
+        waitingReason: { type: [string, 'null'], enum: [rate_limited, null] }
+    RetryPolicy:
+      description: >
+        Campo opcional `retry` de los nodos con efecto en la definición del DAG (DagDefinition de F2).
+        Sin él se usan los valores del tipo de nodo.
+      type: object
+      additionalProperties: false
+      properties:
+        maxAttempts: { type: integer, minimum: 1, maximum: 10 }
+        timeoutSeconds: { type: integer, minimum: 1, maximum: 120 }
+        initialIntervalMs: { type: integer, minimum: 100, maximum: 30000 }
+    MockServiceConfig:
+      description: Configuración de mock.service ampliada en F4.
+      type: object
+      additionalProperties: false
+      required: [latencyMs, failureRate, failureKind]
+      properties:
+        latencyMs: { type: integer, minimum: 0, maximum: 30000 }
+        failureRate: { type: number, minimum: 0, maximum: 1 }
+        failureKind: { type: string, enum: [transient, permanent, timeout, rate_limited] }
+        retryAfterMs: { type: integer, minimum: 0, maximum: 60000, description: Solo con rate_limited }
+        failFirstAttempts: { type: integer, minimum: 0, maximum: 10, default: 0 }
+    Problem:
+      type: object
+      description: >
+        RFC 9457 como en F1–F3. Códigos nuevos: RERUN_NODE_INVALID (422, el nodo no existe en la versión
+        de la ejecución) y RUN_NOT_FINISHED (409, reejecutar desde un nodo una ejecución que no terminó).
+        Reutilizados: RUN_INPUT_EXPIRED (410, entrada o salidas reutilizables ya no existen en Temporal),
+        RUN_LIMIT_REACHED (429) y VALIDATION_FAILED (422, filtros inválidos). Los pasos fallidos ganan
+        códigos de la taxonomía: MOCK_SERVICE_TRANSIENT, MOCK_SERVICE_PERMANENT, MOCK_SERVICE_RATE_LIMITED,
+        RATE_LIMIT_EXHAUSTED (esperas por el límite más allá del tiempo total del nodo) y ACTIVITY_TIMEOUT.
+  responses:
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
