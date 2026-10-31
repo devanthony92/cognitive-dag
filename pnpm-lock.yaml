@@ -423,6 +423,12 @@ importers:
       '@cognitive-dag/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@cognitive-dag/dag-schema':
+        specifier: workspace:*
+        version: link:../../packages/dag-schema
+      '@cognitive-dag/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@cognitive-dag/logger':
         specifier: workspace:*
         version: link:../../packages/logger
@@ -438,6 +444,9 @@ importers:
       '@temporalio/workflow':
         specifier: 1.25.0
         version: 1.25.0(long@5.3.2)(protobufjs@8.8.1)
+      iovalkey:
+        specifier: 0.4.0
+        version: 0.4.0(supports-color@8.1.1)
       zod:
         specifier: 4.6.7
         version: 4.6.7

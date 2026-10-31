@@ -12,7 +12,7 @@ import {
 } from '@cognitive-dag/contracts';
 import { parseEnv } from '../../src/config/env.schema';
 import { loadLocalEnv } from '../../src/config/load-env';
-import { createPingWorker } from '../../src/worker';
+import { createWorker } from '../../src/worker';
 
 loadLocalEnv();
 const config = parseEnv(process.env);
@@ -35,7 +35,7 @@ describe('ping chaos: worker lost mid-activity (requires docker compose up)', ()
   });
 
   const makeWorker = (workerId: string, delayMs: number) =>
-    createPingWorker({
+    createWorker({
       connection: native,
       namespace: config.TEMPORAL_NAMESPACE,
       taskQueue,
