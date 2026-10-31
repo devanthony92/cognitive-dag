@@ -49,7 +49,7 @@ prueba se escribe primero y DEBE fallar antes de implementar.
 
 - [X] T014 [P] [US1] `apps/api/test/integration/runs-start.test.ts`: versión activa, entrada inválida 422, workflow no ejecutable 409 con motivo, archivado, Temporal caído 503 sin ejecución `running`, cualquier rol puede ejecutar, otra organización 404
 - [X] T015 [US1] `apps/api/src/runs/`: inicio (R6), listado paginado y detalle con pasos y definición
-- [ ] T016 [US1] Web: botón Ejecutar (deshabilitado con motivo si hay nodos no soportados) y formulario generado desde los campos del disparador manual
+- [X] T016 [US1] Web: botón Ejecutar (deshabilitado con motivo si hay nodos no soportados) y formulario generado desde los campos del disparador manual
 
 ## Phase 5: User Story 3 - Vista en vivo (P1)
 
@@ -57,27 +57,27 @@ prueba se escribe primero y DEBE fallar antes de implementar.
 - [X] T018 [P] [US3] Integración: `GET .../steps/{nodeId}/io` desde Temporal; 410 cuando ya no existe
 - [X] T019 [US3] Endpoint SSE con Valkey pub/sub y endpoint de entrada/salida
   - Nota para PR 3: cada evento SSE trae el estado completo tras el cambio (`snapshot`, `run`, `step`); `Last-Event-ID` se atiende con un snapshot nuevo al reconectar.
-- [ ] T020 [US3] Web: lista de ejecuciones y detalle con el grafo de la versión, estados por nodo en vivo (`EventSource` con respaldo a polling) y panel de detalle de nodo
+- [X] T020 [US3] Web: lista de ejecuciones y detalle con el grafo de la versión, estados por nodo en vivo (`EventSource` con respaldo a polling) y panel de detalle de nodo
 
 ## Phase 6: User Story 4 - Cancelar y reejecutar (P2)
 
 - [X] T021 [P] [US4] Integración: cancelar en curso (nodos cancelados), cancelar terminada 409, reejecutar enlaza `rerun_of`, entrada vencida 410
 - [X] T022 [US4] Endpoints de cancelación y reejecución, botones en la web y eventos de seguridad (`run.started`, `run.cancelled`, `run.rerun`)
-  - PR 2 (API): endpoints y eventos de seguridad hechos. **Falta para PR 3**: botones Cancelar y Reejecutar en la web.
+  - PR 2 (API): endpoints y eventos de seguridad hechos. Web (PR 3): botones Cancelar y Reejecutar hechos.
 
 ## Phase 7: User Story 5 - Límite (P2)
 
 - [X] T023 [P] [US5] Integración: límite 1 rechaza la segunda con 429; inicios simultáneos nunca superan el límite (SC-005)
 - [X] T024 [US5] Control con `pg_advisory_xact_lock`; `pnpm ops:set-limits --max-concurrent-runs`; límite visible en ajustes
-  - PR 2 (API y script): control, script y `GET /limits` con `maxConcurrentRuns` hechos. **Falta para PR 3**: mostrar el límite de ejecuciones en la pantalla de ajustes de la web.
+  - PR 2 (API y script): control, script y `GET /limits` con `maxConcurrentRuns` hechos. Web (PR 3): el límite se muestra en solo lectura en los ajustes.
 
 ## Phase 8: Polish
 
-- [ ] T025 [P] ADRs: intérprete único con definición en la entrada, registro de ejecuciones en Postgres, contenido solo en Temporal, SSE con Valkey pub/sub, cualquier miembro ejecuta (a revisar en F7), fallo rápido y ramas omitidas, límite de ejecuciones
-- [ ] T026 [P] `docs/threat-model.md`, `docs/PLAN.md`, `README.md`
-- [ ] T027 Issue para eliminar `execution-enabled`
-- [ ] T028 Ejecutar los 12 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T029 Checklist de Security Considerations en la PR
+- [X] T025 [P] ADRs: intérprete único con definición en la entrada, registro de ejecuciones en Postgres, contenido solo en Temporal, SSE con Valkey pub/sub, cualquier miembro ejecuta (a revisar en F7), fallo rápido y ramas omitidas, límite de ejecuciones
+- [X] T026 [P] `docs/threat-model.md`, `docs/PLAN.md`, `README.md`
+- [X] T027 Issue para eliminar `execution-enabled` (devanthony92/cognitive-dag#27)
+- [X] T028 Ejecutar los 12 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T029 Checklist de Security Considerations en la PR
 
 ---
 
