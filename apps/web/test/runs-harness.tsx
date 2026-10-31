@@ -82,6 +82,7 @@ export const run = (overrides: Partial<Run> = {}): Run => ({
   status: 'running',
   triggeredBy: { id: '0192f0a0-0000-7000-8000-000000000001', name: 'Ana' },
   rerunOf: null,
+  rerunFromNodeId: null,
   correlationId: CORRELATION_ID,
   error: null,
   createdAt: NOW,
@@ -100,6 +101,7 @@ export const step = (nodeId: string, overrides: Partial<RunStep> = {}): RunStep 
   finishedAt: null,
   durationMs: null,
   error: null,
+  waitingReason: null,
   ...overrides,
 });
 
