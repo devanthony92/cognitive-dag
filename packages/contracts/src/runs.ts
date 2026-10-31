@@ -141,3 +141,69 @@ export const RunLiveEventSchema = z.object({
   errorMessage: z.string().optional(),
 });
 export type RunLiveEvent = z.infer<typeof RunLiveEventSchema>;
+
+/** Runs in progress allowed when the organization has no limits of its own (research R5). */
+export const DEFAULT_MAX_CONCURRENT_RUNS = 5;
+
+/** Body of `POST .../workflows/{workflowId}/runs`: the fields declared by `trigger.manual`. */
+export const StartRunRequestSchema = z.strictObject({
+  input: z.record(z.string(), z.unknown()),
+});
+export type StartRunRequest = z.infer<typeof StartRunRequestSchema>;
+
+const ErrorBodySchema = z.object({ code: z.string(), message: z.string() });
+
+export const RunSchema = z.object({
+  id: z.uuid(),
+  workflowId: z.uuid(),
+  versionNumber: z.int().min(1),
+  status: RunStatusSchema,
+  triggeredBy: z.object({ id: z.uuid(), name: z.string() }),
+  rerunOf: z.uuid().nullable(),
+  correlationId: CorrelationIdSchema,
+  error: ErrorBodySchema.nullable(),
+  createdAt: z.iso.datetime(),
+  startedAt: z.iso.datetime().nullable(),
+  finishedAt: z.iso.datetime().nullable(),
+});
+export type Run = z.infer<typeof RunSchema>;
+
+export const RunStepSchema = z.object({
+  nodeId: z.string(),
+  nodeType: z.string(),
+  status: StepStatusSchema,
+  attempts: z.int().min(0),
+  startedAt: z.iso.datetime().nullable(),
+  finishedAt: z.iso.datetime().nullable(),
+  durationMs: z.int().min(0).nullable(),
+  error: ErrorBodySchema.nullable(),
+});
+export type RunStep = z.infer<typeof RunStepSchema>;
+
+export const RunDetailSchema = RunSchema.extend({
+  steps: z.array(RunStepSchema),
+  definition: z.record(z.string(), z.unknown()),
+});
+export type RunDetail = z.infer<typeof RunDetailSchema>;
+
+export const RunListSchema = z.object({
+  items: z.array(RunSchema),
+  nextCursor: z.string().nullable(),
+});
+export type RunList = z.infer<typeof RunListSchema>;
+
+/** Content of a step read from the Temporal history; sensitive keys are redacted. */
+export const StepIoSchema = z.object({
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  truncated: z.boolean(),
+});
+export type StepIo = z.infer<typeof StepIoSchema>;
+
+/** One Server-Sent Event of `GET .../runs/{runId}/events`. */
+export const RunStreamEventSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('snapshot'), run: RunSchema, steps: z.array(RunStepSchema) }),
+  z.object({ type: z.literal('run'), run: RunSchema }),
+  z.object({ type: z.literal('step'), step: RunStepSchema }),
+]);
+export type RunStreamEvent = z.infer<typeof RunStreamEventSchema>;

@@ -1,7 +1,8 @@
 import { pino, stdTimeFunctions } from 'pino';
 import type { DestinationStream, Logger, LoggerOptions } from 'pino';
 
-const SENSITIVE_KEYS = ['password', 'token', 'secret', 'apiKey', 'credentials'];
+/** Keys whose values are never shown: in logs and in the run content the API returns. */
+export const SENSITIVE_KEYS = ['password', 'token', 'secret', 'apiKey', 'credentials'];
 
 /** Paths redacted in every log line (constitution, principle I; OWASP A09). */
 export const REDACT_PATHS = [

@@ -26,6 +26,12 @@ export const ProblemCodeSchema = z.enum([
   'PRECONDITION_REQUIRED',
   'DAG_INVALID',
   'LIMIT_EXCEEDED',
+  'WORKFLOW_NOT_RUNNABLE',
+  'RUN_INPUT_INVALID',
+  'RUN_LIMIT_REACHED',
+  'RUN_NOT_CANCELLABLE',
+  'RUN_INPUT_EXPIRED',
+  'STEP_IO_EXPIRED',
 ]);
 
 export type ProblemCode = z.infer<typeof ProblemCodeSchema>;
@@ -50,11 +56,29 @@ export const ProblemDetailsSchema = z
     dagErrors: z.array(DagErrorSchema).optional(),
     /** Seconds to wait before retrying; only meaningful for RATE_LIMITED (FR-015). */
     retryAfterSeconds: z.int().min(1).optional(),
+    /** Why a workflow cannot run; only with WORKFLOW_NOT_RUNNABLE (F3). */
+    reason: z.enum(['no_active_version', 'archived', 'unsupported_nodes']).optional(),
+    /** Nodes that block a run; only with WORKFLOW_NOT_RUNNABLE and `unsupported_nodes` (F3). */
+    nodes: z
+      .array(z.strictObject({ nodeId: z.string(), type: z.string(), executableFrom: z.string() }))
+      .optional(),
   })
-  .refine((problem) => problem.retryAfterSeconds === undefined || problem.code === 'RATE_LIMITED', {
-    error: 'retryAfterSeconds solo se admite con RATE_LIMITED.',
-    path: ['retryAfterSeconds'],
-  })
+  .refine(
+    (problem) =>
+      problem.retryAfterSeconds === undefined ||
+      problem.code === 'RATE_LIMITED' ||
+      problem.code === 'RUN_LIMIT_REACHED',
+    {
+      error: 'retryAfterSeconds solo se admite con RATE_LIMITED o RUN_LIMIT_REACHED.',
+      path: ['retryAfterSeconds'],
+    },
+  )
+  .refine(
+    (problem) =>
+      (problem.reason === undefined && problem.nodes === undefined) ||
+      problem.code === 'WORKFLOW_NOT_RUNNABLE',
+    { error: 'reason y nodes solo se admiten con WORKFLOW_NOT_RUNNABLE.', path: ['reason'] },
+  )
   .refine((problem) => problem.dagErrors === undefined || problem.code === 'DAG_INVALID', {
     error: 'dagErrors solo se admite con DAG_INVALID.',
     path: ['dagErrors'],
