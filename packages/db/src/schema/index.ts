@@ -7,5 +7,7 @@ export * from './organizations.js';
 export * from './sessions.js';
 export * from './users.js';
 export * from './workflow-active-versions.js';
+export * from './workflow-run-steps.js';
+export * from './workflow-runs.js';
 export * from './workflow-versions.js';
 export * from './workflows.js';

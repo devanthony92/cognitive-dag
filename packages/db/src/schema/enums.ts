@@ -13,3 +13,21 @@ export const sessionRevokeReason = pgEnum('session_revoke_reason', [
   'password_reset',
   'idle_timeout',
 ]);
+
+export const runStatus = pgEnum('run_status', [
+  'queued',
+  'running',
+  'succeeded',
+  'failed',
+  'cancelled',
+  'timed_out',
+]);
+
+export const stepStatus = pgEnum('step_status', [
+  'pending',
+  'running',
+  'succeeded',
+  'failed',
+  'skipped',
+  'cancelled',
+]);
