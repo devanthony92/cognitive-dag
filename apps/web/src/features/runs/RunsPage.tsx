@@ -103,20 +103,16 @@ export function RunsPage({
                     <TableHead>Inició</TableHead>
                     <TableHead>Creada</TableHead>
                     <TableHead>Duración</TableHead>
+                    <TableHead>
+                      <span className="sr-only">Detalle</span>
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.map((run) => (
                     <TableRow key={run.id}>
                       <TableCell>
-                        <Link
-                          to="/orgs/$organizationId/runs/$runId"
-                          params={{ organizationId, runId: run.id }}
-                          className="inline-flex items-center gap-2 underline"
-                        >
-                          <StatusBadge status={run.status} />
-                          <span className="sr-only">Ver el detalle de la ejecución</span>
-                        </Link>
+                        <StatusBadge status={run.status} />
                         {run.rerunOf && (
                           <span className="ml-2 text-xs text-muted-foreground">Reejecución</span>
                         )}
@@ -130,6 +126,15 @@ export function RunsPage({
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDuration(runDurationMs(run, now))}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Link
+                          to="/orgs/$organizationId/runs/$runId"
+                          params={{ organizationId, runId: run.id }}
+                          className="text-sm underline"
+                        >
+                          Ver detalle
+                        </Link>
                       </TableCell>
                     </TableRow>
                   ))}

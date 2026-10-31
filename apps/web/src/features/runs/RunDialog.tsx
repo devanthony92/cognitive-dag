@@ -200,7 +200,7 @@ export function RunDialog({
             )}
             {problem?.code === 'RUN_LIMIT_REACHED' && (
               <p className="text-sm text-muted-foreground">
-                Espera a que termine alguna ejecución en curso o cancélala desde{' '}
+                Puedes cancelar una ejecución en curso desde{' '}
                 <Link
                   to="/orgs/$organizationId/workflows/$workflowId/runs"
                   params={{ organizationId, workflowId }}
