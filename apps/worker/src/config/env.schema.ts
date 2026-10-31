@@ -6,6 +6,9 @@ export const EnvSchema = z.object({
   TEMPORAL_ADDRESS: z.string().regex(/^[\w.-]+:\d+$/),
   TEMPORAL_NAMESPACE: z.string().min(1).default('default'),
   TEMPORAL_TASK_QUEUE: z.string().min(1),
+  // The worker writes run records as app_runtime (never as the migrator) and publishes live events.
+  DATABASE_URL: z.string().regex(/^postgres(ql)?:\/\//),
+  VALKEY_URL: z.string().regex(/^rediss?:\/\//),
   WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   PING_ACTIVITY_DELAY_MS: z.coerce.number().int().min(0).max(60_000).default(0),
 });
