@@ -11,11 +11,11 @@ export type RuntimeErrorCode =
 
 /** A deterministic evaluation failure: the same inputs always fail the same way (never retry). */
 export class RuntimeEvaluationError extends Error {
-  constructor(
-    readonly code: RuntimeErrorCode,
-    message: string,
-  ) {
+  readonly code: RuntimeErrorCode;
+
+  constructor(code: RuntimeErrorCode, message: string) {
     super(message);
+    this.code = code;
     this.name = 'RuntimeEvaluationError';
   }
 }
