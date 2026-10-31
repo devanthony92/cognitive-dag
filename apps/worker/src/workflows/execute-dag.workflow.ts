@@ -5,6 +5,7 @@ import {
   CancelledFailure,
   TimeoutFailure,
   isCancellation,
+  patched,
   proxyActivities,
   sleep,
 } from '@temporalio/workflow';
@@ -15,6 +16,7 @@ import {
   RUN_ERROR_CODE_MAX,
   RUN_ERROR_MESSAGE_MAX,
   type ExecuteDagInput,
+  type ErrorClass,
   type ExecuteDagResult,
   type FinalRunStatus,
   type RunEvent,
@@ -23,12 +25,15 @@ import {
   DagDefinitionSchema,
   RuntimeEvaluationError,
   buildExecutionGraph,
+  classify,
   evaluateCondition,
   findUnsupportedNodes,
   planNext,
   resolveNodeConfig,
+  resolveRetryPolicy,
   type Condition,
   type DagDefinition,
+  type RetryPolicy,
   type StepState,
 } from '@cognitive-dag/dag-schema';
 import type { RunEventActivities } from '../activities/record-run-event';
@@ -39,9 +44,12 @@ import type { MockServiceActivities, MockServiceInput } from '../activities/mock
 // workflow bundle stays free of them. Versioning of the interpreter: use patched() for any change
 // to the order of commands, and keep the replay histories in test/histories up to date.
 
-/** Policy of a `mock.service` node (research R2). */
+/**
+ * Policy of a `mock.service` node before F4: runs that started with it replay with this proxy
+ * (`patched`, see `PER_NODE_POLICIES`).
+ */
 const MOCK_SERVICE_MAX_ATTEMPTS = 3;
-const { mockService } = proxyActivities<MockServiceActivities>({
+const { mockService: legacyMockService } = proxyActivities<MockServiceActivities>({
   startToCloseTimeout: '30 seconds',
   // The activity heartbeats: a dead worker is noticed in seconds, not after the whole 30 s.
   heartbeatTimeout: '10 seconds',
@@ -51,6 +59,41 @@ const { mockService } = proxyActivities<MockServiceActivities>({
     maximumAttempts: MOCK_SERVICE_MAX_ATTEMPTS,
   },
 });
+
+/** Marker of the runs that apply the policy of each node (F4, research R2). */
+const PER_NODE_POLICIES = 'f4-per-node-policies';
+
+/** Margin on top of attempts x time per attempt for waits and the rate limit (FR-007). */
+const TOTAL_TIME_MARGIN_SECONDS = 300;
+
+/** Longest wait between attempts that Temporal itself schedules (timeouts). */
+const MAX_TEMPORAL_BACKOFF = '30 seconds';
+
+const policyProxies = new Map<string, MockServiceActivities>();
+
+/**
+ * One proxy per effective policy. Temporal retries without limit because the activity counts its
+ * own attempts (a wait for the rate limit must not spend them); the total time bounds the node.
+ */
+function mockServiceFor(policy: RetryPolicy): MockServiceActivities {
+  const key = `${policy.maxAttempts}/${policy.timeoutSeconds}/${policy.initialIntervalMs}`;
+  let proxy = policyProxies.get(key);
+  if (!proxy) {
+    proxy = proxyActivities<MockServiceActivities>({
+      startToCloseTimeout: `${policy.timeoutSeconds} seconds`,
+      scheduleToCloseTimeout: `${policy.maxAttempts * policy.timeoutSeconds + TOTAL_TIME_MARGIN_SECONDS} seconds`,
+      heartbeatTimeout: '10 seconds',
+      retry: {
+        initialInterval: policy.initialIntervalMs,
+        backoffCoefficient: 2,
+        maximumInterval: MAX_TEMPORAL_BACKOFF,
+        maximumAttempts: 0,
+      },
+    });
+    policyProxies.set(key, proxy);
+  }
+  return proxy;
+}
 
 /** Recording is not a node: it is retried for longer, and it never retries what cannot succeed. */
 const { recordRunEvent } = proxyActivities<RunEventActivities>({
@@ -68,6 +111,7 @@ interface FailureInfo {
   code: string;
   message: string;
   attempts?: number;
+  errorClass?: ErrorClass;
 }
 
 type NodeOutcome =
@@ -78,10 +122,21 @@ type NodeOutcome =
 type LoopOutcome =
   { kind: 'completed' } | { kind: 'failed'; failure: FailureInfo } | { kind: 'cancelled' };
 
+/** Set by `executeDag`: whether this run applies the policy of each node. */
+let patchedPolicies = false;
+
 const truncate = (text: string, max: number): string =>
   text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 
-/** Summarizes an error without data from the run: a stable code and a short message. */
+/** Class a node declared in the details of its failure, if any. */
+function declaredClass(failure: ApplicationFailure): unknown {
+  const detail = failure.details?.[0];
+  return typeof detail === 'object' && detail !== null && 'errorClass' in detail
+    ? detail.errorClass
+    : undefined;
+}
+
+/** Summarizes an error without data from the run: a stable code, a class and a short message. */
 function describeFailure(error: unknown): FailureInfo {
   if (error instanceof RuntimeEvaluationError) {
     return { code: error.code, message: truncate(error.message, RUN_ERROR_MESSAGE_MAX) };
@@ -97,14 +152,28 @@ function describeFailure(error: unknown): FailureInfo {
       return {
         code: truncate(cause.type ?? RUN_ERROR_CODES.internal, RUN_ERROR_CODE_MAX),
         message: truncate(cause.message, RUN_ERROR_MESSAGE_MAX),
+        errorClass: classify({
+          errorClass: declaredClass(cause),
+          nonRetryable: cause.nonRetryable,
+        }),
         ...(attempt === undefined || Number.isNaN(attempt) ? {} : { attempts: attempt }),
       };
     }
     if (cause instanceof TimeoutFailure) {
+      // The total time ran out: a node that kept waiting for the limit fails as limited.
+      const last = cause.cause;
+      if (last instanceof ApplicationFailure && declaredClass(last) === 'rate_limited') {
+        return {
+          code: truncate(last.type ?? RUN_ERROR_CODES.internal, RUN_ERROR_CODE_MAX),
+          message: truncate(last.message, RUN_ERROR_MESSAGE_MAX),
+          errorClass: 'rate_limited',
+        };
+      }
       return {
         code: 'ACTIVITY_TIMED_OUT',
         message: 'The node exceeded its time limit.',
-        attempts: MOCK_SERVICE_MAX_ATTEMPTS,
+        errorClass: 'timeout',
+        ...(patchedPolicies ? {} : { attempts: MOCK_SERVICE_MAX_ATTEMPTS }),
       };
     }
   }
@@ -122,6 +191,8 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
   }
   const input: ExecuteDagInput = parsed.data;
   const { organizationId, runId, correlationId } = input;
+  // Runs recorded before F4 replay with the old policy; new ones apply the policy of each node.
+  patchedPolicies = patched(PER_NODE_POLICIES);
 
   const now = (): string => new Date().toISOString();
   /** Recording completes even while the run is being cancelled: the record must stay true. */
@@ -131,18 +202,28 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
 
   async function finish(
     status: FinalRunStatus,
-    failure?: { code: string; message: string },
+    failure?: { code: string; message: string; errorClass?: ErrorClass },
   ): Promise<void> {
     await record({
       ...base(),
       transition: 'run.finished',
       status,
-      ...(failure ? { errorCode: failure.code, errorMessage: failure.message } : {}),
+      ...(failure
+        ? {
+            errorCode: failure.code,
+            errorMessage: failure.message,
+            ...(failure.errorClass ? { errorClass: failure.errorClass } : {}),
+          }
+        : {}),
     });
   }
 
-  const failRun = async (code: string, message: string): Promise<never> => {
-    await finish('failed', { code, message });
+  const failRun = async (
+    code: string,
+    message: string,
+    errorClass?: ErrorClass,
+  ): Promise<never> => {
+    await finish('failed', { code, message, ...(errorClass ? { errorClass } : {}) });
     throw ApplicationFailure.create({ type: code, message, nonRetryable: true });
   };
 
@@ -193,10 +274,14 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
           break;
         case 'mock.service': {
           await record({ ...base(), transition: 'step.running', ...ref });
-          const result = await mockService({
+          const policy = resolveRetryPolicy(node.type, node.retry);
+          const activities =
+            patchedPolicies && policy ? mockServiceFor(policy) : { mockService: legacyMockService };
+          const result = await activities.mockService({
             runId,
             nodeId: id,
             correlationId,
+            ...(patchedPolicies && policy ? { organizationId, policy } : {}),
             config: resolveNodeConfig(
               node.type,
               node.config,
@@ -241,6 +326,7 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
         durationMs: Date.now() - startedAt,
         errorCode: failure.code,
         errorMessage: failure.message,
+        ...(failure.errorClass ? { errorClass: failure.errorClass } : {}),
       });
       return { id, kind: 'failed', failure };
     }
@@ -308,6 +394,7 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
   if (first === 'timeout') {
     const failure = {
       code: RUN_ERROR_CODES.timedOut,
+      errorClass: 'timeout' as const,
       message: truncate(
         `The run exceeded its maximum duration of ${maxDurationMs} ms.`,
         RUN_ERROR_MESSAGE_MAX,
@@ -317,7 +404,7 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
     throw ApplicationFailure.create({ ...failure, type: failure.code, nonRetryable: true });
   }
   if (outcome.kind === 'failed') {
-    return failRun(outcome.failure.code, outcome.failure.message);
+    return failRun(outcome.failure.code, outcome.failure.message, outcome.failure.errorClass);
   }
   if (outcome.kind === 'cancelled') {
     await finish('cancelled');
