@@ -6,6 +6,7 @@ import type { RunStep } from '@cognitive-dag/contracts';
 import { ApiProblemError } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { errorMessage } from './error-messages';
 import { stepIoQuery } from './api';
 import { StatusBadge } from './StatusBadge';
 import {
@@ -153,7 +154,8 @@ export function StepPanel({
     category !== 'trigger' &&
     category !== 'logic' &&
     step.status !== 'skipped' &&
-    step.status !== 'pending';
+    step.status !== 'pending' &&
+    step.status !== 'reused';
 
   const errorClass =
     resilience && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
@@ -197,7 +199,7 @@ export function StepPanel({
           role="alert"
           className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
         >
-          <p className="font-medium break-words">{step.error.message}</p>
+          <p className="font-medium break-words">{errorMessage(step.error)}</p>
           <p className="mt-1 font-mono text-xs break-all">{step.error.code}</p>
           {errorClass && (
             <p className="mt-2 text-xs">

@@ -19,6 +19,7 @@ import { featuresQuery, isResilienceEnabled } from '../flags';
 import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
+import { errorMessage } from './error-messages';
 import { RunGraph } from './RunGraph';
 import { StatusBadge } from './StatusBadge';
 import { StepPanel } from './StepPanel';
@@ -211,7 +212,7 @@ export function RunDetailPage({
             <Alert variant="destructive">
               <AlertDescription>
                 <p className="font-medium">La ejecución terminó con un error.</p>
-                <p>{data.error.message}</p>
+                <p>{errorMessage(data.error)}</p>
                 <p className="mt-1 font-mono text-xs">{data.error.code}</p>
               </AlertDescription>
             </Alert>

@@ -2,7 +2,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tansta
 import { Link, useNavigate } from '@tanstack/react-router';
 import { RotateCw } from 'lucide-react';
 import { useState } from 'react';
-import { RunStatusSchema, type OrganizationRun } from '@cognitive-dag/contracts';
+import { RunStatusSchema, type OrganizationRun, type RunStatus } from '@cognitive-dag/contracts';
 import { ApiProblemError } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
@@ -29,13 +29,22 @@ import { organizationRunsQuery, rerunRun, type OrganizationRunFilters } from './
 import { StatusBadge } from './StatusBadge';
 import {
   ERROR_CLASS_LABELS,
-  RUN_STATUS_LABELS,
   formatDateTime,
   formatDuration,
   isFinalRun,
   runDurationMs,
 } from './status';
 import { useNow } from './useRunLive';
+
+/** Plural, because each option is a group of runs. */
+const STATUS_FILTER_LABELS: Record<RunStatus, string> = {
+  queued: 'En cola',
+  running: 'En curso',
+  succeeded: 'Completadas',
+  failed: 'Fallidas',
+  cancelled: 'Canceladas',
+  timed_out: 'Vencidas',
+};
 
 interface Props {
   organizationId: string;
@@ -109,7 +118,7 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
               <option value="">Todos</option>
               {RunStatusSchema.options.map((status) => (
                 <option key={status} value={status}>
-                  {status === 'failed' ? 'Fallidas' : RUN_STATUS_LABELS[status]}
+                  {STATUS_FILTER_LABELS[status]}
                 </option>
               ))}
             </NativeSelect>
@@ -185,7 +194,6 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
                     <TableHead>Estado</TableHead>
                     <TableHead>Falló en</TableHead>
                     <TableHead>Creada</TableHead>
-                    <TableHead>Duración</TableHead>
                     <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -271,10 +279,14 @@ function RunRow({
         )}
       </TableCell>
       <TableCell className="font-mono text-xs">{run.failedNodeId ?? '—'}</TableCell>
-      <TableCell className="whitespace-nowrap">{formatDateTime(run.createdAt)}</TableCell>
-      <TableCell className="whitespace-nowrap">{formatDuration(runDurationMs(run, now))}</TableCell>
+      <TableCell className="whitespace-nowrap">
+        {formatDateTime(run.createdAt)}
+        <p className="text-xs text-muted-foreground">
+          Duración {formatDuration(runDurationMs(run, now))}
+        </p>
+      </TableCell>
       <TableCell>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col items-start gap-2">
           <Link
             to="/orgs/$organizationId/runs/$runId"
             params={{ organizationId, runId: run.id }}
@@ -283,7 +295,13 @@ function RunRow({
             Ver detalle
           </Link>
           {final && (
-            <Button variant="outline" size="sm" disabled={busy} onClick={() => onRerun()}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto py-1.5 text-left whitespace-normal"
+              disabled={busy}
+              onClick={() => onRerun()}
+            >
               <RotateCw aria-hidden />
               {target && target.fromNodeId === undefined ? 'Reejecutando…' : 'Reejecutar'}
             </Button>
@@ -292,6 +310,7 @@ function RunRow({
             <Button
               variant="outline"
               size="sm"
+              className="h-auto py-1.5 text-left whitespace-normal"
               disabled={busy}
               onClick={() => onRerun(run.failedNodeId ?? undefined)}
             >
