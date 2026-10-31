@@ -33,7 +33,7 @@ export function OrganizationLimits({ organizationId }: { organizationId: string 
     ['Tamaño de la definición', formatBytes(maxDefinitionBytes)],
   ];
   if (isExecutionEnabled(features.data)) {
-    rows.push(['Ejecuciones simult�neas', String(maxConcurrentRuns)]);
+    rows.push(['Ejecuciones simultáneas', String(maxConcurrentRuns)]);
   }
 
   return (

@@ -113,7 +113,7 @@ describe('OrganizationLimits (US7)', () => {
     stub(limits, true, true);
     renderLimits();
     expect(
-      (await screen.findByText('Ejecuciones simult·neas')).parentElement?.textContent,
+      (await screen.findByText('Ejecuciones simult√°neas')).parentElement?.textContent,
     ).toContain('3');
     expect(screen.queryAllByRole('button')).toHaveLength(0);
     cleanup();
@@ -121,6 +121,6 @@ describe('OrganizationLimits (US7)', () => {
     stub(limits, true, false);
     renderLimits();
     await screen.findByText('Nodos por workflow');
-    expect(screen.queryByText('Ejecuciones simult·neas')).toBeNull();
+    expect(screen.queryByText('Ejecuciones simult√°neas')).toBeNull();
   });
 });
