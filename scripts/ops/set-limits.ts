@@ -4,13 +4,15 @@ import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import pg from 'pg';
 import { ABSOLUTE_LIMITS, DEFAULT_LIMITS, type DagLimits } from '@cognitive-dag/dag-schema';
+import { DEFAULT_MAX_CONCURRENT_RUNS } from '@cognitive-dag/contracts';
 import { createLogger, type Logger } from '@cognitive-dag/logger';
 
 /**
  * Operator script: sets the DAG limits of one organization (FR-021, research R12).
  *
  *   pnpm ops:set-limits <organizationId> [--max-nodes N] [--max-edges N]
- *                       [--max-definition-bytes N] [--operator NAME]
+ *                       [--max-definition-bytes N] [--max-concurrent-runs N]
+ *                       [--operator NAME]
  *
  * It connects as `app_migrator` (DATABASE_MIGRATOR_URL), never through the API: no endpoint writes
  * limits. Values are validated against the ceilings of the platform (and against the lower ones
@@ -20,23 +22,32 @@ import { createLogger, type Logger } from '@cognitive-dag/logger';
 
 const USAGE =
   'Usage: pnpm ops:set-limits <organizationId> [--max-nodes N] [--max-edges N] ' +
-  '[--max-definition-bytes N] [--operator NAME]';
+  '[--max-definition-bytes N] [--max-concurrent-runs N] [--operator NAME]';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export class UsageError extends Error {}
 
+/** Everything the operator can set: the DAG limits (F2) and the runs in progress (F3). */
+export interface OrganizationLimits extends DagLimits {
+  maxConcurrentRuns: number;
+}
+
+/** Highest value the database accepts for `max_concurrent_runs`. */
+const MAX_CONCURRENT_RUNS_CEILING = 100;
+
 export interface LimitsRequest {
   organizationId: string;
   operator: string;
   /** Only the values the operator gave; the rest keep their current value. */
-  changes: Partial<DagLimits>;
+  changes: Partial<OrganizationLimits>;
 }
 
 interface Bound {
-  key: keyof DagLimits;
+  key: keyof OrganizationLimits;
   flag: string;
-  env: string;
+  /** Variable of the server configuration that can lower the ceiling, if any. */
+  env?: string;
   min: number;
   ceiling: number;
 }
@@ -63,12 +74,19 @@ const BOUNDS: Bound[] = [
     min: 1024,
     ceiling: ABSOLUTE_LIMITS.maxDefinitionBytes,
   },
+  {
+    key: 'maxConcurrentRuns',
+    flag: 'max-concurrent-runs',
+    min: 1,
+    ceiling: MAX_CONCURRENT_RUNS_CEILING,
+  },
 ];
 
 /** The ceilings in force: the platform maximum, lowered by the server configuration if set. */
 export function ceilingsFrom(env: NodeJS.ProcessEnv): DagLimits {
   const result: DagLimits = { ...ABSOLUTE_LIMITS };
   for (const bound of BOUNDS) {
+    if (bound.env === undefined || bound.key === 'maxConcurrentRuns') continue;
     const raw = env[bound.env];
     if (raw === undefined || raw === '') continue;
     const value = Number(raw);
@@ -96,6 +114,7 @@ export function parseRequest(
         'max-nodes': { type: 'string' },
         'max-edges': { type: 'string' },
         'max-definition-bytes': { type: 'string' },
+        'max-concurrent-runs': { type: 'string' },
         operator: { type: 'string' },
       },
     });
@@ -108,12 +127,12 @@ export function parseRequest(
   if (!UUID.test(organizationId)) throw new UsageError('The organization id must be a UUID.');
 
   const ceilings = ceilingsFrom(env);
-  const changes: Partial<DagLimits> = {};
+  const changes: Partial<OrganizationLimits> = {};
   for (const bound of BOUNDS) {
     const raw = values[bound.flag as keyof typeof values];
     if (raw === undefined) continue;
     const value = /^\d+$/.test(raw) ? Number(raw) : Number.NaN;
-    const ceiling = ceilings[bound.key];
+    const ceiling = bound.key === 'maxConcurrentRuns' ? bound.ceiling : ceilings[bound.key];
     if (!Number.isSafeInteger(value) || value < bound.min || value > ceiling) {
       throw new UsageError(
         `--${bound.flag} must be an integer between ${bound.min} and ${ceiling}, got "${raw}".`,
@@ -136,20 +155,22 @@ interface LimitsRow {
   max_nodes: number;
   max_edges: number;
   max_definition_bytes: number;
+  max_concurrent_runs: number;
 }
 
-const fromRow = (row: LimitsRow): DagLimits => ({
+const fromRow = (row: LimitsRow): OrganizationLimits => ({
   maxNodes: row.max_nodes,
   maxEdges: row.max_edges,
   maxDefinitionBytes: row.max_definition_bytes,
+  maxConcurrentRuns: row.max_concurrent_runs,
 });
 
 export interface LimitsChange {
   organizationId: string;
   operator: string;
   /** `null`: the organization had no limits of its own (the platform defaults applied). */
-  old: DagLimits | null;
-  new: DagLimits;
+  old: OrganizationLimits | null;
+  new: OrganizationLimits;
 }
 
 /**
@@ -161,21 +182,26 @@ export async function applyLimits(pool: pg.Pool, request: LimitsRequest): Promis
   try {
     await client.query('BEGIN');
     const current = await client.query<LimitsRow>(
-      `SELECT max_nodes, max_edges, max_definition_bytes
+      `SELECT max_nodes, max_edges, max_definition_bytes, max_concurrent_runs
          FROM organization_limits WHERE organization_id = $1 FOR UPDATE`,
       [request.organizationId],
     );
     const old = current.rows[0] ? fromRow(current.rows[0]) : null;
-    const next: DagLimits = { ...(old ?? DEFAULT_LIMITS), ...request.changes };
+    const next: OrganizationLimits = {
+      ...(old ?? { ...DEFAULT_LIMITS, maxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS }),
+      ...request.changes,
+    };
 
     await client.query(
       `INSERT INTO organization_limits
-         (organization_id, max_nodes, max_edges, max_definition_bytes, updated_by, updated_at)
-       VALUES ($1, $2, $3, $4, $5, now())
+         (organization_id, max_nodes, max_edges, max_definition_bytes, max_concurrent_runs,
+          updated_by, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, now())
        ON CONFLICT (organization_id) DO UPDATE SET
          max_nodes = EXCLUDED.max_nodes,
          max_edges = EXCLUDED.max_edges,
          max_definition_bytes = EXCLUDED.max_definition_bytes,
+         max_concurrent_runs = EXCLUDED.max_concurrent_runs,
          updated_by = EXCLUDED.updated_by,
          updated_at = EXCLUDED.updated_at`,
       [
@@ -183,6 +209,7 @@ export async function applyLimits(pool: pg.Pool, request: LimitsRequest): Promis
         next.maxNodes,
         next.maxEdges,
         next.maxDefinitionBytes,
+        next.maxConcurrentRuns,
         request.operator,
       ],
     );

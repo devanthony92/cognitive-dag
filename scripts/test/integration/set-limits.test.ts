@@ -68,8 +68,11 @@ async function readAsRuntime(id: string, owner: string) {
       max_nodes: number;
       max_edges: number;
       max_definition_bytes: number;
+      max_concurrent_runs: number;
       updated_by: string;
-    }>('SELECT max_nodes, max_edges, max_definition_bytes, updated_by FROM organization_limits');
+    }>(
+      'SELECT max_nodes, max_edges, max_definition_bytes, max_concurrent_runs, updated_by FROM organization_limits',
+    );
     await client.query('COMMIT');
     return rows;
   } finally {
@@ -99,10 +102,16 @@ describe('applyLimits (requires docker compose up and pnpm db:migrate)', () => {
       organizationId,
       operator: 'ana',
       old: null,
-      new: { maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262_144 },
+      new: { maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262_144, maxConcurrentRuns: 5 },
     });
     expect(await readAsRuntime(organizationId, userId)).toEqual([
-      { max_nodes: 3, max_edges: 100, max_definition_bytes: 262_144, updated_by: 'ana' },
+      {
+        max_nodes: 3,
+        max_edges: 100,
+        max_definition_bytes: 262_144,
+        max_concurrent_runs: 5,
+        updated_by: 'ana',
+      },
     ]);
   });
 
@@ -112,11 +121,30 @@ describe('applyLimits (requires docker compose up and pnpm db:migrate)', () => {
       operator: 'beto',
       changes: { maxEdges: 7 },
     });
-    expect(change.old).toEqual({ maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262_144 });
-    expect(change.new).toEqual({ maxNodes: 3, maxEdges: 7, maxDefinitionBytes: 262_144 });
+    const unchanged = { maxNodes: 3, maxDefinitionBytes: 262_144, maxConcurrentRuns: 5 };
+    expect(change.old).toEqual({ ...unchanged, maxEdges: 100 });
+    expect(change.new).toEqual({ ...unchanged, maxEdges: 7 });
     expect((await readAsRuntime(organizationId, userId))[0]).toMatchObject({
       max_edges: 7,
       updated_by: 'beto',
+    });
+  });
+
+  it('changes the concurrent runs and keeps the DAG limits', async () => {
+    const change = await applyLimits(migrator, {
+      organizationId,
+      operator: 'ana',
+      changes: { maxConcurrentRuns: 2 },
+    });
+    expect(change.old?.maxConcurrentRuns).toBe(5);
+    expect(change.new).toEqual({
+      maxNodes: 3,
+      maxEdges: 7,
+      maxDefinitionBytes: 262_144,
+      maxConcurrentRuns: 2,
+    });
+    expect((await readAsRuntime(organizationId, userId))[0]).toMatchObject({
+      max_concurrent_runs: 2,
     });
   });
 
@@ -180,8 +208,8 @@ describe('logChange', () => {
     const change: LimitsChange = {
       organizationId,
       operator: 'ana',
-      old: { maxNodes: 50, maxEdges: 100, maxDefinitionBytes: 262_144 },
-      new: { maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262_144 },
+      old: { maxNodes: 50, maxEdges: 100, maxDefinitionBytes: 262_144, maxConcurrentRuns: 5 },
+      new: { maxNodes: 3, maxEdges: 100, maxDefinitionBytes: 262_144, maxConcurrentRuns: 5 },
     };
     logChange(createLogger({ component: 'ops', level: 'info' }, sink), change);
     const line = JSON.parse(output) as Record<string, unknown>;
