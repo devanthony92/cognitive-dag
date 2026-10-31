@@ -4,6 +4,7 @@ import { ERROR_CLASS_CODES } from '@cognitive-dag/dag-schema';
 import type { Logger } from '@cognitive-dag/logger';
 import {
   NodeFailure,
+  heartbeatWithState,
   runWithPolicy,
   toApplicationFailure,
   toNodeFailure,
@@ -91,10 +92,9 @@ const HEARTBEAT_EVERY_MS = 2_000;
 
 /** Waits `ms` while heartbeating, and stops with the abort of the activity cancellation. */
 async function waitWithHeartbeat(ms: number, signal: AbortSignal): Promise<void> {
-  const context = Context.current();
   const end = Date.now() + ms;
   for (let left = ms; left > 0; left = end - Date.now()) {
-    context.heartbeat();
+    heartbeatWithState();
     await sleep(Math.min(left, HEARTBEAT_EVERY_MS), undefined, { signal });
   }
 }
