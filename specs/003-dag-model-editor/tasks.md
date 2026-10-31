@@ -88,27 +88,27 @@ cada prueba se escribe primero y DEBE fallar antes de implementar.
 
 ## Phase 7: User Story 4 - Referencias, plantillas y condiciones (P2)
 
-- [ ] T034 [P] [US4] Pruebas: selector solo ofrece campos de ancestros compatibles; marcadores en plantillas; constructor de condiciones produce AST válido
-- [ ] T035 [US4] Selector de referencias, editor de plantillas y constructor visual de condiciones
-- [ ] T036 [US4] Renombrar el id de un nodo reescribe sus referencias; borrar un nodo deja las referencias marcadas como inválidas
+- [X] T034 [P] [US4] Pruebas: selector solo ofrece campos de ancestros compatibles; marcadores en plantillas; constructor de condiciones produce AST válido
+- [X] T035 [US4] Selector de referencias, editor de plantillas y constructor visual de condiciones
+- [X] T036 [US4] Renombrar el id de un nodo reescribe sus referencias; borrar un nodo deja las referencias marcadas como inválidas
 
 ## Phase 8: User Story 5 - Concurrencia (P2)
 
-- [ ] T037 [US5] Aviso de conflicto 409 con opción de recargar el borrador (prueba de componente incluida)
+- [X] T037 [US5] Aviso de conflicto 409 con opción de recargar el borrador (prueba de componente incluida)
 
 ## Phase 9: User Stories 6 y 7 - Herramientas y límites (P3)
 
-- [ ] T038 [P] [US6] Ordenar con dagre y Exportar JSON (prueba: el JSON exportado valida con el esquema)
-- [ ] T039 [P] [US7] Límites vigentes visibles en los ajustes de la organización
-- [ ] T040 [US6] Prueba de rendimiento del editor con 50 nodos y 100 conexiones (SC-004)
+- [X] T038 [P] [US6] Ordenar con dagre y Exportar JSON (prueba: el JSON exportado valida con el esquema)
+- [X] T039 [P] [US7] Límites vigentes visibles en los ajustes de la organización
+- [X] T040 [US6] Prueba de rendimiento del editor con 50 nodos y 100 conexiones (SC-004)
 
 ## Phase 10: Polish
 
-- [ ] T041 [P] ADRs: `dag-schema` compartido, catálogo completo, versiones inmutables con tabla puente de versión activa, AST de condiciones y plantillas, bloqueo optimista, límites por organización con operador, React Flow y dagre
-- [ ] T042 [P] Actualizar `docs/threat-model.md`, `docs/PLAN.md` (O4 cerrada) y `README.md`
-- [ ] T043 Issue de eliminación del flag `dag-editor-enabled`
-- [ ] T044 Ejecutar los 14 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T045 Checklist de "Security Considerations" de la spec en la PR
+- [X] T041 [P] ADRs: `dag-schema` compartido, catálogo completo, versiones inmutables con tabla puente de versión activa, AST de condiciones y plantillas, bloqueo optimista, límites por organización con operador, React Flow y dagre
+- [X] T042 [P] Actualizar `docs/threat-model.md`, `docs/PLAN.md` (O4 cerrada) y `README.md`
+- [X] T043 Issue de eliminación del flag `dag-editor-enabled`
+- [X] T044 Ejecutar los 14 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T045 Checklist de "Security Considerations" de la spec en la PR
 
 ---
 
