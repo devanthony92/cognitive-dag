@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { redirect } from '@tanstack/react-router';
 import type { SessionInfo } from '@cognitive-dag/contracts';
-import { featuresQuery, isDagEditorEnabled, isIdentityEnabled } from '../flags';
+import { featuresQuery, isDagEditorEnabled, isExecutionEnabled, isIdentityEnabled } from '../flags';
 import { sessionQuery } from './session';
 
 /** The screens of F1 do not exist for the user while `identity-enabled` is off (FR-033). */
@@ -46,6 +46,20 @@ export async function requireDagEditor(
 ): Promise<void> {
   const features = await queryClient.ensureQueryData(featuresQuery);
   if (!isDagEditorEnabled(features)) {
+    throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
+  }
+}
+
+/**
+ * The run screens do not exist for the user while `execution-enabled` (or the editor they hang
+ * from) is off (F3). The flag only hides the screens; the API authorizes every call regardless.
+ */
+export async function requireExecution(
+  queryClient: QueryClient,
+  organizationId: string,
+): Promise<void> {
+  const features = await queryClient.ensureQueryData(featuresQuery);
+  if (!isDagEditorEnabled(features) || !isExecutionEnabled(features)) {
     throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
   }
 }

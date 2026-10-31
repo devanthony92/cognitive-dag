@@ -35,6 +35,7 @@ import {
 import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { RunButton } from '../runs/RunButton';
 import { sessionQuery } from '../session/session';
 import {
   limitsQuery,
@@ -464,6 +465,12 @@ function EditorSession({
             <Download aria-hidden />
             Exportar JSON
           </Button>
+          <RunButton
+            showHistory
+            organizationId={organizationId}
+            workflowId={workflowId}
+            workflowName={workflow.name}
+          />
           {canWrite && (
             <>
               <Button
