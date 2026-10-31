@@ -47,6 +47,8 @@ describe('parseRequest', () => {
     ['nodes below 1', [ORGANIZATION, '--max-nodes', '0']],
     ['nodes above the platform ceiling', [ORGANIZATION, '--max-nodes', '501']],
     ['edges above the platform ceiling', [ORGANIZATION, '--max-edges', '1001']],
+    ['concurrent runs below 1', [ORGANIZATION, '--max-concurrent-runs', '0']],
+    ['concurrent runs above 100', [ORGANIZATION, '--max-concurrent-runs', '101']],
     ['bytes below 1 KB', [ORGANIZATION, '--max-definition-bytes', '1023']],
     ['bytes above 1 MB', [ORGANIZATION, '--max-definition-bytes', '1048577']],
     ['a decimal', [ORGANIZATION, '--max-nodes', '3.5']],
@@ -80,6 +82,17 @@ describe('parseRequest', () => {
     const env = { DAG_MAX_NODES_CEILING: '10' };
     expect(parse([ORGANIZATION, '--max-nodes', '10'], env).changes.maxNodes).toBe(10);
     expect(() => parse([ORGANIZATION, '--max-nodes', '11'], env)).toThrow(UsageError);
+  });
+});
+
+describe('--max-concurrent-runs', () => {
+  it('is read like the other limits, up to 100', () => {
+    expect(parse([ORGANIZATION, '--max-concurrent-runs', '1']).changes).toEqual({
+      maxConcurrentRuns: 1,
+    });
+    expect(parse([ORGANIZATION, '--max-concurrent-runs', '100']).changes).toEqual({
+      maxConcurrentRuns: 100,
+    });
   });
 });
 

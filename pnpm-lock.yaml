@@ -523,6 +523,9 @@ importers:
 
   scripts:
     dependencies:
+      '@cognitive-dag/contracts':
+        specifier: workspace:*
+        version: link:../packages/contracts
       '@cognitive-dag/dag-schema':
         specifier: workspace:*
         version: link:../packages/dag-schema

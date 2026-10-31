@@ -10,6 +10,7 @@
     "set-limits": "node ops/set-limits.ts"
   },
   "dependencies": {
+    "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/logger": "workspace:*",
     "pg": "8.23.1"
