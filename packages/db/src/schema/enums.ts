@@ -30,4 +30,9 @@ export const stepStatus = pgEnum('step_status', [
   'failed',
   'skipped',
   'cancelled',
+  // A rerun from a node reuses the output of a step that already succeeded (terminal).
+  'reused',
 ]);
+
+/** An effect is `started` before it runs and `committed` once its destination confirmed it. */
+export const effectStatus = pgEnum('effect_status', ['started', 'committed']);
