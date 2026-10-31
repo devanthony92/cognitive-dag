@@ -43,6 +43,8 @@ import type { MockServiceActivities, MockServiceInput } from '../activities/mock
 const MOCK_SERVICE_MAX_ATTEMPTS = 3;
 const { mockService } = proxyActivities<MockServiceActivities>({
   startToCloseTimeout: '30 seconds',
+  // The activity heartbeats: a dead worker is noticed in seconds, not after the whole 30 s.
+  heartbeatTimeout: '10 seconds',
   retry: {
     initialInterval: '1 second',
     backoffCoefficient: 2,

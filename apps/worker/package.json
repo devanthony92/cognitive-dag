@@ -30,6 +30,8 @@
     "@cognitive-dag/config": "workspace:*",
     "@temporalio/client": "1.25.0",
     "@temporalio/testing": "1.25.0",
+    "@types/pg": "8.23.1",
+    "pg": "8.23.1",
     "tsx": "4.23.15"
   }
 }

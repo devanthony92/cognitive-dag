@@ -43,6 +43,19 @@ export const MOCK_SERVICE_ERROR_TYPES = {
 
 const DEFAULT_TIMEOUT_HANG_MS = 35_000;
 
+/** Heartbeat period: lets Temporal notice a dead worker fast and deliver a cancellation. */
+const HEARTBEAT_EVERY_MS = 2_000;
+
+/** Waits `ms` while heartbeating, and stops with the abort of the activity cancellation. */
+async function waitWithHeartbeat(ms: number, signal: AbortSignal): Promise<void> {
+  const context = Context.current();
+  const end = Date.now() + ms;
+  for (let left = ms; left > 0; left = end - Date.now()) {
+    context.heartbeat();
+    await sleep(Math.min(left, HEARTBEAT_EVERY_MS), undefined, { signal });
+  }
+}
+
 /**
  * The simulated service (FR-008): waits `latencyMs`, then fails with probability `failureRate`
  * as configured. A transient failure is retried by Temporal, a permanent one is not, and a
@@ -63,12 +76,12 @@ export function createMockServiceActivities(options: MockServiceOptions): MockSe
       });
       log.info({ attempt }, 'Mock service started');
 
-      if (input.config.latencyMs > 0) await sleep(input.config.latencyMs, undefined, { signal });
+      if (input.config.latencyMs > 0) await waitWithHeartbeat(input.config.latencyMs, signal);
 
       if (input.config.failureRate > 0 && random() < input.config.failureRate) {
         log.warn({ attempt, failureKind: input.config.failureKind }, 'Mock service failing');
         const { failureKind } = input.config;
-        if (failureKind === 'timeout') await sleep(hangMs, undefined, { signal });
+        if (failureKind === 'timeout') await waitWithHeartbeat(hangMs, signal);
         const details: MockServiceFailureDetails = { attempt };
         throw ApplicationFailure.create({
           type: MOCK_SERVICE_ERROR_TYPES[failureKind === 'permanent' ? 'permanent' : 'transient'],
