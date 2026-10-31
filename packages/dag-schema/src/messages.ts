@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import { NODE_CATALOG, isNodeType } from './catalog/index.js';
+import { NODE_CATALOG, RETRY_FIELD_LABELS, isNodeType } from './catalog/index.js';
 
 type RawIssue = z.core.$ZodRawIssue;
 
@@ -58,6 +58,9 @@ function subjectOf(path: readonly PropertyKey[], raw: unknown): string {
       isRecord(raw) && Array.isArray(raw['nodes']) ? (raw['nodes'] as unknown[])[index] : undefined;
     const type = isRecord(node) ? node['type'] : undefined;
     const [part, key, ...below] = rest;
+    if (part === 'retry' && typeof key === 'string') {
+      return `El campo «${RETRY_FIELD_LABELS[key] ?? key}»`;
+    }
     if (part !== 'config') {
       const named = typeof part === 'string' ? NODE_PARTS[part] : undefined;
       return named ?? 'El nodo';

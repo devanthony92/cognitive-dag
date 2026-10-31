@@ -6,6 +6,7 @@ export interface RawNode {
   label: string;
   position: { x: number; y: number };
   config: unknown;
+  retry?: unknown;
 }
 
 export interface RawEdge {
