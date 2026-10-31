@@ -20,6 +20,7 @@ import {
   type DagDefinition,
   type DagLimits,
   type NodeType,
+  type RetrySetting,
 } from '@cognitive-dag/dag-schema';
 import { ApiProblemError } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
@@ -35,6 +36,7 @@ import {
 import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { featuresQuery, isResilienceEnabled } from '../flags';
 import { RunButton } from '../runs/RunButton';
 import { sessionQuery } from '../session/session';
 import {
@@ -141,6 +143,7 @@ function EditorSession({
 }: SessionProps) {
   const queryClient = useQueryClient();
   const readOnly = !canWrite;
+  const resilience = isResilienceEnabled(useQuery(featuresQuery).data);
   const flow = useReactFlow<FlowNode, Edge>();
   const canvas = useRef<HTMLDivElement>(null);
 
@@ -372,7 +375,7 @@ function EditorSession({
   const selectedNode = definition.nodes.find((node) => node.id === selectedId);
 
   const onNodeChange = useCallback(
-    (patch: { label?: string; config?: unknown }) => {
+    (patch: { label?: string; config?: unknown; retry?: RetrySetting | undefined }) => {
       if (selectedId === undefined) return;
       setDefinition((current) => updateNode(current, selectedId, patch));
     },
@@ -609,6 +612,7 @@ function EditorSession({
                   errors={errors}
                   onChange={onNodeChange}
                   onRename={renameSelected}
+                  resilience={resilience}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">

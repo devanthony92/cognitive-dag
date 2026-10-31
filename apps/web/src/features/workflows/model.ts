@@ -8,6 +8,7 @@ import {
   type DagError,
   type DagNode,
   type NodeType,
+  type RetrySetting,
 } from '@cognitive-dag/dag-schema';
 
 export interface Position {
@@ -83,11 +84,21 @@ export function moveNode(definition: DagDefinition, id: string, position: Positi
 export function updateNode(
   definition: DagDefinition,
   id: string,
-  patch: { label?: string; config?: unknown; position?: Position },
+  patch: {
+    label?: string;
+    config?: unknown;
+    position?: Position;
+    retry?: RetrySetting | undefined;
+  },
 ): DagDefinition {
   return {
     ...definition,
-    nodes: definition.nodes.map((node) => (node.id === id ? { ...node, ...patch } : node)),
+    nodes: definition.nodes.map((node) => {
+      if (node.id !== id) return node;
+      const { retry, ...rest } = { ...node, ...patch };
+      // No retry setting at all means the defaults of the type: the key must not linger.
+      return retry === undefined ? rest : { ...rest, retry };
+    }),
   };
 }
 
@@ -175,6 +186,8 @@ export function toEditableDefinition(raw: unknown): { definition: DagDefinition;
       label: typeof item['label'] === 'string' ? item['label'] : item['id'],
       position: { x: num(position['x']), y: num(position['y']) },
       config: item['config'],
+      // Kept as the API holds it: the shared validator marks what is out of range.
+      ...(isRecord(item['retry']) ? { retry: item['retry'] } : {}),
     });
   }
   const edges: DagEdge[] = [];

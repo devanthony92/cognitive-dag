@@ -53,6 +53,8 @@ export class FakeServer {
   revision: number;
   draft: unknown;
   saves: Array<{ ifMatch: string | null; definition: unknown }> = [];
+  /** Public feature flags the server reports. */
+  features: Record<string, boolean> = {};
 
   constructor(
     draft: unknown,
@@ -86,6 +88,7 @@ export class FakeServer {
     (role: Role) =>
     (url: string, init: RequestInit = {}): Promise<Response> => {
       const method = init.method ?? 'GET';
+      if (url.endsWith('/features')) return Promise.resolve(json(this.features));
       if (url.endsWith('/auth/session')) return Promise.resolve(json(session(role)));
       if (url.endsWith('/limits')) {
         return Promise.resolve(json({ ...this.limits, source: 'default' }));
