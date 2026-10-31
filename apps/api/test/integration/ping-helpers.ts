@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import { NativeConnection, type Worker } from '@temporalio/worker';
-import { createPingWorker } from '../../../worker/src/worker';
+import { createWorker } from '../../../worker/src/worker';
 import type { Logger } from '@cognitive-dag/logger';
 import { startTestApp, testConfig } from './helpers';
 
@@ -29,7 +29,7 @@ export async function startPingWorker(
 ): Promise<RunningWorker> {
   const config = testConfig();
   const connection = await NativeConnection.connect({ address: config.TEMPORAL_ADDRESS });
-  const worker = await createPingWorker({
+  const worker = await createWorker({
     connection,
     namespace: config.TEMPORAL_NAMESPACE,
     taskQueue,
