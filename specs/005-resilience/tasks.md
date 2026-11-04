@@ -79,7 +79,7 @@ reejecutar desde un nodo y el listado de la organización).
 ## Phase 7: User Story 7 - Verificación (P2)
 
 - [ ] T027 [P] [US7] `apps/worker/test/chaos/`: matar el worker (existente, ahora comprobando efectos), reiniciar Temporal, pausar Valkey, pausar PostgreSQL; `pnpm test:chaos`; job de CI separado y manual (`workflow_dispatch`) además de semanal
-- [ ] T028 [P] [US7] Historiales reales en `apps/worker/test/replay/histories/` (F3 y F4: paralelismo, rama omitida, fallo, cancelación, rate limit, reutilizados) reproducidos en el job `integration`
+- [X] T028 [P] [US7] Historiales reales en `apps/worker/test/replay/histories/` (F3 y F4: paralelismo, rama omitida, fallo, cancelación, rate limit, reutilizados) reproducidos en el job `integration`
 - [ ] T029 [US7] `scripts/demo/recovery.ts` y `pnpm demo:recovery`
 
 ## Phase 8: Polish
