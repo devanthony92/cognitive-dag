@@ -84,9 +84,9 @@ reejecutar desde un nodo y el listado de la organización).
 
 ## Phase 8: Polish
 
-- [ ] T030 [P] ADRs: taxonomía de errores, políticas por nodo, rate limit sin ocupar el worker, idempotencia de efectos, reejecución desde nodo sobre la versión original, decisiones diferidas (circuit breaker con 3C, granularidad, cuotas diarias, bulkheads)
-- [ ] T031 [P] `docs/threat-model.md`, `docs/PLAN.md`, `README.md`
-- [ ] T032 Issue para eliminar `resilience-enabled`
+- [X] T030 [P] ADRs: taxonomía de errores, políticas por nodo, rate limit sin ocupar el worker, idempotencia de efectos, reejecución desde nodo sobre la versión original, decisiones diferidas (circuit breaker con 3C, granularidad, cuotas diarias, bulkheads)
+- [X] T031 [P] `docs/threat-model.md`, `docs/PLAN.md`, `README.md`
+- [X] T032 Issue para eliminar `resilience-enabled`
 - [X] T033 Ejecutar los 13 escenarios de `quickstart.md` y registrar resultados en la PR
 - [X] T034 Checklist de Security Considerations en la PR
 
