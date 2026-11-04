@@ -7,12 +7,15 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --dir test/unit",
     "test:integration": "vitest run --dir test/integration",
-    "set-limits": "node ops/set-limits.ts"
+    "set-limits": "node ops/set-limits.ts",
+    "demo:recovery": "node demo/recovery.ts"
   },
   "dependencies": {
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/logger": "workspace:*",
+    "@temporalio/client": "1.25.0",
+    "iovalkey": "0.4.0",
     "pg": "8.23.1"
   },
   "devDependencies": {
