@@ -19,6 +19,7 @@ async function main(): Promise<void> {
     runs: {
       withContext: database.withContext,
       publish: (channel, message) => valkey.publish(channel, message),
+      valkey,
     },
   });
   await worker.run();
