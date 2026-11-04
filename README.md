@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -50,7 +50,19 @@ F3 adds:
 | Control       | Cancel, rerun with the same input, and a per-organization limit of concurrent runs (5 by default)                                                                   |
 | Documentation | 54 architecture decision records; threat model v1.3 with the F3 rows                                                                                                |
 
-**Next: F4 — resilience.** Until F9 the system runs locally only and is not deployed
+F4 adds:
+
+| Area          | What F4 delivers                                                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Failures      | Four error classes (transient, rate limited, timeout, permanent) classified by each node and shown on the failed step                                   |
+| Policies      | Retry and timeout defaults per node type, with bounded per-node overrides in the DAG definition (1–10 attempts, 1–120 s, 0.1–30 s initial wait)         |
+| Rate limit    | Token bucket in Valkey per organization and node type; waiting nodes are rescheduled and do not hold the worker                                         |
+| Effects       | Idempotency key `runId:nodeId` on every effect, recorded in `node_effects` with forced RLS; a committed effect is never repeated                        |
+| Recovery      | Rerun from a node on the original version, reusing the outputs of earlier successful nodes; the organization's runs page filters by status and workflow |
+| Verification  | Chaos battery (`pnpm test:chaos`) and replay of recorded histories in CI; recovery demo (`pnpm demo:recovery`)                                          |
+| Documentation | 60 architecture decision records; threat model v1.4 with the F4 rows                                                                                    |
+
+**Next: F5 — cognitive nodes.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -96,6 +108,7 @@ keeps sessions and rate-limit counters in Valkey.
 | [docs/threat-model.md](docs/threat-model.md)                       | Data-flow diagram, trust boundaries and STRIDE analysis (es)               |
 | [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/) | F0 spec, plan, research, tasks and quickstart (es)                         |
 | [specs/002-identity-tenancy/](specs/002-identity-tenancy/)         | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| [specs/005-resilience/](specs/005-resilience/)                     | F4 spec, plan, research, data model, tasks and quickstart (es)             |
 
 The project follows Spec-Driven Development with [GitHub Spec Kit](https://github.com/github/spec-kit).
 
@@ -213,6 +226,30 @@ The contract is in [specs/004-execution-engine](specs/004-execution-engine/contr
 With the flag off every run endpoint answers `404 FEATURE_NOT_AVAILABLE` and the web app shows
 nothing about runs.
 
+### Resilience (F4, behind `resilience-enabled`)
+
+With `resilience-enabled` on (default in `.env.example`) the editor shows a **Reintentos** section for
+nodes with effects, the run detail offers **Reejecutar desde aquí**, and the organization has an
+**Ejecuciones** page that filters by status and workflow and shows the error class of failed runs.
+Rate limits are set by the platform in the worker environment, one variable per node type, for example:
+
+```bash
+RATE_LIMIT_MOCK_SERVICE=capacity:10,refillPerSecond:5
+```
+
+The decisions are in [ADR-0055](docs/adr/0055-taxonomia-de-errores-y-clasificacion-por-nodo.md) to
+[ADR-0060](docs/adr/0060-decisiones-diferidas-de-resiliencia.md).
+
+## Recovery demo
+
+`pnpm demo:recovery` starts a demonstration workflow, kills the worker in the middle of the run,
+restarts it and shows that the run finishes without repeating effects. It needs the Compose services
+running (`docker compose up -d --wait`).
+
+```bash
+pnpm demo:recovery
+```
+
 ## Quality checks
 
 ```bash
@@ -221,6 +258,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:integration   # requires `docker compose up -d --wait`
+pnpm test:chaos         # chaos battery: stops the worker, Temporal, Valkey and PostgreSQL; slow, run apart from `pnpm test`
 pnpm build
 ```
 

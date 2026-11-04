@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0, F1, F2 y F3 completadas; F4 (resiliencia) es la siguiente fase. Fecha: 2026-10-31.
+> Estado: F0, F1, F2, F3 y F4 completadas; F5 (nodos cognitivos) es la siguiente fase. Fecha: 2026-11-04.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -191,12 +191,15 @@ Objetivo: que cualquier fallo sea **clasificado, contenido, observable y recuper
 | Presupuesto agotado | Tokens o costo por ejecución/tenant      | No reintentable; ejecución detenida y alertada      |
 
 Cada conector traduce sus errores a esta taxonomía; el motor nunca interpreta errores crudos.
+Implementado en F4: la taxonomía y su clasificación por nodo ([ADR-0055](adr/0055-taxonomia-de-errores-y-clasificacion-por-nodo.md)).
 
 ### 5.2 Políticas por tipo de nodo
 
 - `RetryPolicy` y timeouts (`startToCloseTimeout`, `scheduleToCloseTimeout`,
   `heartbeatTimeout`) definidos por tipo de nodo, con overrides acotados por configuración.
 - Activities largas envían heartbeats.
+- Implementado en F4: valores por defecto en el catálogo y ajustes por nodo dentro de límites,
+  en la definición del DAG ([ADR-0056](adr/0056-politicas-de-reintento-por-tipo-de-nodo.md)).
 
 ### 5.3 Idempotencia
 
@@ -204,6 +207,8 @@ Cada conector traduce sus errores a esta taxonomía; el motor nunca interpreta e
 - Los conectores envían la clave al destino cuando el destino lo soporta, o registran
   el efecto en una tabla `effects` antes de confirmar.
 - Webhooks entrantes deduplicados por ID de evento (vía `workflowId`).
+- Implementado en F4: tabla `node_effects` con protocolo `started`/`committed`
+  ([ADR-0058](adr/0058-efectos-idempotentes-con-clave-runid-nodeid.md)).
 
 ### 5.4 Contención
 
@@ -211,6 +216,7 @@ Cada conector traduce sus errores a esta taxonomía; el motor nunca interpreta e
 - **Rate limiting** por (tenant, conector) con token bucket, más límites por task queue de Temporal.
 - **Bulkheads**: task queues separadas para LLM, HTTP y conectores simulados.
 - **Cuotas por tenant**: ejecuciones concurrentes, ejecuciones por día y tokens LLM.
+- Implementado en F4: rate limit por organización y tipo de nodo, con token bucket en Valkey y sin ocupar el worker ([ADR-0057](adr/0057-rate-limit-con-token-bucket-sin-ocupar-el-worker.md)). Diferidos a F5 y F7: circuit breaker (decisión 3C), granularidad por servicio, cuotas diarias y bulkheads ([ADR-0060](adr/0060-decisiones-diferidas-de-resiliencia.md)).
 
 ### 5.5 Recuperación
 
@@ -218,7 +224,8 @@ Cada conector traduce sus errores a esta taxonomía; el motor nunca interpreta e
 - Ejecuciones fallidas quedan como **cola de revisión** (equivalente a una DLQ) con el
   error clasificado y las entradas/salidas de cada nodo.
 - **Reejecución desde un nodo**: nueva ejecución que reutiliza las salidas memorizadas de
-  los nodos previos exitosos.
+  los nodos previos exitosos. Implementada en F4 sobre la versión original
+  ([ADR-0059](adr/0059-reejecucion-desde-nodo-sobre-la-version-original.md)).
 - Efectos que deban deshacerse: compensaciones declaradas por nodo (patrón saga), cuando aplique.
 
 ### 5.6 Verificación
@@ -357,7 +364,7 @@ Cada fase termina con: código en `main`, pruebas en verde, criterios de segurid
 | **F1 Identidad y multi-tenant**  | Registro, login, refresh, tenants, roles, RLS, log de auditoría                                                            | Pruebas de acceso cruzado entre tenants fallan como se espera; controles A01/A04/A07 cubiertos      |
 | **F2 Modelo DAG y editor**       | `dag-schema` (Zod), validación semántica, versionado inmutable, editor React Flow                                          | Se crea, edita, valida y publica un DAG manualmente                                                 |
 | **F3 Motor de ejecución**        | Workflow intérprete, activities base, `trigger.manual`, `logic.*`, `mock.service`, tabla de eventos, vista en vivo por SSE | Un DAG con ramas paralelas y condiciones se ejecuta y se observa en vivo                            |
-| **F4 Resiliencia**               | Taxonomía, políticas, idempotencia, circuit breaker, rate limit, cuotas, reejecución desde nodo, pruebas de caos y replay  | Pruebas de caos (sección 5.6) pasan; demo de recuperación tras matar el worker                      |
+| **F4 Resiliencia**               | Taxonomía, políticas, idempotencia, rate limit, reejecución desde nodo, listado de ejecuciones, pruebas de caos y replay   | Pruebas de caos (sección 5.6) pasan; demo de recuperación tras matar el worker                      |
 | **F5 Nodos cognitivos**          | Paquete `llm` (Gemini, structured output, presupuesto, redacción), `llm.classify/extract/generate`                         | Nodos LLM validados por esquema; límites de consumo activos; set de inyección sin escapes           |
 | **F6 Compilador NL → DAG**       | Prompt con catálogo, ciclo de reparación, UI de intención → borrador, evals                                                | Tasa de éxito medida en el dataset de evals; nada se ejecuta sin publicar                           |
 | **F7 Triggers y control humano** | `trigger.webhook` firmado, `trigger.schedule`, `human.approval`, `http.request` con anti-SSRF                              | Webhook con firma inválida o replay rechazado; SSRF a IPs internas bloqueado                        |
