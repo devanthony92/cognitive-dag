@@ -532,6 +532,12 @@ importers:
       '@cognitive-dag/logger':
         specifier: workspace:*
         version: link:../packages/logger
+      '@temporalio/client':
+        specifier: 1.25.0
+        version: 1.25.0(long@5.3.2)(protobufjs@8.8.1)
+      iovalkey:
+        specifier: 0.4.0
+        version: 0.4.0(supports-color@8.1.1)
       pg:
         specifier: 8.23.1
         version: 8.23.1
