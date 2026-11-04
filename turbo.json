@@ -19,6 +19,10 @@
     "test:integration": {
       "dependsOn": ["^build"],
       "cache": false
+    },
+    "test:chaos": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   }
 }

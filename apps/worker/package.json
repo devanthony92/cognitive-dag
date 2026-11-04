@@ -12,7 +12,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --dir test/unit",
-    "test:integration": "vitest run test/integration test/replay"
+    "test:integration": "vitest run test/integration test/replay",
+    "test:chaos": "vitest run --config vitest.chaos.config.ts"
   },
   "dependencies": {
     "@cognitive-dag/contracts": "workspace:*",
