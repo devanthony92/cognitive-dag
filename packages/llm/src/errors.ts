@@ -36,11 +36,11 @@ export class LlmError extends Error {
   /** Wait asked by the provider, when it said so. */
   retryAfterMs?: number;
 
-  constructor(
-    readonly code: LlmErrorCode,
-    message: string,
-  ) {
+  readonly code: LlmErrorCode;
+
+  constructor(code: LlmErrorCode, message: string) {
     super(message);
+    this.code = code;
     this.name = 'LlmError';
     this.errorClass = LLM_ERROR_CLASSES[code];
   }

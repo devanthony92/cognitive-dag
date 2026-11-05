@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0, F1, F2, F3 y F4 completadas; F5 (nodos cognitivos) es la siguiente fase. Fecha: 2026-11-04.
+> Estado: F0, F1, F2, F3, F4 y F5 completadas; F6 (compilador NL → DAG) es la siguiente fase. Fecha: 2026-11-05.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -72,14 +72,14 @@ Modelo de amenazas v1.2: [`threat-model.md`](threat-model.md).
 
 ## 3. Decisiones abiertas
 
-| #   | Tema                                            | Opciones                         | Recomendación                                                                                                                                                          |
-| --- | ----------------------------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely          | **Cerrada en F1: Drizzle** ([ADR-0024](adr/0024-drizzle-como-orm.md))                                                                                                  |
-| O2  | Autenticación                                   | Propia o librería                | **Cerrada en F1: propia** con Argon2id y sesiones opacas en cookie ([ADR-0025](adr/0025-argon2id-para-contrasenas.md), [ADR-0027](adr/0027-sesiones-opacas-y-csrf.md)) |
-| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL               | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4  |
-| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | **Cerrada en F2: AST propio** pequeño y tipado en Zod; nunca `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md))                           |
-| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio | Grafana Cloud free para no consumir RAM de la VM                                                                                                                       |
-| O6  | Modelo Gemini concreto                          | Familia Flash / Flash-Lite / Pro | Verificar modelos vigentes al iniciar la fase 5; Flash-Lite para clasificar, Flash para compilar                                                                       |
+| #   | Tema                                            | Opciones                         | Recomendación                                                                                                                                                                                                                                               |
+| --- | ----------------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely          | **Cerrada en F1: Drizzle** ([ADR-0024](adr/0024-drizzle-como-orm.md))                                                                                                                                                                                       |
+| O2  | Autenticación                                   | Propia o librería                | **Cerrada en F1: propia** con Argon2id y sesiones opacas en cookie ([ADR-0025](adr/0025-argon2id-para-contrasenas.md), [ADR-0027](adr/0027-sesiones-opacas-y-csrf.md))                                                                                      |
+| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL               | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4                                                                                       |
+| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | **Cerrada en F2: AST propio** pequeño y tipado en Zod; nunca `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md))                                                                                                                |
+| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio | Grafana Cloud free para no consumir RAM de la VM                                                                                                                                                                                                            |
+| O6  | Modelo Gemini concreto (**cerrada en F5**)      | Familia Flash / Flash-Lite / Pro | Cerrada: Flash-Lite (`gemini-3.5-flash-lite`) para clasificar y extraer, Flash (`gemini-3.6-flash`) para generar, por variable de entorno ([ADR-0066](adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md)); el compilador de F6 elegirá el suyo |
 
 ## 4. Arquitectura
 
@@ -217,6 +217,7 @@ Implementado en F4: la taxonomía y su clasificación por nodo ([ADR-0055](adr/0
 - **Bulkheads**: task queues separadas para LLM, HTTP y conectores simulados.
 - **Cuotas por tenant**: ejecuciones concurrentes, ejecuciones por día y tokens LLM.
 - Implementado en F4: rate limit por organización y tipo de nodo, con token bucket en Valkey y sin ocupar el worker ([ADR-0057](adr/0057-rate-limit-con-token-bucket-sin-ocupar-el-worker.md)). Diferidos a F5 y F7: circuit breaker (decisión 3C), granularidad por servicio, cuotas diarias y bulkheads ([ADR-0060](adr/0060-decisiones-diferidas-de-resiliencia.md)).
+- Implementado en F5: cuota diaria de tokens LLM por organización con reserva atómica en PostgreSQL ([ADR-0062](adr/0062-presupuesto-de-tokens-con-reserva-en-postgresql.md)) y bulkhead de LLM con una task queue propia en el mismo proceso ([ADR-0063](adr/0063-bulkhead-con-cola-llm-en-el-mismo-proceso.md)). Siguen diferidos: circuit breaker y granularidad por servicio (F7), cuotas de ejecuciones por día, y bulkheads de HTTP y conectores (F7).
 
 ### 5.5 Recuperación
 

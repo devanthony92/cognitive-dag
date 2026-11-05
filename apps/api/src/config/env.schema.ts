@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { DEFAULT_LLM_TASK_QUEUE } from '@cognitive-dag/contracts';
 import { ABSOLUTE_LIMITS } from '@cognitive-dag/dag-schema';
 
 /** A ceiling can only lower the absolute maximum of the platform (research R12). */
@@ -19,6 +20,8 @@ export const EnvSchema = z.object({
   TEMPORAL_ADDRESS: z.string().regex(/^[\w.-]+:\d+$/),
   TEMPORAL_NAMESPACE: z.string().min(1).default('default'),
   TEMPORAL_TASK_QUEUE: z.string().min(1),
+  // Queue of the LLM activities (F5, R6): the API hands it to the workflow, which cannot read the env.
+  TEMPORAL_LLM_TASK_QUEUE: z.string().min(1).max(255).default(DEFAULT_LLM_TASK_QUEUE),
   SMTP_HOST: z.string().min(1).default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
   MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),

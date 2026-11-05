@@ -51,7 +51,11 @@ export class FakeProvider implements LlmProvider {
   readonly calls: LlmRequest[] = [];
   private position = 0;
 
-  constructor(private readonly script?: readonly FakeStep[]) {}
+  private readonly script: readonly FakeStep[] | undefined;
+
+  constructor(script?: readonly FakeStep[]) {
+    this.script = script;
+  }
 
   generate(request: LlmRequest): Promise<LlmResponse> {
     this.calls.push(request);

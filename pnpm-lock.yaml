@@ -551,6 +551,9 @@ importers:
       '@cognitive-dag/dag-schema':
         specifier: workspace:*
         version: link:../packages/dag-schema
+      '@cognitive-dag/llm':
+        specifier: workspace:*
+        version: link:../packages/llm
       '@cognitive-dag/logger':
         specifier: workspace:*
         version: link:../packages/logger

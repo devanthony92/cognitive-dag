@@ -189,6 +189,7 @@ export class RunsService {
           ...(prepared.executablePhases.includes('F5')
             ? { executablePhases: prepared.executablePhases }
             : {}),
+          llmTaskQueue: this.config.TEMPORAL_LLM_TASK_QUEUE,
           ...(rerun?.memoized ? { memoized: rerun.memoized } : {}),
         };
         return { row: inserted, names, workflowInput };
