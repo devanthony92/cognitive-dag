@@ -10,6 +10,7 @@ import {
   sleep,
 } from '@temporalio/workflow';
 import {
+  DEFAULT_LLM_TASK_QUEUE,
   DEFAULT_RUN_MAX_DURATION_MS,
   ExecuteDagInputSchema,
   RUN_ERROR_CODES,
@@ -38,6 +39,7 @@ import {
 } from '@cognitive-dag/dag-schema';
 import type { RunEventActivities } from '../activities/record-run-event';
 import type { MockServiceActivities, MockServiceInput } from '../activities/mock-service';
+import type { LlmActivities, LlmNodeInput } from '../llm/activities';
 
 // Workflow code must stay deterministic: no I/O, clock, randomness or flag reads here. Everything
 // with an effect runs in an activity; only types are imported from the activity modules so the
@@ -91,6 +93,32 @@ function mockServiceFor(policy: RetryPolicy): MockServiceActivities {
       },
     });
     policyProxies.set(key, proxy);
+  }
+  return proxy;
+}
+
+const llmProxies = new Map<string, LlmActivities>();
+
+/**
+ * Proxy of the LLM activities on their own task queue (bulkhead, research R6). As with
+ * `mockServiceFor`, Temporal retries without limit and the activity applies the node policy.
+ */
+function llmFor(taskQueue: string, policy: RetryPolicy): LlmActivities {
+  const key = `${taskQueue}/${policy.maxAttempts}/${policy.timeoutSeconds}/${policy.initialIntervalMs}`;
+  let proxy = llmProxies.get(key);
+  if (!proxy) {
+    proxy = proxyActivities<LlmActivities>({
+      taskQueue,
+      startToCloseTimeout: `${policy.timeoutSeconds} seconds`,
+      scheduleToCloseTimeout: `${policy.maxAttempts * policy.timeoutSeconds + TOTAL_TIME_MARGIN_SECONDS} seconds`,
+      retry: {
+        initialInterval: policy.initialIntervalMs,
+        backoffCoefficient: 2,
+        maximumInterval: MAX_TEMPORAL_BACKOFF,
+        maximumAttempts: 0,
+      },
+    });
+    llmProxies.set(key, proxy);
   }
   return proxy;
 }
@@ -239,7 +267,7 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
   if (!definition) {
     return failRun(RUN_ERROR_CODES.invalidDefinition, 'The version definition is not valid.');
   }
-  const unsupported = findUnsupportedNodes(definition);
+  const unsupported = findUnsupportedNodes(definition, input.executablePhases);
   if (unsupported.length > 0) {
     return failRun(
       RUN_ERROR_CODES.unsupportedNodes,
@@ -296,6 +324,29 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
               outputs,
             ) as MockServiceInput['config'],
           });
+          outputs[id] = result.output;
+          attempts = result.attempts;
+          break;
+        }
+        case 'llm.classify':
+        case 'llm.extract':
+        case 'llm.generate': {
+          await record({ ...base(), transition: 'step.running', ...ref });
+          const policy = resolveRetryPolicy(node.type, node.retry) as RetryPolicy;
+          const activities = llmFor(input.llmTaskQueue ?? DEFAULT_LLM_TASK_QUEUE, policy);
+          const call: LlmNodeInput = {
+            runId,
+            nodeId: id,
+            correlationId,
+            organizationId,
+            policy,
+            config: resolveNodeConfig(node.type, node.config, outputs) as Record<string, unknown>,
+          };
+          const result = await (node.type === 'llm.classify'
+            ? activities.llmClassify(call)
+            : node.type === 'llm.extract'
+              ? activities.llmExtract(call)
+              : activities.llmGenerate(call));
           outputs[id] = result.output;
           attempts = result.attempts;
           break;

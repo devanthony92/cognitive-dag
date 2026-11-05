@@ -10,7 +10,11 @@ import { createPingActivities } from './activities/ping.activities';
 import { createRunEventActivities } from './activities/record-run-event';
 import { createEffectStore, createMockDestination } from './resilience/effects';
 import type { RateLimits } from './resilience/rate-limit-config';
-import { createRateLimiter } from './resilience/rate-limiter';
+import { createModelRateLimiter, createRateLimiter } from './resilience/rate-limiter';
+import type { BucketConfig } from './resilience/rate-limit-config';
+import type { LlmProvider, Prices } from '@cognitive-dag/llm';
+import { createLlmActivities, type LlmNodeType } from './llm/activities';
+import { createBudget, type BudgetLimits } from './llm/budget';
 
 /** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
 export function createWorkerId(): string {
@@ -90,6 +94,75 @@ export function createWorker(options: WorkerOptions): Promise<Worker> {
       }),
       ...(recorder ?? {}),
     },
+    ...(options.shutdownGraceTime === undefined
+      ? {}
+      : { shutdownGraceTime: options.shutdownGraceTime }),
+  });
+}
+
+export interface LlmWorkerOptions {
+  connection: NativeConnection;
+  namespace: string;
+  /** `TEMPORAL_LLM_TASK_QUEUE`: the bulkhead of the LLM activities (research R6). */
+  taskQueue: string;
+  logLevel?: string;
+  logger?: Logger;
+  shutdownGraceTime?: Duration;
+  provider: LlmProvider;
+  withContext: WithContext;
+  valkey?: Valkey;
+  /** Bucket by organization and node type (F4). */
+  rateLimits?: RateLimits;
+  /** Global bucket by model (`rl:global:<model>`). */
+  modelRateLimit?: BucketConfig;
+  limits: BudgetLimits;
+  /** `LLM_ENABLED` */
+  enabled: boolean;
+  models: Readonly<Record<LlmNodeType, string>>;
+  prices: Prices;
+  maxInputChars: number;
+  /** `LLM_MAX_CONCURRENT_ACTIVITIES`: LLM calls never take the slots of the other nodes. */
+  maxConcurrentActivities: number;
+}
+
+/**
+ * Second worker of the process (research R6): it only serves the LLM activities, on their own task
+ * queue and with their own concurrency, so a slow or limited provider cannot starve the rest.
+ */
+export function createLlmWorker(options: LlmWorkerOptions): Promise<Worker> {
+  const logger =
+    options.logger ?? createLogger({ component: 'worker-llm', level: options.logLevel ?? 'warn' });
+  const activities = createLlmActivities({
+    logger,
+    provider: options.provider,
+    budget: createBudget({ withContext: options.withContext, limits: options.limits, logger }),
+    enabled: options.enabled,
+    models: options.models,
+    prices: options.prices,
+    maxInputChars: options.maxInputChars,
+    ...(options.valkey
+      ? {
+          rateLimiter: createRateLimiter({
+            valkey: options.valkey,
+            limits: options.rateLimits ?? {},
+          }),
+          ...(options.modelRateLimit
+            ? {
+                modelRateLimiter: createModelRateLimiter({
+                  valkey: options.valkey,
+                  limit: options.modelRateLimit,
+                }),
+              }
+            : {}),
+        }
+      : {}),
+  });
+  return Worker.create({
+    connection: options.connection,
+    namespace: options.namespace,
+    taskQueue: options.taskQueue,
+    activities: { ...activities },
+    maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
     ...(options.shutdownGraceTime === undefined
       ? {}
       : { shutdownGraceTime: options.shutdownGraceTime }),

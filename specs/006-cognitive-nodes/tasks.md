@@ -53,18 +53,18 @@ día). Kill switch del worker: `LLM_ENABLED`.
 
 ### Tests
 
-- [ ] T019 [P] [US3] `apps/worker/test/integration/llm-budget.test.ts` (PostgreSQL real): reserva atómica por ejecución y por día; concurrencia (20 reservas en paralelo nunca superan el límite); ajuste real − estimado; otra organización no afectada; PostgreSQL caído → transitorio sin llamada; evento `llm.budget_exhausted`
-- [ ] T020 [P] [US1] `apps/worker/test/unit/llm-activities.test.ts` con `FakeProvider`: los tres nodos devuelven salidas válidas; fila de `llm_calls` sin contenido; reparaciones; entrada vacía y demasiado grande → permanentes sin llamada; `LLM_ENABLED=false` → `LLM_DISABLED` sin llamada; `redactPii` aplicado antes de enviar
-- [ ] T021 [P] [US2] Workflow (tiempo simulado): `invalid_output` y `budget_exhausted` no se reintentan y la ejecución falla con esa clase; 5xx y 429 siguen F4; activities LLM en `TEMPORAL_LLM_TASK_QUEUE`; nodos `reused` sin activity
-- [ ] T022 [P] [US3] Rate limit global por modelo (`rl:global:<modelo>`) además del de organización y tipo; pedido antes de reservar
-- [ ] T023 [P] [US5] Prueba de logs: una ejecución completa con texto marcado no deja ese texto en logs, eventos ni `llm_calls` (SC-004)
+- [X] T019 [P] [US3] `apps/worker/test/integration/llm-budget.test.ts` (PostgreSQL real): reserva atómica por ejecución y por día; concurrencia (20 reservas en paralelo nunca superan el límite); ajuste real − estimado; otra organización no afectada; PostgreSQL caído → transitorio sin llamada; evento `llm.budget_exhausted`
+- [X] T020 [P] [US1] `apps/worker/test/unit/llm-activities.test.ts` con `FakeProvider`: los tres nodos devuelven salidas válidas; fila de `llm_calls` sin contenido; reparaciones; entrada vacía y demasiado grande → permanentes sin llamada; `LLM_ENABLED=false` → `LLM_DISABLED` sin llamada; `redactPii` aplicado antes de enviar
+- [X] T021 [P] [US2] Workflow (tiempo simulado): `invalid_output` y `budget_exhausted` no se reintentan y la ejecución falla con esa clase; 5xx y 429 siguen F4; activities LLM en `TEMPORAL_LLM_TASK_QUEUE`; nodos `reused` sin activity
+- [X] T022 [P] [US3] Rate limit global por modelo (`rl:global:<modelo>`) además del de organización y tipo; pedido antes de reservar
+- [X] T023 [P] [US5] Prueba de logs: una ejecución completa con texto marcado no deja ese texto en logs, eventos ni `llm_calls` (SC-004)
 
 ### Implementation
 
-- [ ] T024 [US1] `apps/worker/src/llm/activities.ts` (`llmClassify`, `llmExtract`, `llmGenerate`): rate limit, reserva, llamada, guardián, ajuste y registro; errores de la taxonomía
-- [ ] T025 [US3] `apps/worker/src/llm/budget.ts` (reserva y ajuste de research R4) y evento de seguridad
-- [ ] T026 [US1] `execute-dag.workflow.ts`: proxy LLM con `taskQueue` propio y política por nodo; `executablePhases` desde la entrada; segundo `Worker` en `worker.ts` con `LLM_MAX_CONCURRENT_ACTIVITIES`
-- [ ] T027 [P] Historial real con nodos LLM agregado al replay de `apps/worker/test/replay/histories/`
+- [X] T024 [US1] `apps/worker/src/llm/activities.ts` (`llmClassify`, `llmExtract`, `llmGenerate`): rate limit, reserva, llamada, guardián, ajuste y registro; errores de la taxonomía
+- [X] T025 [US3] `apps/worker/src/llm/budget.ts` (reserva y ajuste de research R4) y evento de seguridad
+- [X] T026 [US1] `execute-dag.workflow.ts`: proxy LLM con `taskQueue` propio y política por nodo; `executablePhases` desde la entrada; segundo `Worker` en `worker.ts` con `LLM_MAX_CONCURRENT_ACTIVITIES`
+- [X] T027 [P] Historial real con nodos LLM agregado al replay de `apps/worker/test/replay/histories/`
 
 ---
 

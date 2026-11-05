@@ -13,6 +13,9 @@ export const DEFAULT_RUN_MAX_DURATION_MS = 30 * 60 * 1000;
  */
 export const RUN_EXECUTION_TIMEOUT = '31 minutes';
 
+/** Task queue of the LLM activities when the input does not name one (research R6). */
+export const DEFAULT_LLM_TASK_QUEUE = 'cognitive-dag-llm';
+
 export const RUN_ID_PREFIX = 'run-';
 
 /** Id of the Temporal workflow of a run (research R6). */
@@ -50,6 +53,11 @@ export const ExecuteDagInputSchema = z.strictObject({
     .min(1)
     .refine((phases) => new Set(phases).size === phases.length)
     .optional(),
+  /**
+   * Task queue of the LLM activities (`TEMPORAL_LLM_TASK_QUEUE`, research R6). The workflow cannot
+   * read the environment; without it the default queue is used.
+   */
+  llmTaskQueue: z.string().min(1).max(255).optional(),
 });
 
 export type ExecuteDagInput = z.infer<typeof ExecuteDagInputSchema>;
