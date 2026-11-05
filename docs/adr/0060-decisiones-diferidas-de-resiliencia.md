@@ -27,6 +27,13 @@ Quedan diferidas las cuatro piezas siguientes. El rate limit de F4 usa como clav
 
 El estado de cada una se revisa al cerrar F5 y F7, y se registra en `docs/PLAN.md` §5.4.
 
+## Actualización al cerrar F5 (2026-11-05)
+
+- **Cuotas diarias**: implementada solo la de tokens LLM por organización y día ([ADR-0062](0062-presupuesto-de-tokens-con-reserva-en-postgresql.md)). Siguen diferidas las cuotas de ejecuciones por día y de ejecuciones concurrentes por encima del límite que ya existe desde F3.
+- **Bulkheads**: implementado el de LLM con una task queue propia en el mismo proceso ([ADR-0063](0063-bulkhead-con-cola-llm-en-el-mismo-proceso.md)). Las colas de HTTP y de conectores llegan con F7.
+- **Circuit breaker**: sigue diferido a F7, con `http.request`. En F5 el rate limit global por modelo y el presupuesto acotan la presión sobre Gemini, pero no cortan el tráfico ante una caída sostenida.
+- **Granularidad por servicio**: sigue diferida junto con el circuit breaker.
+
 ## Consecuencias
 
 - Bueno: F4 se cierra con lo que puede verificarse con el servicio simulado y sin inventar cargas.

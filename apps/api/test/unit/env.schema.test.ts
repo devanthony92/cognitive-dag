@@ -15,6 +15,12 @@ describe('API environment validation', () => {
     expect(config.API_PORT).toBe(3000);
     expect(config.BODY_LIMIT).toBe('100kb');
     expect(config.TEMPORAL_NAMESPACE).toBe('default');
+    expect(config.TEMPORAL_LLM_TASK_QUEUE).toBe('cognitive-dag-llm');
+  });
+
+  it('reads the queue of the LLM activities', () => {
+    const config = parseEnv({ ...VALID_ENV, TEMPORAL_LLM_TASK_QUEUE: 'other-llm' });
+    expect(config.TEMPORAL_LLM_TASK_QUEUE).toBe('other-llm');
   });
 
   it('names a missing variable', () => {

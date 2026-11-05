@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -62,7 +62,19 @@ F4 adds:
 | Verification  | Chaos battery (`pnpm test:chaos`) and replay of recorded histories in CI; recovery demo (`pnpm demo:recovery`)                                          |
 | Documentation | 60 architecture decision records; threat model v1.4 with the F4 rows                                                                                    |
 
-**Next: F5 — cognitive nodes.** Until F9 the system runs locally only and is not deployed
+F5 adds:
+
+| Area          | What F5 delivers                                                                                                                                     |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Nodes         | `llm.classify`, `llm.extract` and `llm.generate`; the output is data validated by schema, never an action                                            |
+| Provider      | `packages/llm` with a swappable provider: a deterministic fake (default, used by CI) and Gemini through the official SDK                             |
+| Safety        | Data delimited with a per-call nonce, canary, closed output schema, bounded repair, optional PII redaction per node, no content in logs              |
+| Consumption   | Token budget per run and per organization and day, reserved atomically in PostgreSQL; global rate limit per model; own task queue for LLM activities |
+| Visibility    | Model, tokens, estimated cost and repairs per step; total per run; "Consumo LLM de hoy" for the organization                                         |
+| Verification  | Injection set run in CI against the fake provider; `pnpm eval:llm` against Gemini (manual, workflow `llm-evals.yml`)                                 |
+| Documentation | 66 architecture decision records; threat model v1.5 with the F5 rows; constitution 1.0.1 (TDD in `packages/llm`)                                     |
+
+**Next: F6 — natural language compiler.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -109,6 +121,7 @@ keeps sessions and rate-limit counters in Valkey.
 | [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/) | F0 spec, plan, research, tasks and quickstart (es)                         |
 | [specs/002-identity-tenancy/](specs/002-identity-tenancy/)         | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 | [specs/005-resilience/](specs/005-resilience/)                     | F4 spec, plan, research, data model, tasks and quickstart (es)             |
+| [specs/006-cognitive-nodes/](specs/006-cognitive-nodes/)           | F5 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 
 The project follows Spec-Driven Development with [GitHub Spec Kit](https://github.com/github/spec-kit).
 
@@ -206,7 +219,7 @@ With `execution-enabled` on (default in `.env.example`) the editor header shows 
 **Ejecuciones**. **Ejecutar** runs the active version and asks for the fields the manual trigger
 declares (a generated form, validated before it is sent); it is disabled, with the reason next to
 it, when the workflow has no active version or the version has nodes that are not executable yet
-(`llm.*`, `http.request`, `human.approval`, webhook and schedule triggers). Any member, viewers
+(`http.request`, `human.approval`, webhook and schedule triggers; `llm.*` run when `llm-nodes-enabled` is on). Any member, viewers
 included, can run, cancel and rerun (author decision, [ADR-0053](docs/adr/0053-cualquier-miembro-puede-ejecutar.md)).
 
 - **List:** the runs of a workflow, newest first, with state, version, who started it, start and duration.
@@ -239,6 +252,28 @@ RATE_LIMIT_MOCK_SERVICE=capacity:10,refillPerSecond:5
 
 The decisions are in [ADR-0055](docs/adr/0055-taxonomia-de-errores-y-clasificacion-por-nodo.md) to
 [ADR-0060](docs/adr/0060-decisiones-diferidas-de-resiliencia.md).
+
+## Cognitive nodes (F5, behind `llm-nodes-enabled`)
+
+With `llm-nodes-enabled` on (default in `.env.example`) the editor offers the three LLM nodes, runs can
+execute them, and the run detail shows tokens and estimated cost. The worker uses the deterministic
+`LLM_PROVIDER=fake` by default. To use Gemini put `LLM_PROVIDER=gemini` and your key in your local
+`.env` (never commit it). The free tier may use what is sent: **use test data only** until F9.
+
+Budgets, models, prices and the queue of the LLM activities are set by the platform in the worker
+environment (see `.env.example`). Setting `LLM_ENABLED=false` makes every LLM node fail without calling
+the provider.
+
+`pnpm eval:llm` runs the prompt injection set and valid inputs against the real model and exits 1 if
+anything escapes. It needs `GEMINI_API_KEY` and spends free tier quota, so it is manual (also available
+as the `LLM evals` workflow, started by hand).
+
+```bash
+pnpm eval:llm
+```
+
+The decisions are in [ADR-0061](docs/adr/0061-paquete-llm-con-proveedor-intercambiable.md) to
+[ADR-0066](docs/adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md).
 
 ## Recovery demo
 

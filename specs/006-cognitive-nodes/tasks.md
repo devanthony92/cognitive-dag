@@ -82,13 +82,13 @@ día). Kill switch del worker: `LLM_ENABLED`.
 
 ## Phase 5: Verificación y cierre
 
-- [ ] T035 [P] [US4] `scripts/eval/llm.ts` y `pnpm eval:llm` con Gemini: set de inyección y salidas válidas de los tres nodos; reporta escapes, tokens y costo; falla si hay escapes
-- [ ] T036 [P] `.github/workflows/llm-evals.yml` solo `workflow_dispatch`, con el secret `GEMINI_API_KEY`
-- [ ] T037 [P] ADRs (research, "ADRs previstos"), enmienda PATCH de la constitution (TDD en `packages/llm`), actualización de ADR-0060
-- [ ] T038 [P] `docs/threat-model.md` (filas LLM a `mitigated`, riesgo de capa gratuita aceptado), `docs/PLAN.md` (O6 cerrada, F5 completada, §5.4), `README.md`
-- [ ] T039 Issue para eliminar `llm-nodes-enabled`
+- [X] T035 [P] [US4] `scripts/eval/llm.ts` y `pnpm eval:llm` con Gemini: set de inyección y salidas válidas de los tres nodos; reporta escapes, tokens y costo; falla si hay escapes
+- [X] T036 [P] `.github/workflows/llm-evals.yml` solo `workflow_dispatch`, con el secret `GEMINI_API_KEY`
+- [X] T037 [P] ADRs (research, "ADRs previstos"), enmienda PATCH de la constitution (TDD en `packages/llm`), actualización de ADR-0060
+- [X] T038 [P] `docs/threat-model.md` (filas LLM a `mitigated`, riesgo de capa gratuita aceptado), `docs/PLAN.md` (O6 cerrada, F5 completada, §5.4), `README.md`
+- [X] T039 Issue para eliminar `llm-nodes-enabled`
 - [ ] T040 Ejecutar los 13 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T041 Checklist de Security Considerations en la PR
+- [X] T041 Checklist de Security Considerations en la PR
 
 ---
 
