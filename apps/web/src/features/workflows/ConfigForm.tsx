@@ -47,6 +47,8 @@ interface Props {
   onChange: (patch: { label?: string; config?: unknown; retry?: RetrySetting | undefined }) => void;
   /** F4 behind `resilience-enabled`: the retry settings of nodes with an effect. */
   resilience?: boolean;
+  /** F5 behind `llm-nodes-enabled`: the warning about real data sent to the provider. */
+  llm?: boolean;
   /** Renames the node and everything that points to it; returns why it cannot, if it cannot. */
   onRename: (id: string) => string | undefined;
 }
@@ -67,6 +69,7 @@ export function ConfigForm({
   onChange,
   onRename,
   resilience = false,
+  llm = false,
 }: Props) {
   const descriptors = useMemo(() => describeConfig(node.type), [node.type]);
   const config = (
@@ -272,6 +275,15 @@ export function ConfigForm({
         ),
       )}
 
+      {llm && node.type.startsWith('llm.') && (
+        <p
+          role="note"
+          className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900"
+        >
+          No envíes datos reales: el proveedor puede usar el contenido.
+        </p>
+      )}
+
       {resilience && supportsRetry(node.type) && (
         <RetrySection node={node} errors={errors} onChange={(retry) => onChange({ retry })} />
       )}
@@ -362,6 +374,8 @@ function FieldControl({
         <input
           {...common}
           type="checkbox"
+          // The PII mask is an on/off switch for the person, not a form agreement.
+          role={descriptor.key === 'redactPii' ? 'switch' : undefined}
           className="size-4"
           checked={value === true}
           onChange={(event) => onChange(event.target.checked)}

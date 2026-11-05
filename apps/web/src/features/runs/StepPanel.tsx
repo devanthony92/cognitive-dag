@@ -7,6 +7,7 @@ import { ApiProblemError } from '../../api/client';
 import { Button } from '../../components/ui/button';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { errorMessage } from './error-messages';
+import { confidenceText, formatCostUsd, formatTokens } from '../llm/format';
 import { stepIoQuery } from './api';
 import { StatusBadge } from './StatusBadge';
 import {
@@ -24,6 +25,8 @@ interface Props {
   now: number;
   /** F4 behind `resilience-enabled`: error class, rate limit wait, reuse and rerun from a node. */
   resilience?: boolean;
+  /** F5 behind `llm-nodes-enabled`: consumption of the LLM nodes. */
+  llm?: boolean;
   /** The run this one repeats, to follow a reused node back to where it ran. */
   rerunOf?: string | null;
   /** Rerun from this node; only offered when the run has finished. */
@@ -110,12 +113,19 @@ function StepContent({
     return <ProblemAlert error={io.error} />;
   }
   const { input, output, truncated } = io.data;
+  const confidence = step.nodeType === 'llm.classify' ? confidenceText(output) : undefined;
   if (input === undefined && output === undefined) {
     return <p className="text-sm text-muted-foreground">Sin contenido disponible.</p>;
   }
   return (
     <div className="grid gap-3">
       {input !== undefined && <Json title="Entrada" value={input} />}
+      {confidence && (
+        <p className="text-sm">
+          <span className="text-muted-foreground">Confianza estimada: </span>
+          <span className="font-medium">{confidence}</span>
+        </p>
+      )}
       {output !== undefined && <Json title="Salida" value={output} />}
       {truncated && (
         <p className="text-xs text-muted-foreground">
@@ -134,6 +144,7 @@ export function StepPanel({
   label,
   now,
   resilience = false,
+  llm = false,
   rerunOf = null,
   onRerunFrom,
   rerunning = false,
@@ -158,7 +169,7 @@ export function StepPanel({
     step.status !== 'reused';
 
   const errorClass =
-    resilience && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
+    (resilience || llm) && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
   const waitingForLimit = resilience && step.waitingReason === 'rate_limited';
 
   return (
@@ -194,6 +205,23 @@ export function StepPanel({
         <dt className="text-muted-foreground">Fin</dt>
         <dd>{step.finishedAt ? formatDateTime(step.finishedAt) : '—'}</dd>
       </dl>
+      {llm && step.llmUsage && (
+        <section aria-label="Consumo LLM" className="grid gap-2">
+          <h3 className="text-sm font-semibold">Consumo LLM</h3>
+          <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Modelo</dt>
+            <dd className="min-w-0 break-words">{step.llmUsage.model ?? 'Varios modelos'}</dd>
+            <dt className="text-muted-foreground">Tokens de entrada</dt>
+            <dd>{formatTokens(step.llmUsage.inputTokens)}</dd>
+            <dt className="text-muted-foreground">Tokens de salida</dt>
+            <dd>{formatTokens(step.llmUsage.outputTokens)}</dd>
+            <dt className="text-muted-foreground">Costo estimado</dt>
+            <dd>{formatCostUsd(step.llmUsage.costMicroUsd)}</dd>
+            <dt className="text-muted-foreground">Reparaciones</dt>
+            <dd>{step.llmUsage.repairs}</dd>
+          </dl>
+        </section>
+      )}
       {step.error && (
         <div
           role="alert"

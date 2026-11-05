@@ -98,13 +98,22 @@ describe('start a run (requires docker compose up and pnpm db:migrate)', () => {
   });
 
   it('409 WORKFLOW_NOT_RUNNABLE when the version has nodes of later phases', async () => {
-    const workflowId = await publishedWorkflow(env, unsupportedDefinition());
+    // Nodes of F5 run with llm-nodes-enabled (llm-flag.test.ts); human approval waits for F7.
+    const definition = unsupportedDefinition();
+    definition.nodes[1] = {
+      id: 'texto',
+      type: 'human.approval',
+      label: 'Aprobar',
+      position: { x: 200, y: 0 },
+      config: { message: 'Aprueba', timeoutSeconds: 3600 },
+    };
+    const workflowId = await publishedWorkflow(env, definition);
     const response = await startRun(env, env.owner, workflowId, {}).expect(409);
     const problem = ProblemDetailsSchema.parse(response.body);
     expect(problem).toMatchObject({
       code: 'WORKFLOW_NOT_RUNNABLE',
       reason: 'unsupported_nodes',
-      nodes: [{ nodeId: 'texto', type: 'llm.generate' }],
+      nodes: [{ nodeId: 'texto', type: 'human.approval' }],
     });
   });
 

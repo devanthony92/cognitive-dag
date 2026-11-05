@@ -17,7 +17,14 @@ const CATEGORIES: { id: NodeCategory; title: string }[] = [
 ];
 
 /** The 11 node types, grouped; click or drag one onto the canvas to add it. */
-export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
+export function Palette({
+  onAdd,
+  llm = false,
+}: {
+  onAdd: (type: NodeType) => void;
+  /** `llm-nodes-enabled`: the nodes of F5 can run. */
+  llm?: boolean;
+}) {
   return (
     <aside
       aria-label="Paleta de nodos"
@@ -49,7 +56,9 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
                     <span className="block font-medium">{entry.label}</span>
                     <span className="block text-xs text-muted-foreground">{entry.description}</span>
                     <span className="mt-1 block text-[11px] font-medium text-primary">
-                      Se ejecuta desde {entry.executableFrom}
+                      {llm && entry.executableFrom === 'F5'
+                        ? 'Ejecutable'
+                        : `Se ejecuta desde ${entry.executableFrom}`}
                     </span>
                   </button>
                 );

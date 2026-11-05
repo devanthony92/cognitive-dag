@@ -36,7 +36,7 @@ import {
 import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isResilienceEnabled } from '../flags';
+import { featuresQuery, isLlmNodesEnabled, isResilienceEnabled } from '../flags';
 import { RunButton } from '../runs/RunButton';
 import { sessionQuery } from '../session/session';
 import {
@@ -143,7 +143,9 @@ function EditorSession({
 }: SessionProps) {
   const queryClient = useQueryClient();
   const readOnly = !canWrite;
-  const resilience = isResilienceEnabled(useQuery(featuresQuery).data);
+  const featureFlags = useQuery(featuresQuery).data;
+  const resilience = isResilienceEnabled(featureFlags);
+  const llm = isLlmNodesEnabled(featureFlags);
   const flow = useReactFlow<FlowNode, Edge>();
   const canvas = useRef<HTMLDivElement>(null);
 
@@ -532,7 +534,7 @@ function EditorSession({
       )}
 
       <div className="flex min-h-0 flex-1">
-        {canWrite && <Palette onAdd={addFromPalette} />}
+        {canWrite && <Palette onAdd={addFromPalette} llm={llm} />}
 
         <div
           ref={canvas}
@@ -613,6 +615,7 @@ function EditorSession({
                   onChange={onNodeChange}
                   onRename={renameSelected}
                   resilience={resilience}
+                  llm={llm}
                 />
               ) : (
                 <p className="text-sm text-muted-foreground">

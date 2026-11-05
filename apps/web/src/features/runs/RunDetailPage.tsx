@@ -15,13 +15,14 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isResilienceEnabled } from '../flags';
+import { featuresQuery, isLlmNodesEnabled, isResilienceEnabled } from '../flags';
 import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
 import { errorMessage } from './error-messages';
 import { RunGraph } from './RunGraph';
 import { StatusBadge } from './StatusBadge';
+import { formatCostUsd, formatTokens } from '../llm/format';
 import { StepPanel } from './StepPanel';
 import { formatDateTime, formatDuration, isFinalRun, runDurationMs } from './status';
 import { useNow, useRunLive } from './useRunLive';
@@ -60,6 +61,7 @@ export function RunDetailPage({
 
   const features = useQuery(featuresQuery);
   const resilience = isResilienceEnabled(features.data);
+  const llm = isLlmNodesEnabled(features.data);
   const [selectedId, setSelectedId] = useState<string | undefined>(initialNodeId);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -157,6 +159,16 @@ export function RunDetailPage({
             <dt>Duración</dt>
             <dd className="text-foreground">{formatDuration(runDurationMs(data, now))}</dd>
           </div>
+          {llm && data.llmUsage && (
+            <div className="flex gap-1">
+              <dt>Consumo LLM</dt>
+              <dd className="text-foreground">
+                {formatTokens(data.llmUsage.inputTokens)} entrada ·{' '}
+                {formatTokens(data.llmUsage.outputTokens)} salida ·{' '}
+                {formatCostUsd(data.llmUsage.costMicroUsd)}
+              </dd>
+            </div>
+          )}
           {data.rerunOf && (
             <div>
               <Link
@@ -264,6 +276,7 @@ export function RunDetailPage({
               label={labelOf(selectedStep.nodeId)}
               now={now}
               resilience={resilience}
+              llm={llm}
               rerunOf={data.rerunOf}
               {...(resilience && final
                 ? {
