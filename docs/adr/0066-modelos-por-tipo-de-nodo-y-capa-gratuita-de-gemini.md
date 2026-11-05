@@ -18,12 +18,13 @@ decision-makers: autor
 
 ## Decisión
 
-Un modelo por tipo de nodo, por variable del worker (decisión 1A): `LLM_MODEL_CLASSIFY` y `LLM_MODEL_EXTRACT` con `gemini-3.5-flash-lite`, y `LLM_MODEL_GENERATE` con `gemini-3.6-flash`, valores de `.env.example`. Los precios van en `LLM_PRICES`. Se usa la capa gratuita de AI Studio solo con datos de prueba (decisión 3A): el riesgo de que Google use el contenido queda aceptado en el modelo de amenazas hasta F9, con aviso en el panel de los nodos LLM; antes de la demo pública se migra a la capa de pago. Un bucket global por modelo (`RATE_LIMIT_LLM_MODEL`, 15 de capacidad y 0,25 por segundo) protege la cuota compartida por todas las organizaciones.
+Un modelo por tipo de nodo, por variable del worker (decisión 1A): `LLM_MODEL_CLASSIFY`, `LLM_MODEL_EXTRACT` y `LLM_MODEL_GENERATE`, los tres con `gemini-3.5-flash-lite` por defecto (`.env.example` y configuración del worker). Se había previsto `gemini-3.6-flash` para generar, pero en la capa gratuita fue inestable y rechazó un caso válido en `pnpm eval:llm`; con Flash-Lite en todos los nodos no hubo rechazos. Quien quiera otro modelo lo cambia por variable. Los precios van en `LLM_PRICES`. Se usa la capa gratuita de AI Studio solo con datos de prueba (decisión 3A): el riesgo de que Google use el contenido queda aceptado en el modelo de amenazas hasta F9, con aviso en el panel de los nodos LLM; antes de la demo pública se migra a la capa de pago. Un bucket global por modelo (`RATE_LIMIT_LLM_MODEL`, 15 de capacidad y 0,25 por segundo) protege la cuota compartida por todas las organizaciones.
 
 ## Consecuencias
 
-- Bueno: el costo y la latencia se ajustan por tipo de nodo sin tocar código.
+- Bueno: el costo y la latencia se ajustan por tipo de nodo sin tocar código, y el modelo más barato es el que mejor se comportó en la capa gratuita.
 - Bueno: cambiar de modelo es cambiar una variable.
+- Malo: la generación usa un modelo menos capaz que el previsto; si la calidad no alcanza, se cambia la variable.
 - Malo: los nombres de modelo envejecen; se verifican contra la documentación oficial al cambiarlos.
 - Malo: la capa gratuita tiene cuotas bajas y términos de uso de datos; por eso solo datos de prueba hasta F9.
 

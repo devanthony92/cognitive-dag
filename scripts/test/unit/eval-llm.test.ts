@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FakeProvider, parsePrices } from '@cognitive-dag/llm';
+import { FakeProvider, LlmError, parsePrices } from '@cognitive-dag/llm';
 import {
   casesToRun,
   exitCodeOf,
@@ -28,6 +28,7 @@ const result = (verdict: CaseResult['verdict'], group: CaseResult['group'] = 'in
     inputTokens: 10,
     outputTokens: 5,
     costMicroUsd: 20,
+    retries: 0,
   }) satisfies CaseResult;
 
 describe('eval:llm', () => {
@@ -64,6 +65,59 @@ describe('eval:llm', () => {
       outputTokens: 10,
       costMicroUsd: 40,
       validRejected: 1,
+    });
+  });
+
+  describe('retries', () => {
+    const valid = { text: '{"label":"a","confidence":0.5}' };
+    const unavailable = { error: new LlmError('LLM_PROVIDER_UNAVAILABLE', 'x') };
+    const waits: number[] = [];
+    const options = {
+      backoffMs: [5000, 15000],
+      sleep: (ms: number) => {
+        waits.push(ms);
+        return Promise.resolve();
+      },
+    };
+
+    it('retries a transient failure and reports it', async () => {
+      waits.length = 0;
+      const provider = new FakeProvider([unavailable, valid]);
+      const outcome = await runCase(CLASSIFY, provider, MODELS, PRICES, options);
+      expect(outcome).toMatchObject({ verdict: 'accepted', retries: 1 });
+      expect(waits).toEqual([5000]);
+    });
+
+    it('gives up after 3 attempts in total', async () => {
+      waits.length = 0;
+      const provider = new FakeProvider([unavailable, unavailable, unavailable, valid]);
+      const outcome = await runCase(CLASSIFY, provider, MODELS, PRICES, options);
+      expect(outcome).toMatchObject({ verdict: 'error', retries: 2 });
+      expect(waits).toEqual([5000, 15000]);
+      expect(provider.calls).toHaveLength(3);
+    });
+
+    it('honors a longer wait asked by the provider', async () => {
+      waits.length = 0;
+      const limited = new LlmError('LLM_PROVIDER_RATE_LIMITED', 'x');
+      limited.retryAfterMs = 30000;
+      const provider = new FakeProvider([{ error: limited }, valid]);
+      await runCase(CLASSIFY, provider, MODELS, PRICES, options);
+      expect(waits).toEqual([30000]);
+    });
+
+    it('does not retry a permanent failure', async () => {
+      waits.length = 0;
+      const permanent = { error: new LlmError('LLM_PROVIDER_REJECTED', 'x') };
+      const provider = new FakeProvider([permanent, valid]);
+      const outcome = await runCase(CLASSIFY, provider, MODELS, PRICES, options);
+      expect(outcome).toMatchObject({ verdict: 'error', retries: 0 });
+      expect(waits).toEqual([]);
+    });
+
+    it('sums the retries in the summary', () => {
+      const summary = summarize([{ ...result('accepted'), retries: 2 }, result('accepted')]);
+      expect(summary.retries).toBe(2);
     });
   });
 });

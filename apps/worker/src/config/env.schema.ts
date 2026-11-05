@@ -33,7 +33,7 @@ export const EnvSchema = z.object({
     .transform((value) => value === 'true'),
   LLM_MODEL_CLASSIFY: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   LLM_MODEL_EXTRACT: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
-  LLM_MODEL_GENERATE: z.string().min(1).max(64).default('gemini-3.6-flash'),
+  LLM_MODEL_GENERATE: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   // `<model>:<input>:<output>;...` in micro-USD per million tokens. Parsed apart.
   LLM_PRICES: z.string().optional(),
   LLM_MAX_TOKENS_PER_RUN: positiveInt(50_000),
