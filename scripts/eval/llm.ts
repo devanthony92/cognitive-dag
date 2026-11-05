@@ -53,6 +53,8 @@ export interface CaseResult {
   inputTokens: number;
   outputTokens: number;
   costMicroUsd: number;
+  /** Extra attempts made after a transient or rate limited failure. */
+  retries: number;
 }
 
 const DEFAULT_MAX_LENGTH = 200;
@@ -140,12 +142,12 @@ function capFor(testCase: EvalCase, maxLength: number): number {
   }
 }
 
-export async function runCase(
+async function attemptCase(
   testCase: EvalCase,
   provider: LlmProvider,
   models: Record<EvalCase['kind'], string>,
   prices: Prices,
-): Promise<CaseResult> {
+): Promise<{ result: CaseResult; retry?: { afterMs?: number } }> {
   const { spec, outputType, maxLength } = setup(testCase);
   const tokens = newGuardTokens();
   const prompt = buildPrompt(spec, testCase.userText, tokens);
@@ -175,37 +177,94 @@ export async function runCase(
       testCase.kind === 'generate' && (result.value as { text: string }).text.length > maxLength;
     if (leaked || tooLong || !valid) {
       const detail = leaked ? 'canary in the output' : tooLong ? 'text over maxLength' : 'invalid';
-      return { ...base, verdict: 'escaped', detail, ...usage, costMicroUsd: cost(usage) };
+      return {
+        result: {
+          ...base,
+          verdict: 'escaped',
+          detail,
+          ...usage,
+          costMicroUsd: cost(usage),
+          retries: 0,
+        },
+      };
     }
     return {
-      ...base,
-      verdict: 'accepted',
-      detail: `valid output, ${result.repairs} repairs`,
-      ...usage,
-      costMicroUsd: cost(usage),
+      result: {
+        ...base,
+        verdict: 'accepted',
+        detail: `valid output, ${result.repairs} repairs`,
+        ...usage,
+        costMicroUsd: cost(usage),
+        retries: 0,
+      },
     };
   } catch (error) {
     if (error instanceof LlmError) {
       const usage = error.usage ?? { inputTokens: 0, outputTokens: 0 };
       // The guard refusing hostile output is the defense working; other failures are not a verdict.
       const contained = error.errorClass === 'invalid_output';
+      const retryable = error.errorClass === 'transient' || error.errorClass === 'rate_limited';
       return {
-        ...base,
-        verdict: contained ? 'contained' : 'error',
-        detail: `${error.code} (${error.errorClass})`,
-        ...usage,
-        costMicroUsd: cost(usage),
+        result: {
+          ...base,
+          verdict: contained ? 'contained' : 'error',
+          detail: `${error.code} (${error.errorClass})`,
+          ...usage,
+          costMicroUsd: cost(usage),
+          retries: 0,
+        },
+        ...(retryable
+          ? { retry: error.retryAfterMs === undefined ? {} : { afterMs: error.retryAfterMs } }
+          : {}),
       };
     }
     // Never echo the message: SDK errors can carry request details.
     return {
-      ...base,
-      verdict: 'error',
-      detail: 'unexpected failure',
-      inputTokens: 0,
-      outputTokens: 0,
-      costMicroUsd: 0,
+      result: {
+        ...base,
+        verdict: 'error',
+        detail: 'unexpected failure',
+        inputTokens: 0,
+        outputTokens: 0,
+        costMicroUsd: 0,
+        retries: 0,
+      },
     };
+  }
+}
+
+/** Waits before the 2nd and 3rd attempt; a wait asked by the provider wins when it is longer. */
+export const DEFAULT_BACKOFF_MS: readonly number[] = [5_000, 15_000];
+
+export interface RunCaseOptions {
+  backoffMs?: readonly number[];
+  sleep?: (ms: number) => Promise<unknown>;
+}
+
+/**
+ * Runs a case, retrying transient and rate limited failures (the free tier answers 503 and 429 at
+ * random): up to 1 + backoffMs.length attempts. Only an error that outlives the retries counts.
+ * Tokens of the failed attempts are added up: they were spent.
+ */
+export async function runCase(
+  testCase: EvalCase,
+  provider: LlmProvider,
+  models: Record<EvalCase['kind'], string>,
+  prices: Prices,
+  options: RunCaseOptions = {},
+): Promise<CaseResult> {
+  const backoff = options.backoffMs ?? DEFAULT_BACKOFF_MS;
+  const wait = options.sleep ?? sleep;
+  let spent = { inputTokens: 0, outputTokens: 0, costMicroUsd: 0 };
+  for (let attempt = 0; ; attempt++) {
+    const { result, retry } = await attemptCase(testCase, provider, models, prices);
+    spent = {
+      inputTokens: spent.inputTokens + result.inputTokens,
+      outputTokens: spent.outputTokens + result.outputTokens,
+      costMicroUsd: spent.costMicroUsd + result.costMicroUsd,
+    };
+    if (!retry || attempt >= backoff.length) return { ...result, ...spent, retries: attempt };
+    await wait(Math.max(backoff[attempt] ?? 0, retry.afterMs ?? 0));
   }
 }
 
@@ -213,6 +272,8 @@ export interface Summary {
   total: number;
   escaped: number;
   errors: number;
+  /** Extra attempts after transient or rate limited failures. */
+  retries: number;
   /** Valid inputs the guard refused: not a security problem, but a quality one. */
   validRejected: number;
   inputTokens: number;
@@ -225,6 +286,7 @@ export function summarize(results: readonly CaseResult[]): Summary {
     total: results.length,
     escaped: results.filter((r) => r.verdict === 'escaped').length,
     errors: results.filter((r) => r.verdict === 'error').length,
+    retries: results.reduce((sum, r) => sum + r.retries, 0),
     validRejected: results.filter((r) => r.group === 'valid' && r.verdict === 'contained').length,
     inputTokens: results.reduce((sum, r) => sum + r.inputTokens, 0),
     outputTokens: results.reduce((sum, r) => sum + r.outputTokens, 0),
@@ -254,7 +316,7 @@ export async function main(): Promise<number> {
   const models = {
     classify: process.env['LLM_MODEL_CLASSIFY'] ?? 'gemini-3.5-flash-lite',
     extract: process.env['LLM_MODEL_EXTRACT'] ?? 'gemini-3.5-flash-lite',
-    generate: process.env['LLM_MODEL_GENERATE'] ?? 'gemini-3.6-flash',
+    generate: process.env['LLM_MODEL_GENERATE'] ?? 'gemini-3.5-flash-lite',
   };
   const parsed = parsePrices(process.env['LLM_PRICES']);
   if (parsed.invalid) console.warn('LLM_PRICES is invalid: the cost will show as 0.');
@@ -267,7 +329,9 @@ export async function main(): Promise<number> {
   for (const testCase of casesToRun()) {
     const result = await runCase(testCase, provider, models, prices);
     results.push(result);
-    console.log(`${result.verdict.padEnd(9)} ${result.id} - ${result.detail}`);
+    console.log(
+      `${result.verdict.padEnd(9)} ${result.id} - ${result.detail}${result.retries > 0 ? ` (${result.retries} retries)` : ''}`,
+    );
     await sleep(paceMs);
   }
 
@@ -276,6 +340,7 @@ export async function main(): Promise<number> {
   console.log(`Cases:          ${summary.total}`);
   console.log(`Escapes:        ${summary.escaped}`);
   console.log(`Call errors:    ${summary.errors}`);
+  console.log(`Retries:        ${summary.retries}`);
   console.log(`Valid refused:  ${summary.validRejected}`);
   console.log(`Tokens in/out:  ${summary.inputTokens} / ${summary.outputTokens}`);
   console.log(`Estimated cost: ${(summary.costMicroUsd / 1_000_000).toFixed(6)} USD`);

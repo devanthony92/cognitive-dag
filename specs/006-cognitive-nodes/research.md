@@ -8,9 +8,11 @@ Decisiones del autor: 1A, 2A, 3A, 4C, 5A, 6A, 7A, 8A, 9A, 10C, 11A, 12A, 13A, 14
 
 - Un modelo por tipo de nodo, por variable de entorno del worker: `LLM_MODEL_CLASSIFY`,
   `LLM_MODEL_EXTRACT`, `LLM_MODEL_GENERATE`.
-- Valores en `.env.example`: Flash-Lite (`gemini-3.5-flash-lite`) para clasificar y extraer, Flash
-  (`gemini-3.6-flash`) para generar. Se verifican contra la documentación oficial al implementar
-  (Google marca ambos como GA; 3.7/3.8 solo aparecen en fuentes de terceros).
+- Valores en `.env.example`: Flash-Lite (`gemini-3.5-flash-lite`) para los tres tipos. Se había
+  previsto Flash (`gemini-3.6-flash`) para generar, pero en la capa gratuita resultó inestable y
+  rechazó un caso válido en `pnpm eval:llm`; con Flash-Lite en todos los nodos no hubo rechazos
+  (corrección al cerrar F5). Se verifican contra la documentación oficial (3.7/3.8 solo aparecen en
+  fuentes de terceros).
 - Cierra la decisión abierta O6 de `docs/PLAN.md`.
 
 ## R2. Paquete `packages/llm` y proveedor intercambiable (2A)
