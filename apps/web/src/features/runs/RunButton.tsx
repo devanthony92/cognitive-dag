@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { History, Play } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/button';
-import { featuresQuery, isExecutionEnabled } from '../flags';
+import { featuresQuery, isExecutionEnabled, isLlmNodesEnabled } from '../flags';
 import { versionQuery, versionsQuery } from '../workflows/api';
 import { RunDialog } from './RunDialog';
 import { runBlockReason } from './runnable';
@@ -46,7 +46,11 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
     ? undefined
     : versions.isError || activeVersion.isError
       ? 'No se pudo cargar la versión activa.'
-      : runBlockReason(activeVersion.data?.definition, active !== undefined);
+      : runBlockReason(
+          activeVersion.data?.definition,
+          active !== undefined,
+          isLlmNodesEnabled(features.data),
+        );
   const blocked = loading || reason !== undefined || activeVersion.data === undefined;
 
   return (

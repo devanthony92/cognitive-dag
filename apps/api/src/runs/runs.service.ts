@@ -57,6 +57,7 @@ import {
 import { DATABASE } from '../database/database.module';
 import { FlagsService } from '../flags/flags.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
+import { loadRunLlmUsage } from '../llm-usage/llm-usage.service';
 import { LimitsService } from '../workflows/limits.service';
 import { RunTemporalService } from './run-history.service';
 import { memoizedOf, stepContentOf, toStepIo, triggerInputOf } from './run-content';
@@ -92,6 +93,7 @@ const notRunnable = (
   });
 
 type RunRow = typeof workflowRuns.$inferSelect;
+type ExecutablePhases = NonNullable<ExecuteDagInput['executablePhases']>;
 
 /** What links a run to the one it repeats; with `versionId` it runs on that version (F4). */
 interface RerunSource {
@@ -183,6 +185,10 @@ export class RunsService {
           correlationId,
           definition: prepared.definition,
           triggerInput,
+          // Only with the flag on: without it the workflow keeps its F3-only default (R13).
+          ...(prepared.executablePhases.includes('F5')
+            ? { executablePhases: prepared.executablePhases }
+            : {}),
           ...(rerun?.memoized ? { memoized: rerun.memoized } : {}),
         };
         return { row: inserted, names, workflowInput };
@@ -241,7 +247,12 @@ export class RunsService {
 
     const parsed = DagDefinitionSchema.safeParse(version.definition);
     if (!parsed.success) throw new Error('A published version does not match the DAG schema');
-    const unsupported = findUnsupportedNodes(parsed.data);
+    const executablePhases: ExecutablePhases = (await this.flags.isEnabled(
+      FEATURE_FLAGS.llmNodesEnabled,
+    ))
+      ? ['F3', 'F5']
+      : ['F3'];
+    const unsupported = findUnsupportedNodes(parsed.data, executablePhases);
     if (unsupported.length > 0) {
       throw notRunnable(
         'unsupported_nodes',
@@ -266,6 +277,7 @@ export class RunsService {
       versionId: version.id,
       versionNumber: version.versionNumber,
       definition: version.definition as Record<string, unknown>,
+      executablePhases,
     };
   }
 
@@ -358,9 +370,17 @@ export class RunsService {
         .from(workflowVersions)
         .where(eq(workflowVersions.id, row.versionId));
       const names = await userNames(tx, [row.triggeredBy]);
+      // Without the flag no indicator of consumption exists (R13): fields stay null.
+      const usage = (await this.flags.isEnabled(FEATURE_FLAGS.llmNodesEnabled))
+        ? await loadRunLlmUsage(tx, runId)
+        : undefined;
       return {
         ...toRun(row, names),
-        steps: steps.map(toStep),
+        llmUsage: usage?.total ?? null,
+        steps: steps.map((step) => ({
+          ...toStep(step),
+          llmUsage: usage?.byNode.get(step.nodeId) ?? null,
+        })),
         definition: (version?.definition ?? {}) as Record<string, unknown>,
       };
     });

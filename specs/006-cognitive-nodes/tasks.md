@@ -70,13 +70,13 @@ día). Kill switch del worker: `LLM_ENABLED`.
 
 ## Phase 4: User Stories 1, 3, 5, 6 - API y web (P1/P2)
 
-- [ ] T028 [P] [US6] `apps/api/test/integration/llm-flag.test.ts`: flag apagado → nodos LLM no ejecutables (409 `WORKFLOW_NOT_RUNNABLE`), consumo 404, `llmUsage` null; encendido → ejecutables con `executablePhases: ['F3','F5']`
-- [ ] T029 [P] [US3] `apps/api/test/integration/llm-usage.test.ts`: `GET /organizations/{org}/llm-usage/today` (día UTC, límite, costo), otra organización 404, sin consumo → ceros; `llmUsage` por paso y ejecución sumado de `llm_calls`
-- [ ] T030 [US3] API: módulo `llm-usage`, `llmUsage` en el detalle de la ejecución, fases ejecutables según el flag al iniciar y reejecutar
-- [ ] T031 [US1] Web: en el panel del paso LLM, modelo, tokens, costo estimado, reparaciones y "Confianza estimada"; total de la ejecución en la cabecera; clases nuevas con texto en español ("Salida inválida", "Presupuesto agotado")
-- [ ] T032 [US3] Web: tarjeta "Consumo LLM de hoy" en la página de la organización (usados/límite, barra, costo), con carga, vacío ("Sin consumo hoy") y error; 800 px
-- [ ] T033 [US5] Web: en el panel de los nodos LLM, interruptor "Ocultar datos personales" y aviso "No envíes datos reales: el proveedor puede usar el contenido"; paleta con nodos LLM ejecutables con el flag
-- [ ] T034 [P] Pruebas de componentes web de T031–T033 con el flag encendido y apagado
+- [X] T028 [P] [US6] `apps/api/test/integration/llm-flag.test.ts`: flag apagado → nodos LLM no ejecutables (409 `WORKFLOW_NOT_RUNNABLE`), consumo 404, `llmUsage` null; encendido → ejecutables con `executablePhases: ['F3','F5']`
+- [X] T029 [P] [US3] `apps/api/test/integration/llm-usage.test.ts`: `GET /organizations/{org}/llm-usage/today` (día UTC, límite, costo), otra organización 404, sin consumo → ceros; `llmUsage` por paso y ejecución sumado de `llm_calls`
+- [X] T030 [US3] API: módulo `llm-usage`, `llmUsage` en el detalle de la ejecución, fases ejecutables según el flag al iniciar y reejecutar
+- [X] T031 [US1] Web: en el panel del paso LLM, modelo, tokens, costo estimado, reparaciones y "Confianza estimada"; total de la ejecución en la cabecera; clases nuevas con texto en español ("Salida inválida", "Presupuesto agotado")
+- [X] T032 [US3] Web: tarjeta "Consumo LLM de hoy" en la página de la organización (usados/límite, barra, costo), con carga, vacío ("Sin consumo hoy") y error; 800 px
+- [X] T033 [US5] Web: en el panel de los nodos LLM, interruptor "Ocultar datos personales" y aviso "No envíes datos reales: el proveedor puede usar el contenido"; paleta con nodos LLM ejecutables con el flag
+- [X] T034 [P] Pruebas de componentes web de T031–T033 con el flag encendido y apagado
 
 ---
 

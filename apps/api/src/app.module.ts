@@ -17,6 +17,7 @@ import type { AppConfig } from './config/env.schema';
 import { DatabaseModule } from './database/database.module';
 import { FlagsModule } from './flags/flags.module';
 import { HealthModule } from './health/health.module';
+import { LlmUsageModule } from './llm-usage/llm-usage.module';
 import { MailModule } from './mail/mail.module';
 import { PingModule } from './ping/ping.module';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
@@ -48,6 +49,7 @@ export class AppModule implements NestModule {
         AuthModule,
         WorkflowsModule,
         RunsModule,
+        LlmUsageModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },

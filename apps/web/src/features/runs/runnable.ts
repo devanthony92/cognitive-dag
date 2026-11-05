@@ -30,10 +30,14 @@ function unsupportedText(nodes: readonly Blocking[]): string {
 export function runBlockReason(
   activeDefinition: unknown,
   hasActiveVersion: boolean,
+  llmNodes = false,
 ): string | undefined {
   if (!hasActiveVersion) return RUN_TEXT.noVersion;
   if (activeDefinition === undefined) return undefined;
-  const unsupported = findUnsupportedNodes(toEditableDefinition(activeDefinition).definition);
+  const unsupported = findUnsupportedNodes(
+    toEditableDefinition(activeDefinition).definition,
+    llmNodes ? ['F3', 'F5'] : ['F3'],
+  );
   return unsupported.length > 0 ? unsupportedText(unsupported) : undefined;
 }
 

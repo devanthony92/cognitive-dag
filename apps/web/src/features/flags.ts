@@ -20,6 +20,10 @@ export function isResilienceEnabled(features: Record<string, boolean> | undefine
   return features?.[FEATURE_FLAGS.resilienceEnabled] === true;
 }
 
+export function isLlmNodesEnabled(features: Record<string, boolean> | undefined): boolean {
+  return features?.[FEATURE_FLAGS.llmNodesEnabled] === true;
+}
+
 export function isExecutionEnabled(features: Record<string, boolean> | undefined): boolean {
   return features?.[FEATURE_FLAGS.executionEnabled] === true;
 }
