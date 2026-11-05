@@ -1,5 +1,5 @@
 import type Valkey from 'iovalkey';
-import type { RateLimits } from './rate-limit-config';
+import type { BucketConfig, RateLimits } from './rate-limit-config';
 
 export type RateLimitDecision = { granted: true } | { granted: false; retryAfterMs: number };
 
@@ -77,6 +77,38 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
       );
       const [granted, retryAfterMs] = await commands.tokenBucket(
         rateLimitKey(organizationId, nodeType),
+        limit.capacity,
+        limit.refillPerSecond,
+        ttl,
+      );
+      return granted === 1 ? { granted: true } : { granted: false, retryAfterMs };
+    },
+  };
+}
+
+export interface ModelRateLimiter {
+  /** Asks for one token of the global bucket of the model (provider quota, research R14). */
+  acquire(model: string): Promise<RateLimitDecision>;
+}
+
+export const modelRateLimitKey = (model: string): string => `rl:global:${model}`;
+
+/** Bucket shared by every organization for one model: the quota belongs to the provider key. */
+export function createModelRateLimiter(options: {
+  valkey: Valkey;
+  limit: BucketConfig;
+}): ModelRateLimiter {
+  options.valkey.defineCommand('tokenBucket', { numberOfKeys: 1, lua: TOKEN_BUCKET });
+  const commands = options.valkey as unknown as BucketCommands;
+  const { limit } = options;
+  const ttl = Math.min(
+    MAX_TTL_SECONDS,
+    Math.max(MIN_TTL_SECONDS, Math.ceil((limit.capacity / limit.refillPerSecond) * 2)),
+  );
+  return {
+    async acquire(model) {
+      const [granted, retryAfterMs] = await commands.tokenBucket(
+        modelRateLimitKey(model),
         limit.capacity,
         limit.refillPerSecond,
         ttl,

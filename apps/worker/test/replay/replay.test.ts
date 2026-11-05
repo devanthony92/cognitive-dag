@@ -7,10 +7,22 @@ import { Worker } from '@temporalio/worker';
 import { describe, expect, it } from 'vitest';
 import { createLogger } from '@cognitive-dag/logger';
 import { EXECUTE_DAG_WORKFLOW_NAME, type ExecuteDagInput } from '@cognitive-dag/contracts';
+import { FakeProvider, type FakeStep } from '@cognitive-dag/llm';
 import { createMockServiceActivities } from '../../src/activities/mock-service';
+import { createLlmActivities } from '../../src/llm/activities';
 import type { EffectDestination, EffectStore } from '../../src/resilience/effects';
 import type { RateLimiter } from '../../src/resilience/rate-limiter';
-import { condition, definition, edge, merge, mock, trigger } from '../helpers/dags';
+import {
+  classifyNode,
+  condition,
+  definition,
+  edge,
+  generateNode,
+  merge,
+  mock,
+  trigger,
+} from '../helpers/dags';
+import { MODELS, memoryBudget } from '../helpers/llm';
 
 const workflowsPath = path.resolve(__dirname, '../../src/workflows');
 const historiesDir = path.resolve(__dirname, 'histories');
@@ -27,10 +39,14 @@ interface Scenario {
   denyFirst?: number;
   /** Cancels the run once the node is running. */
   cancelWhenRunning?: string;
+  /** Scripted answers of the model: the scenario has LLM nodes (F5) on their own task queue. */
+  llmScript?: readonly FakeStep[];
 }
 
+const LLM_QUEUE = 'replay-llm';
+
 /**
- * F4 scenarios. When the interpreter changes in a way that breaks the replay of these histories,
+ * F4 and F5 scenarios. When the interpreter changes in a way that breaks the replay of these histories,
  * the change needs `patched()` (research R1): never just regenerate them. To record them again on
  * purpose: `RECORD_HISTORIES=1 pnpm --filter @cognitive-dag/worker test:integration`.
  */
@@ -105,6 +121,18 @@ const scenarios: Record<string, Scenario> = {
     ),
     memoized: { trigger: { amount: 150, tone: 'happy' }, a: { ok: true }, b: { ok: true } },
   },
+  // F5: a classification that recovers from a provider 5xx and a generation after it
+  'f5-llm': {
+    dag: definition(
+      [trigger(), classifyNode('classify'), generateNode('reply')],
+      [edge('trigger', 'classify'), edge('classify', 'reply')],
+    ),
+    llmScript: [
+      { error: { status: 503 } },
+      { text: JSON.stringify({ label: 'positivo', confidence: 0.9 }) },
+      { text: JSON.stringify({ text: 'Hola, gracias por escribir.' }) },
+    ],
+  },
 };
 
 /** In-memory stand-ins for Postgres and Valkey: the history records what the workflow sees. */
@@ -137,6 +165,23 @@ function fakes(denyFirst: number) {
 async function record(env: TestWorkflowEnvironment, name: string): Promise<void> {
   const scenario = scenarios[name] as Scenario;
   const taskQueue = `gen-${randomUUID()}`;
+  const llmWorker = scenario.llmScript
+    ? await Worker.create({
+        connection: env.nativeConnection,
+        taskQueue: LLM_QUEUE,
+        activities: {
+          ...createLlmActivities({
+            logger,
+            provider: new FakeProvider(scenario.llmScript),
+            budget: memoryBudget().budget,
+            enabled: true,
+            models: MODELS,
+            prices: new Map(),
+            maxInputChars: 10_000,
+          }),
+        },
+      })
+    : undefined;
   const worker = await Worker.create({
     connection: env.nativeConnection,
     taskQueue,
@@ -160,32 +205,43 @@ async function record(env: TestWorkflowEnvironment, name: string): Promise<void>
     definition: scenario.dag,
     triggerInput: { amount: 150, tone: 'happy' },
     ...(scenario.memoized ? { memoized: scenario.memoized } : {}),
+    ...(scenario.llmScript
+      ? { llmTaskQueue: LLM_QUEUE, executablePhases: ['F3' as const, 'F5' as const] }
+      : {}),
   };
-  await worker.runUntil(async () => {
-    const handle = await env.client.workflow.start(EXECUTE_DAG_WORKFLOW_NAME, {
-      taskQueue,
-      workflowId: `run-${input.runId}`,
-      args: [input],
-    });
-    if (scenario.cancelWhenRunning) {
-      for (;;) {
-        const { raw } = await handle.describe();
-        if (raw.pendingActivities?.some((a) => a.lastStartedTime)) break;
-        await new Promise((resolve) => setTimeout(resolve, 100));
+  const withLlm = <T>(run: () => Promise<T>): Promise<T> =>
+    llmWorker ? llmWorker.runUntil(run) : run();
+  await withLlm(() =>
+    worker.runUntil(async () => {
+      const handle = await env.client.workflow.start(EXECUTE_DAG_WORKFLOW_NAME, {
+        taskQueue,
+        workflowId: `run-${input.runId}`,
+        args: [input],
+      });
+      if (scenario.cancelWhenRunning) {
+        for (;;) {
+          const { raw } = await handle.describe();
+          if (raw.pendingActivities?.some((a) => a.lastStartedTime)) break;
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+        await handle.cancel();
       }
-      await handle.cancel();
-    }
-    await handle.result().catch(() => undefined);
-    const history = await handle.fetchHistory();
-    writeFileSync(path.join(historiesDir, `${name}.json`), historyToJSON(history));
-  });
+      await handle.result().catch(() => undefined);
+      const history = await handle.fetchHistory();
+      writeFileSync(path.join(historiesDir, `${name}.json`), historyToJSON(history));
+    }),
+  );
 }
 
 describe.skipIf(!process.env.RECORD_HISTORIES)('recording of the F4 histories', () => {
   it('records the stored histories', async () => {
     const env = await TestWorkflowEnvironment.createLocal();
     try {
-      for (const name of Object.keys(scenarios)) await record(env, name);
+      // RECORD_ONLY=name,name records just those, so the stored F4 histories are not rewritten.
+      const only = process.env.RECORD_ONLY?.split(',');
+      for (const name of Object.keys(scenarios)) {
+        if (!only || only.includes(name)) await record(env, name);
+      }
     } finally {
       await env.teardown();
     }

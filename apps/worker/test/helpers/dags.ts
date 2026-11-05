@@ -46,6 +46,30 @@ export const edge = (source: string, target: string, sourceHandle = 'out') => ({
   target,
 });
 
+/** LLM nodes (F5). Short retry waits keep the workflow tests fast. */
+export const FAST_RETRY = { maxAttempts: 3, timeoutSeconds: 30, initialIntervalMs: 100 };
+
+export const classifyNode = (id: string, text = 'Great product', retry = FAST_RETRY): TestNode => ({
+  ...node(id, 'llm.classify', { text, labels: ['positivo', 'negativo'], redactPii: false }),
+  retry,
+});
+export const extractNode = (id: string, text = 'Order 77', retry = FAST_RETRY): TestNode => ({
+  ...node(id, 'llm.extract', {
+    text,
+    fields: [{ name: 'order', type: { kind: 'string' } }],
+    redactPii: false,
+  }),
+  retry,
+});
+export const generateNode = (
+  id: string,
+  instruction = 'Write a greeting',
+  retry = FAST_RETRY,
+): TestNode => ({
+  ...node(id, 'llm.generate', { instruction, language: 'es', maxLength: 200, redactPii: false }),
+  retry,
+});
+
 export function definition(nodes: TestNode[], edges: ReturnType<typeof edge>[]) {
   return {
     schemaVersion: 1,

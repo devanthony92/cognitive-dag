@@ -7,7 +7,8 @@ import { InvalidConfigError, parseEnv, type WorkerConfig } from './config/env.sc
 import { loadLocalEnv } from './config/load-env';
 import { startHealthServer } from './health/server';
 import { createWorkerLogger, PinoTemporalLogger } from './logging/logger';
-import { createWorker, createWorkerId } from './worker';
+import { createProvider } from './llm/provider';
+import { createLlmWorker, createWorker, createWorkerId } from './worker';
 
 const MAX_CONNECT_BACKOFF_MS = 10_000;
 
@@ -86,8 +87,31 @@ async function run(): Promise<void> {
         rateLimits: config.rateLimits,
       },
     });
-    logger.info({ taskQueue: config.TEMPORAL_TASK_QUEUE }, 'Worker started');
-    await worker.run();
+    const llmWorker = await createLlmWorker({
+      connection,
+      namespace: config.TEMPORAL_NAMESPACE,
+      taskQueue: config.TEMPORAL_LLM_TASK_QUEUE,
+      logLevel: config.LOG_LEVEL,
+      provider: createProvider(config),
+      withContext: database.withContext,
+      valkey,
+      rateLimits: config.rateLimits,
+      modelRateLimit: config.llmModelRateLimit,
+      limits: {
+        perRun: config.LLM_MAX_TOKENS_PER_RUN,
+        perOrganizationDay: config.LLM_MAX_TOKENS_PER_ORG_DAY,
+      },
+      enabled: config.LLM_ENABLED,
+      models: config.llmModels,
+      prices: config.llmPrices,
+      maxInputChars: config.LLM_MAX_INPUT_CHARS,
+      maxConcurrentActivities: config.LLM_MAX_CONCURRENT_ACTIVITIES,
+    });
+    logger.info(
+      { taskQueue: config.TEMPORAL_TASK_QUEUE, llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE },
+      'Worker started',
+    );
+    await Promise.all([worker.run(), llmWorker.run()]);
   } finally {
     valkey.disconnect();
     await database.end();
