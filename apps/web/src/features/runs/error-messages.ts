@@ -28,6 +28,8 @@ const BY_CLASS: Record<ErrorClass, string> = {
   rate_limited: 'Se alcanzó un límite de uso y la espera se agotó.',
   timeout: 'Superó el tiempo máximo permitido.',
   permanent: 'Falló y repetirlo no ayuda; revisa la configuración del nodo.',
+  invalid_output: 'El modelo no devolvió una salida válida tras los intentos de reparación.',
+  budget_exhausted: 'Se agotó el presupuesto de tokens de la ejecución o del día.',
 };
 
 /** Spanish text for an error of a run or a step; the original message only if nothing matches. */

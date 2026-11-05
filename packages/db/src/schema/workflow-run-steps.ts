@@ -30,7 +30,7 @@ export const workflowRunSteps = pgTable(
     durationMs: integer('duration_ms'),
     errorCode: text('error_code'),
     errorMessage: text('error_message'),
-    /** Taxonomy class of the failure (F4); only on `failed` steps. */
+    /** Taxonomy class of the failure (F4, widened in F5); only on `failed` steps. */
     errorClass: text('error_class'),
     /** Why a running step is not progressing; only on `running` steps. */
     waitingReason: text('waiting_reason'),
@@ -50,7 +50,7 @@ export const workflowRunSteps = pgTable(
     ),
     check(
       'workflow_run_steps_error_class_valid',
-      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent')`,
+      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent', 'invalid_output', 'budget_exhausted')`,
     ),
     check(
       'workflow_run_steps_error_class_failed',

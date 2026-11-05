@@ -9,8 +9,15 @@ import {
 } from '../../src/index.js';
 
 describe('error taxonomy (research R1)', () => {
-  it('declares the four classes of F4', () => {
-    expect([...ERROR_CLASSES]).toEqual(['transient', 'rate_limited', 'timeout', 'permanent']);
+  it('declares the four classes of F4 and the two of F5', () => {
+    expect([...ERROR_CLASSES]).toEqual([
+      'transient',
+      'rate_limited',
+      'timeout',
+      'permanent',
+      'invalid_output',
+      'budget_exhausted',
+    ]);
   });
 
   it('gives each class a stable default code', () => {
@@ -19,18 +26,27 @@ describe('error taxonomy (research R1)', () => {
       rate_limited: 'NODE_RATE_LIMITED',
       timeout: 'NODE_TIMEOUT',
       permanent: 'NODE_PERMANENT',
+      invalid_output: 'NODE_INVALID_OUTPUT',
+      budget_exhausted: 'NODE_BUDGET_EXHAUSTED',
     });
   });
 
   it('recognizes class names and nothing else', () => {
     expect(isErrorClass('rate_limited')).toBe(true);
-    expect(isErrorClass('invalid_output')).toBe(false);
+    expect(isErrorClass('invalid_output')).toBe(true);
+    expect(isErrorClass('budget_exhausted')).toBe(true);
+    expect(isErrorClass('something_else')).toBe(false);
     expect(isErrorClass(undefined)).toBe(false);
     expect(isErrorClass(42)).toBe(false);
   });
 
-  it('retries every class except permanent', () => {
+  it('retries only transient, rate_limited and timeout failures', () => {
     expect(ERROR_CLASSES.filter(isRetryable)).toEqual(['transient', 'rate_limited', 'timeout']);
+  });
+
+  it('never retries an invalid output or an exhausted budget (F5)', () => {
+    expect(isRetryable('invalid_output')).toBe(false);
+    expect(isRetryable('budget_exhausted')).toBe(false);
   });
 });
 
@@ -61,6 +77,13 @@ describe('classify', () => {
     expect(classify({})).toBe('transient');
     expect(classify({ errorClass: 'something_else' })).toBe('transient');
     expect(classify({ errorClass: 7 })).toBe('transient');
+  });
+
+  it('trusts the new classes when a node declares them', () => {
+    expect(classify({ errorClass: 'invalid_output' })).toBe('invalid_output');
+    expect(classify({ errorClass: 'budget_exhausted', nonRetryable: true })).toBe(
+      'budget_exhausted',
+    );
   });
 
   it('lets a declared class win over the flags of the engine', () => {

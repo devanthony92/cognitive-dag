@@ -26,7 +26,12 @@ describe('retry limits (FR-006)', () => {
 
 describe('retry setting on nodes', () => {
   it('is supported only by nodes with effects', () => {
-    expect(NODE_TYPES.filter(supportsRetry)).toEqual(['mock.service']);
+    expect(NODE_TYPES.filter(supportsRetry)).toEqual([
+      'llm.classify',
+      'llm.extract',
+      'llm.generate',
+      'mock.service',
+    ]);
   });
 
   it('declares defaults for mock.service (FR-005)', () => {

@@ -30,6 +30,8 @@ export const EnvSchema = z.object({
   DAG_MAX_DEFINITION_BYTES_CEILING: ceiling(ABSOLUTE_LIMITS.maxDefinitionBytes, 1024),
   // Interval of the comment that keeps a live run stream open through proxies (F3, R4).
   SSE_HEARTBEAT_MS: z.coerce.number().int().min(50).max(60_000).default(15_000),
+  // Daily token limit per organization (F5, research R4): the worker enforces it, the API shows it.
+  LLM_MAX_TOKENS_PER_ORG_DAY: z.coerce.number().int().min(1).max(1_000_000_000).default(500_000),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });

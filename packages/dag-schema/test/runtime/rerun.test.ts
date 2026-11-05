@@ -131,4 +131,39 @@ describe('computeReusable (research R6)', () => {
     );
     expect(plan).toEqual({ ok: true, reusable: ['z', 'a'] });
   });
+
+  it('reuses the successful LLM nodes that do not depend on the chosen node (research R11)', () => {
+    const dag = parse(
+      def(
+        [
+          trigger(),
+          node('ask', 'llm.generate'),
+          node('sort', 'llm.classify'),
+          node('last', 'mock.service'),
+        ],
+        [edge('trigger', 'ask'), edge('ask', 'sort'), edge('sort', 'last')],
+      ),
+    );
+    const plan = computeReusable(
+      dag,
+      states({ trigger: 'succeeded', ask: 'succeeded', sort: 'succeeded', last: 'failed' }),
+      'last',
+    );
+    expect(plan).toEqual({ ok: true, reusable: ['ask', 'sort'] });
+  });
+
+  it('does not reuse an LLM node that failed or depends on the chosen node', () => {
+    const dag = parse(
+      def(
+        [trigger(), node('ask', 'llm.generate'), node('sort', 'llm.classify')],
+        [edge('trigger', 'ask'), edge('ask', 'sort')],
+      ),
+    );
+    const plan = computeReusable(
+      dag,
+      states({ trigger: 'succeeded', ask: 'succeeded', sort: 'failed' }),
+      'ask',
+    );
+    expect(plan).toEqual({ ok: true, reusable: [] });
+  });
 });

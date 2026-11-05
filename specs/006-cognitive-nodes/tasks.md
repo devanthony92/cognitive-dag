@@ -20,32 +20,32 @@ día). Kill switch del worker: `LLM_ENABLED`.
 
 ## Phase 1: Setup
 
-- [ ] T001 Flag `llm-nodes-enabled` en `packages/contracts/src/flags.ts`, catálogo del API y `.env.example` (`true`)
-- [ ] T002 [P] Paquete `packages/llm` (tsconfig, Vitest, exportación `@cognitive-dag/source`) y dependencia `@google/genai` con versión exacta de más de dos semanas, sin exclusiones de `minimumReleaseAge`
-- [ ] T003 [P] Variables del worker validadas al arrancar (nunca se registra su valor): `LLM_PROVIDER` (`fake`|`gemini`), `GEMINI_API_KEY` (obligatoria con `gemini`), `LLM_ENABLED`, `LLM_MODEL_CLASSIFY/EXTRACT/GENERATE`, `LLM_PRICES`, `LLM_MAX_TOKENS_PER_RUN`, `LLM_MAX_TOKENS_PER_ORG_DAY`, `LLM_MAX_INPUT_CHARS`, `TEMPORAL_LLM_TASK_QUEUE`, `LLM_MAX_CONCURRENT_ACTIVITIES`, `RATE_LIMIT_LLM_MODEL`; el API lee `LLM_MAX_TOKENS_PER_ORG_DAY`; ejemplos en `.env.example` con `LLM_PROVIDER=fake` y `GEMINI_API_KEY=` vacía
+- [X] T001 Flag `llm-nodes-enabled` en `packages/contracts/src/flags.ts`, catálogo del API y `.env.example` (`true`)
+- [X] T002 [P] Paquete `packages/llm` (tsconfig, Vitest, exportación `@cognitive-dag/source`) y dependencia `@google/genai` con versión exacta de más de dos semanas, sin exclusiones de `minimumReleaseAge`
+- [X] T003 [P] Variables del worker validadas al arrancar (nunca se registra su valor): `LLM_PROVIDER` (`fake`|`gemini`), `GEMINI_API_KEY` (obligatoria con `gemini`), `LLM_ENABLED`, `LLM_MODEL_CLASSIFY/EXTRACT/GENERATE`, `LLM_PRICES`, `LLM_MAX_TOKENS_PER_RUN`, `LLM_MAX_TOKENS_PER_ORG_DAY`, `LLM_MAX_INPUT_CHARS`, `TEMPORAL_LLM_TASK_QUEUE`, `LLM_MAX_CONCURRENT_ACTIVITIES`, `RATE_LIMIT_LLM_MODEL`; el API lee `LLM_MAX_TOKENS_PER_ORG_DAY`; ejemplos en `.env.example` con `LLM_PROVIDER=fake` y `GEMINI_API_KEY=` vacía
 
 ## Phase 2: Foundational
 
 ### Tests
 
-- [ ] T004 [P] `packages/dag-schema/test/runtime/errors.test.ts`: `invalid_output` y `budget_exhausted` son clases válidas y no reintentables
-- [ ] T005 [P] `packages/dag-schema/test/catalog/llm-nodes.test.ts`: `redactPii` opcional (default `false`), `retry` aceptado con defaults (3 intentos, 60 s, 2000 ms), DAGs de F2 sin esos campos siguen válidos; `confidence` en [0,1] en el `outputSchema` de clasificar
-- [ ] T006 [P] `packages/dag-schema/test/runtime/plan.test.ts` y `rerun.test.ts`: fases ejecutables por parámetro (`['F3']` y `['F3','F5']`); nodos `llm` exitosos reutilizables
-- [ ] T007 [P] `packages/llm/test/schema.test.ts`: `DagType` → JSON Schema compatible con structured output (enum cerrado, `additionalProperties: false`, `required`, nulos solo si el campo los admite) y validador Zod equivalente
-- [ ] T008 [P] `packages/llm/test/prompt.test.ts`: instrucciones en inglés por tipo, sin secretos; texto del usuario dentro de `<data-{nonce}>`; nonce y canary distintos en cada llamada; un texto con `</data-...>` falso no cierra el bloque; idioma de salida de generar
-- [ ] T009 [P] `packages/llm/test/guard.test.ts`: reparación hasta 2 con errores resumidos sin texto del usuario; tercera inválida → `LLM_INVALID_OUTPUT`; bloqueo → `LLM_CONTENT_BLOCKED` sin reparar; truncado por tokens → reparable; canary en la salida → `LLM_CANARY_LEAK`; generar no recorta: un texto que excede `maxLength` es salida inválida (reparable)
-- [ ] T010 [P] `packages/llm/test/redaction.test.ts`: correo, teléfono CO e internacional, tarjeta con Luhn (y no sin Luhn), cédula/NIT con palabra clave; marcadores numerados; texto sin PII intacto
-- [ ] T011 [P] `packages/llm/test/estimate-cost.test.ts`: estimación `ceil(chars/4) + maxOutputTokens`; `maxOutputTokens` por tipo (generar desde `maxLength`); costo en micro-USD con `LLM_PRICES`; modelo sin precio → costo 0 y aviso al arrancar
-- [ ] T012 [P] `packages/llm/test/errors.test.ts`: traducción de errores de Gemini (5xx/red → `LLM_PROVIDER_UNAVAILABLE`, 429 → `LLM_PROVIDER_RATE_LIMITED`, 400/401/403 → `LLM_PROVIDER_REJECTED`)
-- [ ] T013 [P] `packages/llm/test/injection/injection.test.ts` con `cases.json` (~30 casos): cada caso con su salida maliciosa del `FakeProvider` es rechazado o produce salida válida por esquema; 0 escapes (US4)
-- [ ] T014 [P] `packages/db/test/rls-llm.test.ts` como `app_runtime`: aislamiento de `llm_calls` y `llm_usage_daily`; sin `DELETE`; `llm_calls` inmutable y misma organización; `CHECK` de `outcome`/`error_code`, `repairs`, `node_type`; `error_class` ampliado; `llm_tokens_used` ajustable hacia abajo tras el final y nada más
+- [X] T004 [P] `packages/dag-schema/test/runtime/errors.test.ts`: `invalid_output` y `budget_exhausted` son clases válidas y no reintentables
+- [X] T005 [P] `packages/dag-schema/test/catalog/llm-nodes.test.ts`: `redactPii` opcional (default `false`), `retry` aceptado con defaults (3 intentos, 60 s, 2000 ms), DAGs de F2 sin esos campos siguen válidos; `confidence` en [0,1] en el `outputSchema` de clasificar
+- [X] T006 [P] `packages/dag-schema/test/runtime/plan.test.ts` y `rerun.test.ts`: fases ejecutables por parámetro (`['F3']` y `['F3','F5']`); nodos `llm` exitosos reutilizables
+- [X] T007 [P] `packages/llm/test/schema.test.ts`: `DagType` → JSON Schema compatible con structured output (enum cerrado, `additionalProperties: false`, `required`, nulos solo si el campo los admite) y validador Zod equivalente
+- [X] T008 [P] `packages/llm/test/prompt.test.ts`: instrucciones en inglés por tipo, sin secretos; texto del usuario dentro de `<data-{nonce}>`; nonce y canary distintos en cada llamada; un texto con `</data-...>` falso no cierra el bloque; idioma de salida de generar
+- [X] T009 [P] `packages/llm/test/guard.test.ts`: reparación hasta 2 con errores resumidos sin texto del usuario; tercera inválida → `LLM_INVALID_OUTPUT`; bloqueo → `LLM_CONTENT_BLOCKED` sin reparar; truncado por tokens → reparable; canary en la salida → `LLM_CANARY_LEAK`; generar no recorta: un texto que excede `maxLength` es salida inválida (reparable)
+- [X] T010 [P] `packages/llm/test/redaction.test.ts`: correo, teléfono CO e internacional, tarjeta con Luhn (y no sin Luhn), cédula/NIT con palabra clave; marcadores numerados; texto sin PII intacto
+- [X] T011 [P] `packages/llm/test/estimate-cost.test.ts`: estimación `ceil(chars/4) + maxOutputTokens`; `maxOutputTokens` por tipo (generar desde `maxLength`); costo en micro-USD con `LLM_PRICES`; modelo sin precio → costo 0 y aviso al arrancar
+- [X] T012 [P] `packages/llm/test/errors.test.ts`: traducción de errores de Gemini (5xx/red → `LLM_PROVIDER_UNAVAILABLE`, 429 → `LLM_PROVIDER_RATE_LIMITED`, 400/401/403 → `LLM_PROVIDER_REJECTED`)
+- [X] T013 [P] `packages/llm/test/injection/injection.test.ts` con `cases.json` (~30 casos): cada caso con su salida maliciosa del `FakeProvider` es rechazado o produce salida válida por esquema; 0 escapes (US4)
+- [X] T014 [P] `packages/db/test/rls-llm.test.ts` como `app_runtime`: aislamiento de `llm_calls` y `llm_usage_daily`; sin `DELETE`; `llm_calls` inmutable y misma organización; `CHECK` de `outcome`/`error_code`, `repairs`, `node_type`; `error_class` ampliado; `llm_tokens_used` ajustable hacia abajo tras el final y nada más
 
 ### Implementation
 
-- [ ] T015 `dag-schema`: clases nuevas en `errors.ts`; `plan.ts` con fases ejecutables por parámetro; `rerun.ts` con `llm`; catálogo LLM con `retryDefaults` y `redactPii`
-- [ ] T016 `packages/llm`: `LlmProvider`, `FakeProvider` (guiones), `GeminiProvider`, prompt, guardián con reparación, redacción, estimación, costo, traducción de errores
-- [ ] T017 Esquema Drizzle y migraciones `0010_*` (tablas, columna, `CHECK`, índices) y `0011_*` (RLS, privilegios, triggers) exactamente como `data-model.md`
-- [ ] T018 Contratos Zod en `packages/contracts`: `ErrorClass` ampliado, `LlmUsage`, `LlmDailyUsage`, `llmUsage` en `RunDetail` y `RunStep`, códigos nuevos (research R15), `executablePhases` en la entrada de `executeDag`
+- [X] T015 `dag-schema`: clases nuevas en `errors.ts`; `plan.ts` con fases ejecutables por parámetro; `rerun.ts` con `llm`; catálogo LLM con `retryDefaults` y `redactPii`
+- [X] T016 `packages/llm`: `LlmProvider`, `FakeProvider` (guiones), `GeminiProvider`, prompt, guardián con reparación, redacción, estimación, costo, traducción de errores
+- [X] T017 Esquema Drizzle y migraciones `0010_*` (tablas, columna, `CHECK`, índices) y `0011_*` (RLS, privilegios, triggers) exactamente como `data-model.md`
+- [X] T018 Contratos Zod en `packages/contracts`: `ErrorClass` ampliado, `LlmUsage`, `LlmDailyUsage`, `llmUsage` en `RunDetail` y `RunStep`, códigos nuevos (research R15), `executablePhases` en la entrada de `executeDag`
 
 ---
 

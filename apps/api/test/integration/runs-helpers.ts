@@ -18,7 +18,7 @@ import {
 } from './workflows-helpers';
 
 export const RUN_FLAGS =
-  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true}';
+  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true,"llm-nodes-enabled":true}';
 /** Runs on, F4 recovery off. */
 export const RUN_FLAGS_WITHOUT_RESILIENCE =
   '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true}';

@@ -71,6 +71,20 @@
       "when": 1793474524232,
       "tag": "0009_resilience_effects_rls_triggers_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793907885952,
+      "tag": "0010_llm_calls_usage_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793907890869,
+      "tag": "0011_llm_rls_triggers_grants",
+      "breakpoints": true
     }
   ]
 }

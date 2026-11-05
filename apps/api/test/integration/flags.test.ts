@@ -46,6 +46,7 @@ describe('feature flags (requires docker compose up)', () => {
       'dag-editor-enabled': false,
       'execution-enabled': false,
       'resilience-enabled': false,
+      'llm-nodes-enabled': false,
     });
   });
 
@@ -58,6 +59,7 @@ describe('feature flags (requires docker compose up)', () => {
       'dag-editor-enabled': false,
       'execution-enabled': false,
       'resilience-enabled': false,
+      'llm-nodes-enabled': false,
     });
   });
 });

@@ -2,6 +2,7 @@ export * from './auth.js';
 export * from './correlation.js';
 export * from './flags.js';
 export * from './health.js';
+export * from './llm.js';
 export * from './organizations.js';
 export * from './ping.js';
 export * from './primitives.js';

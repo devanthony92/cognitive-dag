@@ -51,8 +51,10 @@ export const workflowRuns = pgTable(
     errorMessage: text('error_message'),
     /** Node a rerun started from (F4); only on reruns. */
     rerunFromNodeId: text('rerun_from_node_id'),
-    /** Taxonomy class of the failure that ended the run (F4). */
+    /** Taxonomy class of the failure that ended the run (F4, widened in F5). */
     errorClass: text('error_class'),
+    /** Tokens reserved and adjusted by the LLM nodes of the run (F5, research R4). */
+    llmTokensUsed: integer('llm_tokens_used').notNull().default(0),
     startedAt: timestamp('started_at', { withTimezone: true }),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -91,8 +93,9 @@ export const workflowRuns = pgTable(
     ),
     check(
       'workflow_runs_error_class_valid',
-      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent')`,
+      sql`${table.errorClass} IN ('transient', 'rate_limited', 'timeout', 'permanent', 'invalid_output', 'budget_exhausted')`,
     ),
+    check('workflow_runs_llm_tokens_used_non_negative', sql`${table.llmTokensUsed} >= 0`),
     check(
       'workflow_runs_error_class_status',
       sql`${table.errorClass} IS NULL OR ${table.status} IN ('failed', 'timed_out')`,

@@ -70,6 +70,30 @@ describe('findUnsupportedNodes', () => {
     ]);
   });
 
+  it('accepts F5 nodes when the executable phases include F5 (research R13)', () => {
+    const definition = asDefinition(
+      def(
+        [
+          trigger(),
+          node('ask', 'llm.generate'),
+          node('approve', 'human.approval'),
+          node('m', 'mock.service'),
+        ],
+        [],
+      ),
+    );
+    expect(findUnsupportedNodes(definition, ['F3', 'F5'])).toEqual([
+      { nodeId: 'approve', type: 'human.approval', executableFrom: 'F7' },
+    ]);
+  });
+
+  it('keeps F3 as the only phase by default and when given explicitly', () => {
+    const definition = asDefinition(def([trigger(), node('ask', 'llm.classify')], []));
+    const expected = [{ nodeId: 'ask', type: 'llm.classify', executableFrom: 'F5' }];
+    expect(findUnsupportedNodes(definition)).toEqual(expected);
+    expect(findUnsupportedNodes(definition, ['F3'])).toEqual(expected);
+  });
+
   it('returns nothing when every node runs in F3', () => {
     expect(findUnsupportedNodes(diamond('all'))).toEqual([]);
   });

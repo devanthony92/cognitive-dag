@@ -10,6 +10,8 @@ export interface BucketConfig {
 export type RateLimits = Readonly<Record<string, BucketConfig>>;
 
 const PREFIX = 'RATE_LIMIT_';
+/** Global bucket per LLM model (F5, research R14): not tied to a node type. */
+export const LLM_MODEL_RATE_LIMIT_VARIABLE = 'RATE_LIMIT_LLM_MODEL';
 const MAX_CAPACITY = 10_000;
 const MAX_REFILL_PER_SECOND = 10_000;
 const MIN_REFILL_PER_SECOND = 0.01;
@@ -44,6 +46,7 @@ export function parseRateLimits(env: NodeJS.ProcessEnv): RateLimitParseResult {
   const invalid: string[] = [];
   for (const [name, value] of Object.entries(env)) {
     if (!name.startsWith(PREFIX) || value === undefined || value === '') continue;
+    if (name === LLM_MODEL_RATE_LIMIT_VARIABLE) continue;
     const nodeType = byVariable.get(name);
     const config = nodeType === undefined ? undefined : parseBucketConfig(value);
     if (nodeType === undefined || config === undefined) invalid.push(name);

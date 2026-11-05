@@ -3,6 +3,7 @@ packages:
   - packages/*
   - scripts
 allowBuilds:
+  '@google/genai': false
   argon2: false
   '@swc/core': false
   esbuild: false

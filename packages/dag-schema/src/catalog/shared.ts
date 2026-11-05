@@ -42,6 +42,16 @@ export function defineNode<TType extends string, TConfig>(
   return definition;
 }
 
+/** Retry policy of the LLM nodes (F5, R7): one attempt may spend up to 60 s on repairs. */
+export const LLM_RETRY_DEFAULTS: RetryPolicy = {
+  maxAttempts: 3,
+  timeoutSeconds: 60,
+  initialIntervalMs: 2000,
+};
+
+/** Optional per-node switch that masks personal data before the text leaves (F5, R9). */
+export const redactPii = () => z.boolean().default(false);
+
 /** Text that may contain `{{reference}}` markers. */
 export const templateText = (max = 10_000) => z.string().min(1).max(max);
 
