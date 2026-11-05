@@ -1,8 +1,8 @@
 import { NODE_CATALOG, type ExecutableFrom, type NodeType } from '../catalog/index.js';
 import type { DagDefinition, DagNode } from '../definition.js';
 
-/** Phases whose nodes the interpreter can run. Later phases are blocked (FR-002). */
-const EXECUTABLE_PHASES: readonly ExecutableFrom[] = ['F3'];
+/** Phases whose nodes the interpreter can run by default. Later phases are blocked (FR-002). */
+const DEFAULT_EXECUTABLE_PHASES: readonly ExecutableFrom[] = ['F3'];
 
 export interface UnsupportedNode {
   nodeId: string;
@@ -10,12 +10,18 @@ export interface UnsupportedNode {
   executableFrom: ExecutableFrom;
 }
 
-/** Nodes that become executable after F3: a version that contains any cannot be run. */
-export function findUnsupportedNodes(definition: DagDefinition): UnsupportedNode[] {
+/**
+ * Nodes whose phase is not executable: a version that contains any cannot be run. The caller says
+ * which phases run (F3 by default; the API adds F5 when `llm-nodes-enabled` is on, research R13).
+ */
+export function findUnsupportedNodes(
+  definition: DagDefinition,
+  executablePhases: readonly ExecutableFrom[] = DEFAULT_EXECUTABLE_PHASES,
+): UnsupportedNode[] {
   const unsupported: UnsupportedNode[] = [];
   for (const node of definition.nodes) {
     const { executableFrom } = NODE_CATALOG[node.type];
-    if (!EXECUTABLE_PHASES.includes(executableFrom)) {
+    if (!executablePhases.includes(executableFrom)) {
       unsupported.push({ nodeId: node.id, type: node.type, executableFrom });
     }
   }

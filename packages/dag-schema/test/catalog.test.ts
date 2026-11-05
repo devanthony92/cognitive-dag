@@ -124,7 +124,10 @@ describe('computed outputs', () => {
     const config = entry.configSchema.parse({ text: 'x', labels: ['spam', 'ham'] });
     expect(entry.outputSchema(config)).toEqual({
       kind: 'object',
-      fields: { label: { kind: 'enum', values: ['spam', 'ham'] }, confidence: { kind: 'number' } },
+      fields: {
+        label: { kind: 'enum', values: ['spam', 'ham'] },
+        confidence: { kind: 'number', min: 0, max: 1 },
+      },
     });
   });
 

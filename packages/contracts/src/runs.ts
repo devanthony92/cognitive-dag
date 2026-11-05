@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { CorrelationIdSchema } from './correlation.js';
+import { LlmUsageSchema } from './llm.js';
 
 export const EXECUTE_DAG_WORKFLOW_NAME = 'executeDag';
 
@@ -40,6 +41,15 @@ export const ExecuteDagInputSchema = z.strictObject({
    * steps are recorded as `reused`, with no activity. Absent in a complete run.
    */
   memoized: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Phases whose nodes may run (F5, research R13). The API decides it from `llm-nodes-enabled`, so
+   * the workflow never reads flags; without it the run accepts F3 nodes only, as in F4.
+   */
+  executablePhases: z
+    .array(z.enum(['F3', 'F5', 'F7']))
+    .min(1)
+    .refine((phases) => new Set(phases).size === phases.length)
+    .optional(),
 });
 
 export type ExecuteDagInput = z.infer<typeof ExecuteDagInputSchema>;
@@ -55,10 +65,18 @@ export const RunStatusSchema = z.enum([
 export type RunStatus = z.infer<typeof RunStatusSchema>;
 
 /**
- * Taxonomy of node failures (research R1). The rules that use it live in `@cognitive-dag/dag-schema`;
- * this is the wire format, and the worker keeps both lists in sync under test.
+ * Taxonomy of node failures (research R1; `invalid_output` and `budget_exhausted` since F5). The
+ * rules that use it live in `@cognitive-dag/dag-schema`; this is the wire format, and the worker
+ * keeps both lists in sync under test.
  */
-export const ErrorClassSchema = z.enum(['transient', 'rate_limited', 'timeout', 'permanent']);
+export const ErrorClassSchema = z.enum([
+  'transient',
+  'rate_limited',
+  'timeout',
+  'permanent',
+  'invalid_output',
+  'budget_exhausted',
+]);
 export type ErrorClass = z.infer<typeof ErrorClassSchema>;
 
 /** Why a running step is not progressing. */
@@ -223,12 +241,16 @@ export const RunStepSchema = z.object({
   durationMs: z.int().min(0).nullable(),
   error: ErrorBodySchema.nullable(),
   waitingReason: WaitingReasonSchema.nullable(),
+  /** Sum of the LLM calls of the step (F5); null or absent when the flag is off or it made none. */
+  llmUsage: LlmUsageSchema.nullable().optional(),
 });
 export type RunStep = z.infer<typeof RunStepSchema>;
 
 export const RunDetailSchema = RunSchema.extend({
   steps: z.array(RunStepSchema),
   definition: z.record(z.string(), z.unknown()),
+  /** Total of the LLM calls of the run (F5); null or absent when the flag is off. */
+  llmUsage: LlmUsageSchema.nullable().optional(),
 });
 export type RunDetail = z.infer<typeof RunDetailSchema>;
 

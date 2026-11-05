@@ -19,6 +19,7 @@
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/db": "workspace:*",
+    "@cognitive-dag/llm": "workspace:*",
     "@cognitive-dag/logger": "workspace:*",
     "@temporalio/activity": "1.25.0",
     "@temporalio/common": "1.25.0",

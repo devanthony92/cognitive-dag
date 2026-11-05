@@ -6,6 +6,7 @@ export const FEATURE_FLAGS = {
   dagEditorEnabled: 'dag-editor-enabled',
   executionEnabled: 'execution-enabled',
   resilienceEnabled: 'resilience-enabled',
+  llmNodesEnabled: 'llm-nodes-enabled',
 } as const;
 
 /** Flags exposed to the web app through GET /api/v1/features. */

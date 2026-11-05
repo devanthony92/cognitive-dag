@@ -39,3 +39,18 @@ describe('API environment validation', () => {
     expect(() => parseEnv({ ...VALID_ENV, BODY_LIMIT: 'unlimited' })).toThrow(/BODY_LIMIT/);
   });
 });
+
+describe('API LLM variables (F5)', () => {
+  it('reads the daily token limit with the default of the research', () => {
+    expect(parseEnv(VALID_ENV).LLM_MAX_TOKENS_PER_ORG_DAY).toBe(500_000);
+    expect(
+      parseEnv({ ...VALID_ENV, LLM_MAX_TOKENS_PER_ORG_DAY: '1000' }).LLM_MAX_TOKENS_PER_ORG_DAY,
+    ).toBe(1000);
+  });
+
+  it.each(['0', '-5', 'abc'])('rejects LLM_MAX_TOKENS_PER_ORG_DAY=%s', (value) => {
+    expect(() => parseEnv({ ...VALID_ENV, LLM_MAX_TOKENS_PER_ORG_DAY: value })).toThrow(
+      /LLM_MAX_TOKENS_PER_ORG_DAY/,
+    );
+  });
+});

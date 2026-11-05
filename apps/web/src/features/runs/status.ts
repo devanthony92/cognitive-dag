@@ -34,6 +34,14 @@ export const ERROR_CLASS_LABELS: Record<ErrorClass, { label: string; hint: strin
     label: 'Permanente',
     hint: 'Repetirlo no ayuda: revisa la configuración del nodo.',
   },
+  invalid_output: {
+    label: 'Salida inválida',
+    hint: 'El modelo no cumplió el formato esperado tras los intentos de reparación.',
+  },
+  budget_exhausted: {
+    label: 'Presupuesto agotado',
+    hint: 'Se agotó el presupuesto de tokens de la ejecución o del día.',
+  },
 };
 
 export const WAITING_RATE_LIMIT_LABEL = 'Esperando por el límite';

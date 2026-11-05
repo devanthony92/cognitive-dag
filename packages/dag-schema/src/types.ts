@@ -3,7 +3,7 @@ import { z } from 'zod';
 /** Minimal type system for references (research R4). */
 export type DagType =
   | { kind: 'string' }
-  | { kind: 'number' }
+  | { kind: 'number'; min?: number; max?: number }
   | { kind: 'boolean' }
   | { kind: 'datetime' }
   | { kind: 'enum'; values: string[] }

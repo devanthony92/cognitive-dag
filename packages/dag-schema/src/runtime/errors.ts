@@ -2,7 +2,14 @@
  * Taxonomy of node failures (research R1). Pure: the interpreter and the nodes with effects
  * share it, so a failure means the same thing wherever it is read.
  */
-export const ERROR_CLASSES = ['transient', 'rate_limited', 'timeout', 'permanent'] as const;
+export const ERROR_CLASSES = [
+  'transient',
+  'rate_limited',
+  'timeout',
+  'permanent',
+  'invalid_output',
+  'budget_exhausted',
+] as const;
 
 export type ErrorClass = (typeof ERROR_CLASSES)[number];
 
@@ -12,15 +19,26 @@ export const ERROR_CLASS_CODES: Readonly<Record<ErrorClass, string>> = {
   rate_limited: 'NODE_RATE_LIMITED',
   timeout: 'NODE_TIMEOUT',
   permanent: 'NODE_PERMANENT',
+  invalid_output: 'NODE_INVALID_OUTPUT',
+  budget_exhausted: 'NODE_BUDGET_EXHAUSTED',
 };
 
 export function isErrorClass(value: unknown): value is ErrorClass {
   return typeof value === 'string' && (ERROR_CLASSES as readonly string[]).includes(value);
 }
 
-/** Everything but a permanent failure can succeed if tried again (FR-002). */
+/** Classes of failures that repeating the node cannot fix. */
+const NOT_RETRYABLE: ReadonlySet<ErrorClass> = new Set([
+  'permanent',
+  // The model already had its repairs (F5, R7); trying again would spend more tokens on the same input.
+  'invalid_output',
+  // The budget does not come back by waiting a few seconds (F5, R4).
+  'budget_exhausted',
+]);
+
+/** Transient, rate limited and timed out failures can succeed if tried again (FR-002). */
 export function isRetryable(errorClass: ErrorClass): boolean {
-  return errorClass !== 'permanent';
+  return !NOT_RETRYABLE.has(errorClass);
 }
 
 /** What the interpreter knows about a failure; the node says its class, the engine the rest. */

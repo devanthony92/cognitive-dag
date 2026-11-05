@@ -32,6 +32,16 @@ async function run(): Promise<void> {
 
   const workerId = createWorkerId();
   logger.info({ workerId, hostname: hostname(), pid: process.pid }, 'Worker identity');
+  logger.info(
+    { provider: config.LLM_PROVIDER, enabled: config.LLM_ENABLED, models: config.llmModels },
+    'LLM configuration',
+  );
+  if (config.llmModelsWithoutPrice.length > 0) {
+    logger.warn(
+      { models: config.llmModelsWithoutPrice },
+      'LLM models without a price in LLM_PRICES: their cost is recorded as 0',
+    );
+  }
 
   let worker: Worker | undefined;
   const health = await startHealthServer(

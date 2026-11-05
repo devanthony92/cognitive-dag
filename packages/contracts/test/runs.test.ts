@@ -18,9 +18,18 @@ const base = {
 const node = { nodeId: 'svc_a', nodeType: 'mock.service' };
 
 describe('F4 run contracts', () => {
-  it('knows the four error classes and nothing else', () => {
-    expect(ErrorClassSchema.options).toEqual(['transient', 'rate_limited', 'timeout', 'permanent']);
-    expect(ErrorClassSchema.safeParse('invalid_output').success).toBe(false);
+  it('knows the four error classes of F4, the two of F5 and nothing else', () => {
+    expect(ErrorClassSchema.options).toEqual([
+      'transient',
+      'rate_limited',
+      'timeout',
+      'permanent',
+      'invalid_output',
+      'budget_exhausted',
+    ]);
+    expect(ErrorClassSchema.safeParse('invalid_output').success).toBe(true);
+    expect(ErrorClassSchema.safeParse('budget_exhausted').success).toBe(true);
+    expect(ErrorClassSchema.safeParse('oops').success).toBe(false);
   });
 
   it('adds reused to the step statuses', () => {
