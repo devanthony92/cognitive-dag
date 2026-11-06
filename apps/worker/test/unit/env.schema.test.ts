@@ -165,6 +165,7 @@ describe('worker LLM variables (F5, research R2, R4, R6, R13, R14)', () => {
       LLM_MODEL_CLASSIFY: 'a',
       LLM_MODEL_EXTRACT: 'a',
       LLM_MODEL_GENERATE: 'c',
+      LLM_MODEL_COMPILER: 'a',
       LLM_PRICES: 'a:100000:400000',
     });
     expect(config.llmPrices.get('a')).toEqual({ input: 100_000, output: 400_000 });
@@ -206,5 +207,32 @@ describe('worker LLM variables (F5, research R2, R4, R6, R13, R14)', () => {
     expect(() =>
       parseEnv({ ...VALID_ENV, RATE_LIMIT_LLM_MODEL: 'capacity:0,refillPerSecond:1' }),
     ).toThrow(/RATE_LIMIT_LLM_MODEL/);
+  });
+});
+
+describe('worker compiler variables (F6, research R4, R5)', () => {
+  it('defaults the compiler model to Flash-Lite and the per-compilation cap to 30000', () => {
+    const config = parseEnv(VALID_ENV);
+    expect(config.LLM_MODEL_COMPILER).toBe('gemini-3.5-flash-lite');
+    expect(config.LLM_MAX_TOKENS_PER_COMPILATION).toBe(30_000);
+  });
+
+  it('reads the compiler model and lists it when it has no price', () => {
+    const config = parseEnv({
+      ...VALID_ENV,
+      LLM_MODEL_CLASSIFY: 'a',
+      LLM_MODEL_EXTRACT: 'a',
+      LLM_MODEL_GENERATE: 'a',
+      LLM_MODEL_COMPILER: 'z',
+      LLM_PRICES: 'a:100000:400000',
+    });
+    expect(config.LLM_MODEL_COMPILER).toBe('z');
+    expect(config.llmModelsWithoutPrice).toEqual(['z']);
+  });
+
+  it('rejects a non-positive per-compilation cap naming only the variable', () => {
+    expect(() => parseEnv({ ...VALID_ENV, LLM_MAX_TOKENS_PER_COMPILATION: '0' })).toThrow(
+      /LLM_MAX_TOKENS_PER_COMPILATION/,
+    );
   });
 });

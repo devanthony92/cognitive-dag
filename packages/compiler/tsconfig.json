@@ -1,0 +1,9 @@
+{
+  "extends": "@cognitive-dag/config/tsconfig.node.json",
+  "compilerOptions": {
+    "lib": ["es2024", "dom"],
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src", "test"]
+}

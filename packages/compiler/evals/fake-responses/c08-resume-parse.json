@@ -1,0 +1,72 @@
+[
+  {
+    "title": "Parse resumes",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "resume",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "extract",
+        "type": "llm.extract",
+        "label": "Extraer datos",
+        "config": {
+          "text": "{{nodes.start.output.resume}}",
+          "fields": [
+            {
+              "name": "name",
+              "type": {
+                "kind": "string"
+              }
+            },
+            {
+              "name": "years_experience",
+              "type": {
+                "kind": "number"
+              }
+            },
+            {
+              "name": "email",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "act",
+        "type": "mock.service",
+        "label": "Store in tracker",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "extract"
+      },
+      {
+        "from": "extract",
+        "fromHandle": "out",
+        "to": "act"
+      }
+    ]
+  }
+]

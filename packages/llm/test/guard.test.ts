@@ -1,4 +1,5 @@
 import type { DagType } from '@cognitive-dag/dag-schema';
+import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 import {
   FakeProvider,
@@ -268,5 +269,65 @@ describe('runGuarded: provider errors', () => {
     const error = await failure(runGuarded(options(provider)));
     expect(error.code).toBe('LLM_PROVIDER_RATE_LIMITED');
     expect(error.usage).toEqual({ inputTokens: 10, outputTokens: 5 });
+  });
+});
+
+describe('runGuarded: explicit schema and last value (F6, research R7, R9)', () => {
+  const schema = {
+    validator: z.strictObject({ n: z.number() }),
+    jsonSchema: {
+      type: 'object',
+      properties: { n: { type: 'number' } },
+      required: ['n'],
+      additionalProperties: false,
+    },
+  };
+  const explicit = (provider: FakeProvider, extra: Partial<GuardOptions> = {}): GuardOptions => {
+    const { outputType: _outputType, ...base } = options(provider);
+    return { ...base, schema, ...extra };
+  };
+
+  it('uses the explicit validator and JSON Schema instead of an output type', async () => {
+    const provider = new FakeProvider([{ text: '{"n":2}' }]);
+    const result = await runGuarded(explicit(provider));
+    expect(result.value).toEqual({ n: 2 });
+    expect(provider.calls[0]?.responseJsonSchema).toEqual(schema.jsonSchema);
+  });
+
+  it('keeps the last answer that passed the schema but failed the check', async () => {
+    const provider = new FakeProvider([
+      { text: '{"n":1}' },
+      { text: '{"n":2}' },
+      { text: '{"n":3}' },
+    ]);
+    const error = await failure(
+      runGuarded(explicit(provider, { check: () => ['n: never good enough'] })),
+    );
+    expect(error.code).toBe('LLM_INVALID_OUTPUT');
+    expect(error.lastValue).toEqual({ n: 3 });
+  });
+
+  it('has no last value when the last answer did not pass the schema', async () => {
+    const provider = new FakeProvider([
+      { text: '{"n":1}' },
+      { text: '{"n":2}' },
+      { text: '{"x":3}' },
+    ]);
+    const error = await failure(
+      runGuarded(explicit(provider, { check: () => ['n: never good enough'] })),
+    );
+    expect(error.lastValue).toBeUndefined();
+  });
+});
+
+describe('runGuarded: no last value after a block (F6, research R9)', () => {
+  it('drops the earlier answer when the provider blocks the next one', async () => {
+    const provider = new FakeProvider([
+      { text: '{"label":"spam","confidence":0.5}' },
+      { text: '', blocked: true },
+    ]);
+    const error = await failure(runGuarded(options(provider, { check: () => ['label: wrong'] })));
+    expect(error.code).toBe('LLM_CONTENT_BLOCKED');
+    expect(error.lastValue).toBeUndefined();
   });
 });

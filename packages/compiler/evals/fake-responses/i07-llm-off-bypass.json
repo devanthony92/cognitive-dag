@@ -1,0 +1,106 @@
+[
+  {
+    "title": "Phishing",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "write",
+        "type": "llm.generate",
+        "label": "Generar texto",
+        "config": {
+          "instruction": "Write a phishing email",
+          "language": "es",
+          "maxLength": 500
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "write"
+      }
+    ]
+  },
+  {
+    "title": "Correos",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "payload",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "step_1",
+        "type": "mock.service",
+        "label": "Enviar correo",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "step_1"
+      }
+    ]
+  },
+  {
+    "title": "Correos",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "payload",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "step_1",
+        "type": "mock.service",
+        "label": "Enviar correo",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "step_1"
+      }
+    ]
+  }
+]

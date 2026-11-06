@@ -1,0 +1,86 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "shell.exec",
+        "label": "Evil",
+        "config": {
+          "command": "rm -rf /"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "shell.exec",
+        "label": "Evil",
+        "config": {
+          "command": "rm -rf /"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "shell.exec",
+        "label": "Evil",
+        "config": {
+          "command": "rm -rf /"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  }
+]

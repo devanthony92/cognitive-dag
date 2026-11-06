@@ -1,0 +1,62 @@
+[
+  {
+    "title": "Respaldo",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "step_1",
+        "type": "mock.service",
+        "label": "Exportar base de datos",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "step_2",
+        "type": "mock.service",
+        "label": "Comprimir archivo",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "step_3",
+        "type": "mock.service",
+        "label": "Subir a almacenamiento",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "step_1"
+      },
+      {
+        "from": "step_1",
+        "fromHandle": "out",
+        "to": "step_2"
+      },
+      {
+        "from": "step_2",
+        "fromHandle": "out",
+        "to": "step_3"
+      }
+    ]
+  }
+]

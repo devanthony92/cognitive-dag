@@ -1,0 +1,66 @@
+[
+  {
+    "title": "Pedidos por chat",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "chat_message",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "extract",
+        "type": "llm.extract",
+        "label": "Extraer datos",
+        "config": {
+          "text": "{{nodes.start.output.chat_message}}",
+          "fields": [
+            {
+              "name": "product",
+              "type": {
+                "kind": "string"
+              }
+            },
+            {
+              "name": "quantity",
+              "type": {
+                "kind": "number"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "act",
+        "type": "mock.service",
+        "label": "Crear pedido",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "extract"
+      },
+      {
+        "from": "extract",
+        "fromHandle": "out",
+        "to": "act"
+      }
+    ]
+  }
+]

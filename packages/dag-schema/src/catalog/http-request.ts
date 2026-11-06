@@ -52,6 +52,7 @@ export const httpRequest = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['url', 'body'],
+  sensitiveFields: ['url', 'headers', 'body'],
   fieldLabels: { method: 'Método', url: 'URL', headers: 'Cabeceras', body: 'Cuerpo' },
   itemLabels: { headers: 'La cabecera' },
   configSchema: HttpConfigSchema,

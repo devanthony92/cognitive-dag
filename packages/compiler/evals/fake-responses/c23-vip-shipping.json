@@ -1,0 +1,111 @@
+[
+  {
+    "title": "Envio de pedidos",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "is_vip",
+              "type": {
+                "kind": "boolean"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Comparar",
+        "config": {
+          "condition": {
+            "op": "eq",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.start.output.is_vip"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "boolean",
+              "value": true
+            }
+          }
+        }
+      },
+      {
+        "id": "yes",
+        "type": "mock.service",
+        "label": "Envio express",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "no",
+        "type": "mock.service",
+        "label": "Envio estandar",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "join",
+        "type": "logic.merge",
+        "label": "Unir ramas",
+        "config": {
+          "strategy": "any"
+        }
+      },
+      {
+        "id": "finish",
+        "type": "mock.service",
+        "label": "Notificar al cliente",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "yes"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "no"
+      },
+      {
+        "from": "yes",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "no",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "join",
+        "fromHandle": "out",
+        "to": "finish"
+      }
+    ]
+  }
+]

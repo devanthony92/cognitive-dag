@@ -25,6 +25,11 @@ export interface NodeTypeDefinition<TType extends string = string, TConfig = unk
   fieldLabels: Readonly<Record<string, string>>;
   /** For list fields, how one item reads in a message, with its article: `La etiqueta`. */
   itemLabels?: Readonly<Record<string, string>>;
+  /**
+   * Configuration fields the NL compiler must never fill (F6, research R12): destinations,
+   * credentials or amounts. The compiler drops them and the person completes them before publishing.
+   */
+  sensitiveFields?: readonly string[];
   /** Default retry policy; only nodes with an effect have one, and only they accept `retry`. */
   retryDefaults?: RetryPolicy;
   configSchema: z.ZodType<TConfig>;

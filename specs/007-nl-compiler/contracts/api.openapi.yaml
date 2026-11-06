@@ -170,10 +170,10 @@ components:
           description: DagDefinition de F2 (schemaVersion 1), con posiciones calculadas por capas.
         validation:
           type: object
-          required: [valid, issues]
+          required: [valid, errors]
           properties:
             valid: { type: boolean }
-            issues:
+            errors:
               type: array
               description: Mismo formato de errores de validación del borrador (F2).
               items: { type: object }

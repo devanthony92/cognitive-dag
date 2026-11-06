@@ -1,0 +1,80 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "agent.autonomous",
+        "label": "Evil",
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "agent.autonomous",
+        "label": "Evil",
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "agent.autonomous",
+        "label": "Evil",
+        "config": {}
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  }
+]

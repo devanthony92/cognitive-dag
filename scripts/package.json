@@ -9,9 +9,11 @@
     "test:integration": "vitest run --dir test/integration",
     "set-limits": "node ops/set-limits.ts",
     "demo:recovery": "node demo/recovery.ts",
-    "eval:llm": "node eval/llm.ts"
+    "eval:llm": "node eval/llm.ts",
+    "eval:compiler": "node eval/compiler.ts"
   },
   "dependencies": {
+    "@cognitive-dag/compiler": "workspace:*",
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/llm": "workspace:*",

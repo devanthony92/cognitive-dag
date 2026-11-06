@@ -1,0 +1,72 @@
+[
+  {
+    "title": "Registrar facturas",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "invoice",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "extract",
+        "type": "llm.extract",
+        "label": "Extraer datos",
+        "config": {
+          "text": "{{nodes.start.output.invoice}}",
+          "fields": [
+            {
+              "name": "customer",
+              "type": {
+                "kind": "string"
+              }
+            },
+            {
+              "name": "invoice_number",
+              "type": {
+                "kind": "string"
+              }
+            },
+            {
+              "name": "total",
+              "type": {
+                "kind": "number"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "act",
+        "type": "mock.service",
+        "label": "Guardar en contabilidad",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "extract"
+      },
+      {
+        "from": "extract",
+        "fromHandle": "out",
+        "to": "act"
+      }
+    ]
+  }
+]

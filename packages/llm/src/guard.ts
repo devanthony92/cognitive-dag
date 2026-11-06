@@ -2,7 +2,7 @@ import type { DagType } from '@cognitive-dag/dag-schema';
 import type { z } from 'zod';
 import { LlmError, translateProviderError, type LlmErrorCode, type LlmUsage } from './errors.js';
 import type { LlmProvider, LlmResponse } from './provider.js';
-import { toJsonSchema, toZodSchema } from './schema.js';
+import { toJsonSchema, toZodSchema, type JsonSchema } from './schema.js';
 
 /** Reparations after the first answer (research R7): at most three answers in total. */
 export const MAX_REPAIRS = 2;
@@ -12,7 +12,13 @@ export interface GuardOptions {
   model: string;
   system: string;
   user: string;
-  outputType: DagType;
+  /** Type of the output; the schema sent and the validator are derived from it. */
+  outputType?: DagType;
+  /**
+   * Explicit schema, for outputs a `DagType` cannot say (the compiler's intermediate DAG, F6).
+   * Exactly one of `outputType` and `schema` is given.
+   */
+  schema?: { validator: z.ZodType<unknown>; jsonSchema: JsonSchema };
   maxOutputTokens: number;
   /** Marker planted in the instructions of this call. */
   canary: string;
@@ -72,16 +78,18 @@ function addUsage(total: LlmUsage, response: Pick<LlmResponse, 'inputTokens' | '
  * is never repaired. Failures are `LlmError` with the tokens spent so far, so the budget settles.
  */
 export async function runGuarded(options: GuardOptions): Promise<GuardResult> {
-  const validator = toZodSchema(options.outputType);
-  const responseJsonSchema = toJsonSchema(options.outputType);
+  const { validator, responseJsonSchema } = schemaOf(options);
   const maxRepairs = options.maxRepairs ?? MAX_REPAIRS;
   const usage: LlmUsage = { inputTokens: 0, outputTokens: 0 };
   let repair: { previousOutput: string; errors: string[] } | undefined;
 
   /** Answers received from the provider; the first one is not a repair. */
   let answered = 0;
+  /** Last answer that passed the schema but not the check (F6, research R9). */
+  let lastValue: unknown;
   const fail = (code: LlmErrorCode, message: string) => {
     const error = new LlmError(code, message);
+    if (code === 'LLM_INVALID_OUTPUT' && lastValue !== undefined) error.lastValue = lastValue;
     error.usage = { ...usage };
     error.repairs = Math.max(0, answered - 1);
     return error;
@@ -115,10 +123,11 @@ export async function runGuarded(options: GuardOptions): Promise<GuardResult> {
       throw fail('LLM_CANARY_LEAK', 'La salida reveló las instrucciones internas.');
     }
 
-    const issues = validate(response, validator, options.check);
+    const { issues, parsed } = validate(response, validator, options.check);
+    lastValue = issues.length > 0 ? parsed : undefined;
     if (issues.length === 0) {
       return {
-        value: JSON.parse(response.text) as unknown,
+        value: parsed,
         repairs: call,
         calls: answered,
         inputTokens: usage.inputTokens,
@@ -132,21 +141,36 @@ export async function runGuarded(options: GuardOptions): Promise<GuardResult> {
   }
 }
 
+function schemaOf(options: GuardOptions): {
+  validator: z.ZodType<unknown>;
+  responseJsonSchema: JsonSchema;
+} {
+  if (options.schema) {
+    return { validator: options.schema.validator, responseJsonSchema: options.schema.jsonSchema };
+  }
+  if (!options.outputType) throw new TypeError('runGuarded needs an outputType or a schema');
+  return {
+    validator: toZodSchema(options.outputType),
+    responseJsonSchema: toJsonSchema(options.outputType),
+  };
+}
+
+/** Issues of one answer; `parsed` is the value when it passed the schema. */
 function validate(
   response: LlmResponse,
   validator: z.ZodType<unknown>,
   check: GuardOptions['check'],
-): string[] {
+): { issues: string[]; parsed?: unknown } {
   if (response.finishReason === 'max_tokens') {
-    return ['output: truncated by the token limit, answer with a shorter result'];
+    return { issues: ['output: truncated by the token limit, answer with a shorter result'] };
   }
-  let parsed: unknown;
+  let raw: unknown;
   try {
-    parsed = JSON.parse(response.text);
+    raw = JSON.parse(response.text);
   } catch {
-    return ['output: the response is not valid JSON'];
+    return { issues: ['output: the response is not valid JSON'] };
   }
-  const result = validator.safeParse(parsed);
-  if (!result.success) return summarizeIssues(result.error.issues);
-  return [...(check?.(result.data) ?? [])];
+  const result = validator.safeParse(raw);
+  if (!result.success) return { issues: summarizeIssues(result.error.issues) };
+  return { issues: [...(check?.(result.data) ?? [])], parsed: result.data };
 }

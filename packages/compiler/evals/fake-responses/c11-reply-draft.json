@@ -1,0 +1,54 @@
+[
+  {
+    "title": "Responder quejas",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "complaint",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "write",
+        "type": "llm.generate",
+        "label": "Generar texto",
+        "config": {
+          "instruction": "Escribe una respuesta amable a esta queja: {{nodes.start.output.complaint}}",
+          "language": "es",
+          "maxLength": 500
+        }
+      },
+      {
+        "id": "send",
+        "type": "mock.service",
+        "label": "Guardar borrador",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "write"
+      },
+      {
+        "from": "write",
+        "fromHandle": "out",
+        "to": "send"
+      }
+    ]
+  }
+]

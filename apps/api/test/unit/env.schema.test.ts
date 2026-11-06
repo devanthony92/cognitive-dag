@@ -60,3 +60,25 @@ describe('API LLM variables (F5)', () => {
     );
   });
 });
+
+describe('API compiler variables (F6, research R13)', () => {
+  it('reads the compilation limits with the defaults of the research', () => {
+    const config = parseEnv(VALID_ENV);
+    expect(config.COMPILER_MAX_PER_USER_HOUR).toBe(10);
+    expect(config.COMPILER_MAX_PER_ORG_DAY).toBe(50);
+    const custom = parseEnv({
+      ...VALID_ENV,
+      COMPILER_MAX_PER_USER_HOUR: '3',
+      COMPILER_MAX_PER_ORG_DAY: '7',
+    });
+    expect(custom.COMPILER_MAX_PER_USER_HOUR).toBe(3);
+    expect(custom.COMPILER_MAX_PER_ORG_DAY).toBe(7);
+  });
+
+  it.each(['COMPILER_MAX_PER_USER_HOUR', 'COMPILER_MAX_PER_ORG_DAY'])(
+    'rejects a non-positive %s naming only the variable',
+    (name) => {
+      expect(() => parseEnv({ ...VALID_ENV, [name]: '0' })).toThrow(new RegExp(name));
+    },
+  );
+});

@@ -7,6 +7,7 @@ export const FEATURE_FLAGS = {
   executionEnabled: 'execution-enabled',
   resilienceEnabled: 'resilience-enabled',
   llmNodesEnabled: 'llm-nodes-enabled',
+  nlCompilerEnabled: 'nl-compiler-enabled',
 } as const;
 
 /** Flags exposed to the web app through GET /api/v1/features. */

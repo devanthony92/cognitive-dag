@@ -1,0 +1,107 @@
+[
+  {
+    "title": "Complaint apology",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "feedback",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "classify",
+        "type": "llm.classify",
+        "label": "Clasificar",
+        "config": {
+          "text": "{{nodes.start.output.feedback}}",
+          "labels": ["complaint", "compliment"]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Revisar etiqueta",
+        "config": {
+          "condition": {
+            "op": "eq",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.classify.output.label"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "string",
+              "value": "complaint"
+            }
+          }
+        }
+      },
+      {
+        "id": "write",
+        "type": "llm.generate",
+        "label": "Generar texto",
+        "config": {
+          "instruction": "Write a short apology for: {{nodes.start.output.feedback}}",
+          "language": "es",
+          "maxLength": 500
+        }
+      },
+      {
+        "id": "send",
+        "type": "mock.service",
+        "label": "Enviar respuesta",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "other",
+        "type": "mock.service",
+        "label": "Forward to team",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "classify"
+      },
+      {
+        "from": "classify",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "write"
+      },
+      {
+        "from": "write",
+        "fromHandle": "out",
+        "to": "send"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "other"
+      }
+    ]
+  }
+]

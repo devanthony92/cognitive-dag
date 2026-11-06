@@ -476,6 +476,25 @@ importers:
         specifier: 4.23.15
         version: 4.23.15
 
+  packages/compiler:
+    dependencies:
+      '@cognitive-dag/dag-schema':
+        specifier: workspace:*
+        version: link:../dag-schema
+      '@cognitive-dag/llm':
+        specifier: workspace:*
+        version: link:../llm
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@cognitive-dag/config':
+        specifier: workspace:*
+        version: link:../config
+      '@cognitive-dag/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+
   packages/config: {}
 
   packages/contracts:
@@ -548,6 +567,9 @@ importers:
 
   scripts:
     dependencies:
+      '@cognitive-dag/compiler':
+        specifier: workspace:*
+        version: link:../packages/compiler
       '@cognitive-dag/contracts':
         specifier: workspace:*
         version: link:../packages/contracts

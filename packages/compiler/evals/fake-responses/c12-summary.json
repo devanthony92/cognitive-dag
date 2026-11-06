@@ -1,0 +1,54 @@
+[
+  {
+    "title": "Report summary",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "report",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "write",
+        "type": "llm.generate",
+        "label": "Generar texto",
+        "config": {
+          "instruction": "Summarize this report in five sentences: {{nodes.start.output.report}}",
+          "language": "en",
+          "maxLength": 500
+        }
+      },
+      {
+        "id": "send",
+        "type": "mock.service",
+        "label": "Post to team channel",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "write"
+      },
+      {
+        "from": "write",
+        "fromHandle": "out",
+        "to": "send"
+      }
+    ]
+  }
+]
