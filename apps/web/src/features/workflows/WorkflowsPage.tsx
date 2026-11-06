@@ -1,6 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
+import { Sparkles } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import { CreateWorkflowRequestSchema, type WorkflowBody } from '@cognitive-dag/contracts';
@@ -30,6 +31,7 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import { ProblemAlert } from '../auth/ProblemAlert';
+import { featuresQuery, isNlCompilerEnabled } from '../flags';
 import { sessionQuery } from '../session/session';
 import { createWorkflow, workflowsKey, workflowsQuery } from './api';
 
@@ -43,6 +45,8 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
   const session = useQuery(sessionQuery);
   const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
   const canCreate = role === 'owner' || role === 'editor';
+  const features = useQuery(featuresQuery);
+  const canDescribe = canCreate && isNlCompilerEnabled(features.data);
   const workflows = useQuery(workflowsQuery(organizationId));
 
   const form = useForm<CreateInput, unknown, CreateOutput>({
@@ -107,6 +111,19 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
               </form>
             </Form>
             {create.isError && <ProblemAlert error={create.error} />}
+            {canDescribe && (
+              <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
+                <Button asChild variant="outline">
+                  <Link to="/orgs/$organizationId/workflows/new" params={{ organizationId }}>
+                    <Sparkles aria-hidden />
+                    Describir workflow
+                  </Link>
+                </Button>
+                <span className="text-muted-foreground">
+                  ¿Prefieres contarlo con tus palabras? El compilador arma un borrador.
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

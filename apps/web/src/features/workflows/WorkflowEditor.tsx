@@ -12,7 +12,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useBlocker } from '@tanstack/react-router';
-import { Download, Network, Save, Send } from 'lucide-react';
+import { Download, Network, Save, Send, Sparkles } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { WorkflowBody } from '@cognitive-dag/contracts';
 import {
@@ -36,7 +36,12 @@ import {
 import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isLlmNodesEnabled, isResilienceEnabled } from '../flags';
+import {
+  featuresQuery,
+  isLlmNodesEnabled,
+  isNlCompilerEnabled,
+  isResilienceEnabled,
+} from '../flags';
 import { RunButton } from '../runs/RunButton';
 import { sessionQuery } from '../session/session';
 import {
@@ -146,6 +151,7 @@ function EditorSession({
   const featureFlags = useQuery(featuresQuery).data;
   const resilience = isResilienceEnabled(featureFlags);
   const llm = isLlmNodesEnabled(featureFlags);
+  const compiler = isNlCompilerEnabled(featureFlags);
   const flow = useReactFlow<FlowNode, Edge>();
   const canvas = useRef<HTMLDivElement>(null);
 
@@ -476,6 +482,19 @@ function EditorSession({
           >
             <Download aria-hidden />
           </Button>
+          {canWrite && compiler && (
+            <Button asChild variant="outline">
+              <Link
+                to="/orgs/$organizationId/workflows/new"
+                params={{ organizationId }}
+                search={{ workflowId }}
+                title="Regenerar borrador: describe de nuevo el flujo y reemplaza el borrador tras revisar la vista previa"
+              >
+                <Sparkles aria-hidden />
+                Regenerar borrador
+              </Link>
+            </Button>
+          )}
           <RunButton
             showHistory
             organizationId={organizationId}

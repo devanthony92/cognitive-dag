@@ -38,6 +38,8 @@ export const EnvSchema = z.object({
   // Compilations per person per hour and per organization per UTC day (F6, research R13).
   COMPILER_MAX_PER_USER_HOUR: z.coerce.number().int().min(1).max(10_000).default(10),
   COMPILER_MAX_PER_ORG_DAY: z.coerce.number().int().min(1).max(100_000).default(50),
+  // Model recorded on each compilation; the worker reads the same variable to call it (F6, R5).
+  LLM_MODEL_COMPILER: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });

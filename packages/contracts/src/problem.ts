@@ -34,6 +34,12 @@ export const ProblemCodeSchema = z.enum([
   'RERUN_NODE_INVALID',
   'RUN_NOT_FINISHED',
   'STEP_IO_EXPIRED',
+  'COMPILER_INTENT_TOO_LONG',
+  'COMPILER_RATE_LIMITED',
+  'COMPILER_DAILY_LIMIT',
+  'COMPILER_NOT_FINISHED',
+  'COMPILER_NO_RESULT',
+  'COMPILER_RESULT_EXPIRED',
 ]);
 
 export type ProblemCode = z.infer<typeof ProblemCodeSchema>;
@@ -69,9 +75,11 @@ export const ProblemDetailsSchema = z
     (problem) =>
       problem.retryAfterSeconds === undefined ||
       problem.code === 'RATE_LIMITED' ||
-      problem.code === 'RUN_LIMIT_REACHED',
+      problem.code === 'RUN_LIMIT_REACHED' ||
+      problem.code === 'COMPILER_RATE_LIMITED',
     {
-      error: 'retryAfterSeconds solo se admite con RATE_LIMITED o RUN_LIMIT_REACHED.',
+      error:
+        'retryAfterSeconds solo se admite con RATE_LIMITED, RUN_LIMIT_REACHED o COMPILER_RATE_LIMITED.',
       path: ['retryAfterSeconds'],
     },
   )

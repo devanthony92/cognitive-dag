@@ -66,14 +66,14 @@ llama a Gemini: usan `FakeProvider`.
 
 ### Tests
 
-- [ ] T026 [P] `apps/api/test/compilations.e2e.test.ts`: 202 y fila `queued`; modo `regenerate` guarda `draftRevision`; 400 intención vacía o > 2000; 403 viewer; 404 otra organización y flag apagado; 429 por persona con `Retry-After` y por organización por día; catálogo pasado al workflow según `llm-nodes-enabled`
-- [ ] T027 [P] `apps/api/test/compilation-result.e2e.test.ts`: resultado desde el historial; 409 `COMPILER_NOT_FINISHED` y `COMPILER_NO_RESULT`; 410 `COMPILER_RESULT_EXPIRED`
-- [ ] T028 [P] Pruebas de componentes web: formulario de intención (contador, límite), estados, vista previa de solo lectura, crear (POST + PUT draft), reemplazar con confirmación y conflicto de revisión, abrir el último intento, campos sensibles omitidos, compilaciones recientes; estados de carga, vacío y error
+- [X] T026 [P] `apps/api/test/compilations.e2e.test.ts`: 202 y fila `queued`; modo `regenerate` guarda `draftRevision`; 400 intención vacía o > 2000; 403 viewer; 404 otra organización y flag apagado; 429 por persona con `Retry-After` y por organización por día; catálogo pasado al workflow según `llm-nodes-enabled`
+- [X] T027 [P] `apps/api/test/compilation-result.e2e.test.ts`: resultado desde el historial; 409 `COMPILER_NOT_FINISHED` y `COMPILER_NO_RESULT`; 410 `COMPILER_RESULT_EXPIRED`
+- [X] T028 [P] Pruebas de componentes web: formulario de intención (contador, límite), estados, vista previa de solo lectura, crear (POST + PUT draft), reemplazar con confirmación y conflicto de revisión, abrir el último intento, campos sensibles omitidos, compilaciones recientes; estados de carga, vacío y error
 
 ### Implementation
 
-- [ ] T029 `apps/api/src/compilations/` (controller, service, límites con Valkey y conteo diario, lectura del resultado desde Temporal) y flag en `flags.catalog.ts`
-- [ ] T030 [US1] [US2] `apps/web/src/features/compiler/` y ruta `orgs.$organizationId.workflows.new.tsx`; entrada "Describir workflow" en la lista y "Regenerar borrador" en el editor; métricas de la compilación; aviso de capa gratuita
+- [X] T029 `apps/api/src/compilations/` (controller, service, límites con Valkey y conteo diario, lectura del resultado desde Temporal) y flag en `flags.catalog.ts`
+- [X] T030 [US1] [US2] `apps/web/src/features/compiler/` y ruta `orgs.$organizationId.workflows.new.tsx`; entrada "Describir workflow" en la lista y "Regenerar borrador" en el editor; métricas de la compilación; aviso de capa gratuita
 
 ## Phase 5: Verificación y cierre (PR 4)
 

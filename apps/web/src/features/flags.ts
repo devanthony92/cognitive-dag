@@ -27,3 +27,7 @@ export function isLlmNodesEnabled(features: Record<string, boolean> | undefined)
 export function isExecutionEnabled(features: Record<string, boolean> | undefined): boolean {
   return features?.[FEATURE_FLAGS.executionEnabled] === true;
 }
+
+export function isNlCompilerEnabled(features: Record<string, boolean> | undefined): boolean {
+  return features?.[FEATURE_FLAGS.nlCompilerEnabled] === true;
+}
