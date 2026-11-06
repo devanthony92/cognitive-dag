@@ -10,12 +10,15 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import { compilations } from './compilations.js';
 import { organizations } from './organizations.js';
 import { workflowRuns } from './workflow-runs.js';
 
 /**
- * One row per attempt of an LLM node that reserved budget, repairs included (F5, data model).
- * Immutable and without content: no prompt and no answer is stored here (author decision 5C).
+ * One row per attempt of an LLM node that reserved budget, repairs included (F5, data model), and
+ * since F6 one row per call of a compilation (`node_type = 'compiler'`). The owner is exactly one:
+ * a run with its node, or a compilation. Immutable and without content: no prompt and no answer is
+ * stored here (author decision 5C).
  */
 export const llmCalls = pgTable(
   'llm_calls',
@@ -27,10 +30,14 @@ export const llmCalls = pgTable(
     organizationId: uuid('organization_id')
       .notNull()
       .references(() => organizations.id, { onDelete: 'restrict' }),
-    runId: uuid('run_id')
-      .notNull()
-      .references(() => workflowRuns.id, { onDelete: 'restrict' }),
-    nodeId: text('node_id').notNull(),
+    /** Null when the call belongs to a compilation. */
+    runId: uuid('run_id').references(() => workflowRuns.id, { onDelete: 'restrict' }),
+    /** Null when the call belongs to a compilation. */
+    nodeId: text('node_id'),
+    /** Null when the call belongs to a run (F6). */
+    compilationId: uuid('compilation_id').references(() => compilations.id, {
+      onDelete: 'restrict',
+    }),
     nodeType: text('node_type').notNull(),
     /** Attempt of the activity. */
     attempt: integer('attempt').notNull(),
@@ -49,11 +56,21 @@ export const llmCalls = pgTable(
   },
   (table) => [
     index('llm_calls_run_node_idx').on(table.runId, table.nodeId),
+    index('llm_calls_compilation_idx')
+      .on(table.compilationId)
+      .where(sql`${table.compilationId} IS NOT NULL`),
     index('llm_calls_organization_created_idx').on(table.organizationId, table.createdAt.desc()),
     check('llm_calls_node_id_format', sql`${table.nodeId} ~ '^[a-z][a-z0-9_]{0,39}$'`),
     check(
       'llm_calls_node_type_valid',
-      sql`${table.nodeType} IN ('llm.classify', 'llm.extract', 'llm.generate')`,
+      sql`${table.nodeType} IN ('llm.classify', 'llm.extract', 'llm.generate', 'compiler')`,
+    ),
+    check(
+      'llm_calls_owner_consistent',
+      sql`(${table.runId} IS NOT NULL AND ${table.nodeId} IS NOT NULL AND ${table.compilationId} IS NULL
+          AND ${table.nodeType} <> 'compiler')
+        OR (${table.runId} IS NULL AND ${table.nodeId} IS NULL AND ${table.compilationId} IS NOT NULL
+          AND ${table.nodeType} = 'compiler')`,
     ),
     check('llm_calls_attempt_positive', sql`${table.attempt} >= 1`),
     check('llm_calls_repairs_range', sql`${table.repairs} BETWEEN 0 AND 2`),

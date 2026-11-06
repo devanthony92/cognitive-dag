@@ -51,16 +51,16 @@ llama a Gemini: usan `FakeProvider`.
 
 ### Tests
 
-- [ ] T019 [P] `packages/db/test/rls-compilations.test.ts` como `app_runtime`: aislamiento de `compilations`; sin `DELETE`; `CHECK` de modo, error, final y fallback; inmutable al terminar y columnas fijas; misma organización del workflow; `llm_calls` con dueño compilación (`node_type = 'compiler'`, sin ejecución ni nodo) y `CHECK` de dueño único; filas de F5 siguen válidas
-- [ ] T020 [P] `apps/worker/test/compiler/compile-intent.workflow.test.ts` (`TestWorkflowEnvironment` + `FakeProvider`): estados `running → succeeded|failed`; métricas en la fila; resultado y `fallback` como valor de retorno; reintento solo en errores transitorios o limitados
-- [ ] T021 [P] `apps/worker/test/compiler/budget.test.ts`: reserva por llamada en `llm_usage_daily` y tope `LLM_MAX_TOKENS_PER_COMPILATION`; agotado → `LLM_DAILY_BUDGET_EXHAUSTED` o `COMPILER_BUDGET_EXHAUSTED` sin llamar; una fila de `llm_calls` por llamada; ajuste tras la respuesta
-- [ ] T022 [P] `apps/worker/test/compiler/no-execution.test.ts`: una compilación no crea versiones, no activa ni inicia ejecuciones (SC-003)
-- [ ] T023 [P] `apps/worker/test/compiler/no-content.test.ts`: logs y filas sin intención ni DAG (SC-005)
+- [X] T019 [P] `packages/db/test/rls-compilations.test.ts` como `app_runtime`: aislamiento de `compilations`; sin `DELETE`; `CHECK` de modo, error, final y fallback; inmutable al terminar y columnas fijas; misma organización del workflow; `llm_calls` con dueño compilación (`node_type = 'compiler'`, sin ejecución ni nodo) y `CHECK` de dueño único; filas de F5 siguen válidas
+- [X] T020 [P] `apps/worker/test/compiler/compile-intent.workflow.test.ts` (`TestWorkflowEnvironment` + `FakeProvider`): estados `running → succeeded|failed`; métricas en la fila; resultado y `fallback` como valor de retorno; reintento solo en errores transitorios o limitados
+- [X] T021 [P] `apps/worker/test/compiler/budget.test.ts`: reserva por llamada en `llm_usage_daily` y tope `LLM_MAX_TOKENS_PER_COMPILATION`; agotado → `LLM_DAILY_BUDGET_EXHAUSTED` o `COMPILER_BUDGET_EXHAUSTED` sin llamar; una fila de `llm_calls` por llamada; ajuste tras la respuesta
+- [X] T022 [P] `apps/worker/test/compiler/no-execution.test.ts`: una compilación no crea versiones, no activa ni inicia ejecuciones (SC-003)
+- [X] T023 [P] `apps/worker/test/compiler/no-content.test.ts`: logs y filas sin intención ni DAG (SC-005)
 
 ### Implementation
 
-- [ ] T024 Migraciones `0012_compilations_llm_calls_owner.sql` (tabla, columnas, `CHECK`, índices) y `0013_compilations_rls_triggers_grants.sql`; esquema Drizzle en `packages/db/src/schema/{compilations,llm-calls}.ts`
-- [ ] T025 `apps/worker/src/workflows/compile-intent.workflow.ts` y `apps/worker/src/compiler/{activities,budget}.ts` en la cola LLM; `LLM_ENABLED=false` → `LLM_DISABLED` sin llamada; nonce y canario en la activity
+- [X] T024 Migraciones `0012_compilations_llm_calls_owner.sql` (tabla, columnas, `CHECK`, índices) y `0013_compilations_rls_triggers_grants.sql`; esquema Drizzle en `packages/db/src/schema/{compilations,llm-calls}.ts`
+- [X] T025 `apps/worker/src/workflows/compile-intent.workflow.ts` y `apps/worker/src/compiler/{activities,budget}.ts` en la cola LLM; `LLM_ENABLED=false` → `LLM_DISABLED` sin llamada; nonce y canario en la activity
 
 ## Phase 4: API y web (PR 3)
 
