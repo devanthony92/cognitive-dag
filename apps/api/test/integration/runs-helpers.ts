@@ -4,7 +4,8 @@ import Valkey from 'iovalkey';
 import { NativeConnection } from '@temporalio/worker';
 import request from 'supertest';
 import type { Run, RunDetail } from '@cognitive-dag/contracts';
-import { createWorker } from '../../../worker/src/worker';
+import { FakeProvider } from '@cognitive-dag/llm';
+import { createLlmWorker, createWorker } from '../../../worker/src/worker';
 import { startTestApp, testConfig, httpServer } from './helpers';
 import { authHeaders, type LoggedIn } from './identity-helpers';
 import { uniqueTaskQueue, waitFor, type RunningWorker } from './ping-helpers';
@@ -27,27 +28,72 @@ export interface RunsEnv extends WorkflowsEnv {
   taskQueue: string;
   worker: RunningWorker;
   valkey: Valkey;
+  /** Only with `setupRunsEnv({}, { llm: true })`: the LLM worker, backed by a FakeProvider. */
+  llmWorker?: RunningWorker;
 }
 
 /** The workflows environment with `execution-enabled` on and a real worker that records runs. */
 export async function setupRunsEnv(
   overrides: Parameters<typeof startTestApp>[0] = {},
+  options: { llm?: boolean } = {},
 ): Promise<RunsEnv> {
   const taskQueue = uniqueTaskQueue();
+  const llmTaskQueue = options.llm ? uniqueTaskQueue() : undefined;
   const base = await setupWorkflowsEnv(RUN_FLAGS);
   // setupWorkflowsEnv built its own app on a random queue: replace it with one that shares ours.
   await base.app.close();
   const app = await startTestApp({
     FEATURE_FLAGS: RUN_FLAGS,
     TEMPORAL_TASK_QUEUE: taskQueue,
+    ...(llmTaskQueue ? { TEMPORAL_LLM_TASK_QUEUE: llmTaskQueue } : {}),
     ...overrides,
   });
   const valkey = new Valkey(testConfig().VALKEY_URL);
   const worker = await startRunsWorker(taskQueue, base.database, valkey);
-  return { ...base, app, taskQueue, worker, valkey };
+  const llmWorker = llmTaskQueue
+    ? await startLlmWorker(llmTaskQueue, base.database, valkey)
+    : undefined;
+  return { ...base, app, taskQueue, worker, valkey, ...(llmWorker ? { llmWorker } : {}) };
+}
+
+async function startLlmWorker(
+  taskQueue: string,
+  database: WorkflowsEnv['database'],
+  valkey: Valkey,
+): Promise<RunningWorker> {
+  const config = testConfig();
+  const connection = await NativeConnection.connect({ address: config.TEMPORAL_ADDRESS });
+  const worker = await createLlmWorker({
+    connection,
+    namespace: config.TEMPORAL_NAMESPACE,
+    taskQueue,
+    provider: new FakeProvider(),
+    withContext: database.withContext,
+    valkey,
+    limits: { perRun: 50_000, perOrganizationDay: 500_000 },
+    enabled: true,
+    models: {
+      'llm.classify': 'test-lite',
+      'llm.extract': 'test-lite',
+      'llm.generate': 'test-flash',
+    },
+    prices: new Map(),
+    maxInputChars: 10_000,
+    maxConcurrentActivities: 2,
+    shutdownGraceTime: '1s',
+  });
+  const done = worker.run().finally(() => connection.close());
+  return {
+    worker,
+    async stop() {
+      worker.shutdown();
+      await done;
+    },
+  };
 }
 
 export async function closeRunsEnv(env: RunsEnv): Promise<void> {
+  await env.llmWorker?.stop();
   await env.worker.stop();
   env.valkey.disconnect();
   await closeWorkflowsEnv(env);
@@ -127,6 +173,25 @@ export function amountDefinition(latencyMs = 100) {
     schemaVersion: 1,
     nodes: [amountTrigger(), mock('work', latencyMs)],
     edges: [edge('trigger', 'work')],
+  };
+}
+
+/** trigger, then the `llm.classify` node `classify`, then the mock service `after`. */
+export function classifyDefinition() {
+  return {
+    schemaVersion: 1,
+    nodes: [
+      amountTrigger(),
+      {
+        id: 'classify',
+        type: 'llm.classify',
+        label: 'Clasificar',
+        position: { x: 200, y: 0 },
+        config: { text: 'Producto excelente', labels: ['positivo', 'negativo'], redactPii: false },
+      },
+      { ...mock('after', 100), position: { x: 400, y: 0 } },
+    ],
+    edges: [edge('trigger', 'classify'), edge('classify', 'after')],
   };
 }
 

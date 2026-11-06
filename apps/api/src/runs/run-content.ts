@@ -91,9 +91,18 @@ export function memoizedOf(events: readonly HistoryEvent[]): Record<string, unkn
   return isRecord(input) && isRecord(input['memoized']) ? input['memoized'] : {};
 }
 
+/** Node types that run as an activity, and the activity each one is recorded under. */
+const ACTIVITY_OF: Readonly<Record<string, string>> = {
+  'mock.service': 'mockService',
+  'llm.classify': 'llmClassify',
+  'llm.extract': 'llmExtract',
+  'llm.generate': 'llmGenerate',
+};
+
 /**
  * Input and output of one node, from the history. `trigger.manual` receives and hands on the run
- * input; `mock.service` is an activity, so its content is in its scheduled and completed events.
+ * input; mock and LLM nodes are activities, so their content is in the scheduled and completed events
+ * (the input is only the node config: never the prompt or anything else of the payload).
  * Nodes evaluated inside the workflow (conditions, merges) record no payloads.
  */
 export function stepContentOf(
@@ -104,11 +113,12 @@ export function stepContentOf(
     const input = triggerInputOf(events);
     return input === undefined ? {} : { input, output: input };
   }
-  if (node.type !== 'mock.service') return {};
+  const activity = ACTIVITY_OF[node.type];
+  if (activity === undefined) return {};
 
   const scheduled = events.find((event) => {
     const attrs = event.activityTaskScheduledEventAttributes;
-    if (attrs?.activityType?.name !== 'mockService') return false;
+    if (attrs?.activityType?.name !== activity) return false;
     const input = firstPayload(attrs.input);
     return isRecord(input) && input['nodeId'] === node.id;
   });
