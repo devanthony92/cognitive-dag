@@ -293,6 +293,9 @@ importers:
       '@cognitive-dag/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@cognitive-dag/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@nestjs/cli':
         specifier: 11.0.24
         version: 11.0.24(@swc/cli@0.8.1(@swc/core@1.16.20)(chokidar@4.0.3)(supports-color@8.1.1))(@swc/core@1.16.20)(@types/node@24.19.2)(esbuild@0.28.2)(lightningcss@1.33.0)(postcss@8.5.32)(prettier@3.9.10)
