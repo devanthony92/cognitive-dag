@@ -1,0 +1,113 @@
+[
+  {
+    "title": "Support pipeline",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "email_body",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "extract",
+        "type": "llm.extract",
+        "label": "Extraer datos",
+        "config": {
+          "text": "{{nodes.start.output.email_body}}",
+          "fields": [
+            {
+              "name": "customer_id",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "classify",
+        "type": "llm.classify",
+        "label": "Clasificar",
+        "config": {
+          "text": "{{nodes.start.output.email_body}}",
+          "labels": ["billing", "technical"]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Billing?",
+        "config": {
+          "condition": {
+            "op": "eq",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.classify.output.label"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "string",
+              "value": "billing"
+            }
+          }
+        }
+      },
+      {
+        "id": "finance",
+        "type": "mock.service",
+        "label": "Route to finance",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "engineering",
+        "type": "mock.service",
+        "label": "Route to engineering",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "extract"
+      },
+      {
+        "from": "extract",
+        "fromHandle": "out",
+        "to": "classify"
+      },
+      {
+        "from": "classify",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "finance"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "engineering"
+      }
+    ]
+  }
+]

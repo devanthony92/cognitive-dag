@@ -1,4 +1,5 @@
 export * from './auth.js';
+export * from './compilations.js';
 export * from './correlation.js';
 export * from './flags.js';
 export * from './health.js';

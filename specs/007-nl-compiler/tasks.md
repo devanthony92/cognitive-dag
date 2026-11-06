@@ -20,32 +20,32 @@ llama a Gemini: usan `FakeProvider`.
 
 ## Phase 1: Setup
 
-- [ ] T001 Flag `nl-compiler-enabled` en `packages/contracts/src/flags.ts`, catálogo del API (con issue de retiro) y `.env.example` (`true`)
-- [ ] T002 [P] Paquete `packages/compiler` (tsconfig, Vitest, exportación `@cognitive-dag/source`), sin dependencias nuevas
-- [ ] T003 [P] Variables validadas al arrancar: worker `LLM_MODEL_COMPILER` (default `gemini-3.5-flash-lite`), `LLM_MAX_TOKENS_PER_COMPILATION` (30000); API `COMPILER_MAX_PER_USER_HOUR` (10), `COMPILER_MAX_PER_ORG_DAY` (50); ejemplos en `.env.example`
+- [X] T001 Flag `nl-compiler-enabled` en `packages/contracts/src/flags.ts`, catálogo del API (con issue de retiro) y `.env.example` (`true`)
+- [X] T002 [P] Paquete `packages/compiler` (tsconfig, Vitest, exportación `@cognitive-dag/source`), sin dependencias nuevas
+- [X] T003 [P] Variables validadas al arrancar: worker `LLM_MODEL_COMPILER` (default `gemini-3.5-flash-lite`), `LLM_MAX_TOKENS_PER_COMPILATION` (30000); API `COMPILER_MAX_PER_USER_HOUR` (10), `COMPILER_MAX_PER_ORG_DAY` (50); ejemplos en `.env.example`
 
 ## Phase 2: Foundational (PR 1)
 
 ### Tests
 
-- [ ] T004 [P] `packages/dag-schema/test/catalog/sensitive-fields.test.ts`: `sensitiveFields` opcional; `http.request` marca destino, cabeceras y cuerpo; los demás tipos sin campos sensibles
-- [ ] T005 [P] `packages/compiler/test/catalog.test.ts`: filtro por fases ejecutables (`['F3']`, `['F3','F5']`); descripción de cada tipo derivada de Zod (campos, requeridos, enums, handles); sin tipos F7
-- [ ] T006 [P] `packages/compiler/test/intermediate.test.ts`: esquema intermedio (`title`, `nodes[{id,type,label,config}]`, `edges[{from,fromHandle,to}]`) → JSON Schema compatible con structured output y Zod equivalente; `config` discriminado por `type` solo con los tipos permitidos
-- [ ] T007 [P] `packages/compiler/test/prompt.test.ts`: instrucciones en inglés sin secretos; catálogo incluido; intención dentro de `<data-{nonce}>`; canario por llamada; un cierre falso no escapa
-- [ ] T008 [P] `packages/compiler/test/translate.test.ts`: traducción a `DagDefinition` (`schemaVersion` 1, ids de arista `<from>-<fromHandle>-<to>`, etiquetas ≤ 100); resultado validado con `validateDraft` de `dag-schema`
-- [ ] T009 [P] `packages/compiler/test/layout.test.ts`: capas por distancia máxima desde el trigger; sin solapes; determinista; DAG con varias ramas y merge
-- [ ] T010 [P] `packages/compiler/test/sanitize.test.ts`: con un catálogo de pruebas, los campos sensibles rellenados se quitan y se listan en `omittedSensitiveFields`; la validación los reporta como requeridos
-- [ ] T011 [P] `packages/compiler/test/compile.test.ts` con `FakeProvider`: éxito directo; ciclo → 1 reparación → éxito; 3 inválidos que cumplen el esquema → `COMPILER_INVALID_DAG` con `fallback`; 3 que no cumplen → sin `fallback`; bloqueo → `LLM_CONTENT_BLOCKED` sin reparar; tipo fuera del catálogo → `UNKNOWN_TYPE` reparable; canario → inválido; el turno de reparación solo lleva códigos y rutas (nunca la intención ni etiquetas)
-- [ ] T012 [P] `packages/compiler/test/properties.test.ts`: evaluador de propiedades esperadas (tipos requeridos y prohibidos, rango de nodos, trigger único, alcanzabilidad, ramas de condición conectadas) y detector de escapes
-- [ ] T013 [P] `packages/contracts/test/compilations.test.ts`: `CreateCompilationRequest` (1–2000 tras recortar, estricto), `Compilation`, `CompilationResult` según `contracts/api.openapi.yaml`
+- [X] T004 [P] `packages/dag-schema/test/catalog/sensitive-fields.test.ts`: `sensitiveFields` opcional; `http.request` marca destino, cabeceras y cuerpo; los demás tipos sin campos sensibles
+- [X] T005 [P] `packages/compiler/test/catalog.test.ts`: filtro por fases ejecutables (`['F3']`, `['F3','F5']`); descripción de cada tipo derivada de Zod (campos, requeridos, enums, handles); sin tipos F7
+- [X] T006 [P] `packages/compiler/test/intermediate.test.ts`: esquema intermedio (`title`, `nodes[{id,type,label,config}]`, `edges[{from,fromHandle,to}]`) → JSON Schema compatible con structured output y Zod equivalente; `config` discriminado por `type` solo con los tipos permitidos
+- [X] T007 [P] `packages/compiler/test/prompt.test.ts`: instrucciones en inglés sin secretos; catálogo incluido; intención dentro de `<data-{nonce}>`; canario por llamada; un cierre falso no escapa
+- [X] T008 [P] `packages/compiler/test/translate.test.ts`: traducción a `DagDefinition` (`schemaVersion` 1, ids de arista `<from>-<fromHandle>-<to>`, etiquetas ≤ 100); resultado validado con `validateDraft` de `dag-schema`
+- [X] T009 [P] `packages/compiler/test/layout.test.ts`: capas por distancia máxima desde el trigger; sin solapes; determinista; DAG con varias ramas y merge
+- [X] T010 [P] `packages/compiler/test/sanitize.test.ts`: con un catálogo de pruebas, los campos sensibles rellenados se quitan y se listan en `omittedSensitiveFields`; la validación los reporta como requeridos
+- [X] T011 [P] `packages/compiler/test/compile.test.ts` con `FakeProvider`: éxito directo; ciclo → 1 reparación → éxito; 3 inválidos que cumplen el esquema → `COMPILER_INVALID_DAG` con `fallback`; 3 que no cumplen → sin `fallback`; bloqueo → `LLM_CONTENT_BLOCKED` sin reparar; tipo fuera del catálogo → `UNKNOWN_TYPE` reparable; canario → inválido; el turno de reparación solo lleva códigos y rutas (nunca la intención ni etiquetas)
+- [X] T012 [P] `packages/compiler/test/properties.test.ts`: evaluador de propiedades esperadas (tipos requeridos y prohibidos, rango de nodos, trigger único, alcanzabilidad, ramas de condición conectadas) y detector de escapes
+- [X] T013 [P] `packages/contracts/test/compilations.test.ts`: `CreateCompilationRequest` (1–2000 tras recortar, estricto), `Compilation`, `CompilationResult` según `contracts/api.openapi.yaml`
 
 ### Implementation
 
-- [ ] T014 `dag-schema`: `sensitiveFields` en `catalog/shared.ts` y `http-request.ts`
-- [ ] T015 `packages/compiler/src/{catalog,intermediate,prompt,translate,layout,sanitize,compile,properties}.ts`; `compile` usa `guard` de `packages/llm` con `MAX_REPAIRS` y `check` semántico, y un `beforeCall` inyectable para el presupuesto
-- [ ] T016 [P] `packages/contracts/src/compilations.ts` y códigos `COMPILER_*`
-- [ ] T017 [P] Dataset `packages/compiler/evals/intents.json` (~30, español e inglés) e `injection.json` (~10), con respuestas grabadas en `evals/fake-responses/`
-- [ ] T018 `scripts/eval/compiler.ts` y `pnpm eval:compiler` (`fake` por defecto): tasa de éxito, reparaciones, escapes, tokens y costo; falla si hay escapes o si la tasa < 80 %; paso en CI con `fake`
+- [X] T014 `dag-schema`: `sensitiveFields` en `catalog/shared.ts` y `http-request.ts`
+- [X] T015 `packages/compiler/src/{catalog,intermediate,prompt,translate,layout,sanitize,compile,properties}.ts`; `compile` usa `guard` de `packages/llm` con `MAX_REPAIRS` y `check` semántico, y un `beforeCall` inyectable para el presupuesto
+- [X] T016 [P] `packages/contracts/src/compilations.ts` y códigos `COMPILER_*`
+- [X] T017 [P] Dataset `packages/compiler/evals/intents.json` (~30, español e inglés) e `injection.json` (~10), con respuestas grabadas en `evals/fake-responses/`
+- [X] T018 `scripts/eval/compiler.ts` y `pnpm eval:compiler` (`fake` por defecto): tasa de éxito, reparaciones, escapes, tokens y costo; falla si hay escapes o si la tasa < 80 %; paso en CI con `fake`
 
 ## Phase 3: Motor (PR 2)
 

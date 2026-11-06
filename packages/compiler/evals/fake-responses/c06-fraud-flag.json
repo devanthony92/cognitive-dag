@@ -1,0 +1,92 @@
+[
+  {
+    "title": "Fraud flag",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "description",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "classify",
+        "type": "llm.classify",
+        "label": "Clasificar",
+        "config": {
+          "text": "{{nodes.start.output.description}}",
+          "labels": ["suspicious", "ok"]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Revisar etiqueta",
+        "config": {
+          "condition": {
+            "op": "eq",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.classify.output.label"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "string",
+              "value": "suspicious"
+            }
+          }
+        }
+      },
+      {
+        "id": "yes",
+        "type": "mock.service",
+        "label": "Hold for review",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "no",
+        "type": "mock.service",
+        "label": "Approve",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "classify"
+      },
+      {
+        "from": "classify",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "yes"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "no"
+      }
+    ]
+  }
+]

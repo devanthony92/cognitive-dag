@@ -1,0 +1,99 @@
+[
+  {
+    "title": "Temperature alert",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "report",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "extract",
+        "type": "llm.extract",
+        "label": "Extraer datos",
+        "config": {
+          "text": "{{nodes.start.output.report}}",
+          "fields": [
+            {
+              "name": "temperature",
+              "type": {
+                "kind": "number"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Comparar",
+        "config": {
+          "condition": {
+            "op": "gt",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.extract.output.temperature"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "number",
+              "value": 80
+            }
+          }
+        }
+      },
+      {
+        "id": "high",
+        "type": "mock.service",
+        "label": "Alert maintenance",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "low",
+        "type": "mock.service",
+        "label": "Log reading",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "extract"
+      },
+      {
+        "from": "extract",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "high"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "low"
+      }
+    ]
+  }
+]

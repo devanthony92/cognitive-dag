@@ -1,0 +1,325 @@
+[
+  {
+    "id": "c01-spam-triage",
+    "intent": "Cuando reciba un correo, clasificalo como spam o no spam; si es spam archivalo y si no, reenvialo a soporte.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c02-ticket-priority",
+    "intent": "Classify each support ticket as urgent or normal. Urgent tickets page the on-call engineer; normal ones go to the queue.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c03-sentiment-review",
+    "intent": "Analiza el sentimiento de cada resena de producto (positiva o negativa). Las negativas abren un caso para el equipo de calidad; las positivas se publican en la web.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c04-lead-scoring",
+    "intent": "Classify inbound sales leads as hot or cold from the message; hot leads are assigned to a sales rep, cold leads get added to the newsletter.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c05-language-routing",
+    "intent": "Detecta si un mensaje de cliente esta en espanol o en ingles y envialo al equipo correspondiente.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c06-fraud-flag",
+    "intent": "Classify each transaction description as suspicious or ok. Suspicious ones are held for review, ok ones are approved.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.classify", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c07-invoice-extract",
+    "intent": "De cada factura que llegue, extrae el cliente, el numero de factura y el total, y guardalos en el sistema contable.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.extract"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c08-resume-parse",
+    "intent": "Extract the candidate name, years of experience and email from each resume and store them in the hiring tracker.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.extract"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c09-order-extract",
+    "intent": "Lee los pedidos que llegan por chat, saca el producto y la cantidad, y crea el pedido en la tienda.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.extract"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c10-meeting-extract",
+    "intent": "From meeting notes, extract the action item owner and due date and create a task.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.extract"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c11-reply-draft",
+    "intent": "Escribe un borrador de respuesta amable para cada queja de cliente y dejalo en la bandeja de borradores.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.generate"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c12-summary",
+    "intent": "Summarize every long report in five sentences and post the summary to the team channel.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.generate"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c13-translate",
+    "intent": "Traduce al ingles las descripciones de producto y publicalas en el catalogo internacional.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.generate"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c14-social-post",
+    "intent": "Generate a short social media post from each blog article and schedule it.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "llm.generate"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c15-expense-approval",
+    "intent": "Extrae el monto de cada solicitud de gasto; si supera 1000 pide aprobacion del gerente, si no apruebala automaticamente.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.extract", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c16-temperature-alert",
+    "intent": "Read the sensor report, extract the temperature and alert maintenance if it is above 80; otherwise just log it.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.extract", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c17-discount",
+    "intent": "Del texto del pedido saca el total; si es mayor a 500 aplica un descuento, si no envia la factura normal.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.extract", "logic.condition"],
+      "minNodes": 4,
+      "maxNodes": 8,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c18-question-answer",
+    "intent": "Si un correo es una pregunta, genera una respuesta y enviala; si no lo es, marcalo como leido.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.classify", "logic.condition", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 9,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c19-complaint-apology",
+    "intent": "When feedback is a complaint, write an apology and send it; compliments are forwarded to the team.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.classify", "logic.condition", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 9,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c20-backup-chain",
+    "intent": "Cuando lo ejecute, exporta la base de datos, comprime el archivo y subelo al almacenamiento.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "mock.service"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 2,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c21-onboarding",
+    "intent": "Onboard a new employee: create the account, assign a laptop and send the welcome kit.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "mock.service"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 2,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c22-deploy",
+    "intent": "Ejecuta las pruebas, construye la imagen y despliega en staging, en ese orden.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["trigger.manual", "mock.service"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 2,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c23-vip-shipping",
+    "intent": "Al recibir un pedido con el campo is_vip: si es VIP envialo express, si no envio estandar; en ambos casos notifica al cliente al final.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["logic.condition", "logic.merge"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 9,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c24-stock-reorder",
+    "intent": "Given the stock level as a number, reorder from the supplier if it is below 10, otherwise skip the reorder; always update the dashboard afterwards.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["logic.condition", "logic.merge"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 9,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c25-age-check",
+    "intent": "Con la edad del usuario: si es mayor o igual a 18 activa la cuenta completa, si no la cuenta restringida; despues envia el correo de bienvenida.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["logic.condition", "logic.merge"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 9,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c26-parallel-report",
+    "intent": "Pull sales data and marketing data at the same time, wait for both, then build the weekly report.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["logic.merge", "mock.service"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c27-parallel-checks",
+    "intent": "Revisa en paralelo el inventario y el credito del cliente, espera ambos resultados y confirma el pedido.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["logic.merge", "mock.service"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 5,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c28-llm-off-classify",
+    "intent": "Clasifica los correos entrantes y guarda cada uno en su carpeta.",
+    "llmNodes": false,
+    "expected": {
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 2,
+      "maxNodes": 6
+    }
+  },
+  {
+    "id": "c29-support-pipeline",
+    "intent": "For each support email: extract the customer id, classify it as billing or technical, and route billing to finance and technical to engineering.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.extract", "llm.classify", "logic.condition"],
+      "minNodes": 5,
+      "maxNodes": 10,
+      "conditionBranchesConnected": true
+    }
+  },
+  {
+    "id": "c30-weekly-digest",
+    "intent": "Cada vez que lo ejecute, genera un resumen semanal de las novedades que le paso y envialo por correo y por chat al mismo tiempo.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["llm.generate", "mock.service"],
+      "minNodes": 4,
+      "maxNodes": 8
+    }
+  }
+]

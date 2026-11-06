@@ -34,9 +34,13 @@ export const EnvSchema = z.object({
   LLM_MODEL_CLASSIFY: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   LLM_MODEL_EXTRACT: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   LLM_MODEL_GENERATE: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
+  // Model of the NL → DAG compiler (F6, research R5, O6).
+  LLM_MODEL_COMPILER: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
   // `<model>:<input>:<output>;...` in micro-USD per million tokens. Parsed apart.
   LLM_PRICES: z.string().optional(),
   LLM_MAX_TOKENS_PER_RUN: positiveInt(50_000),
+  // Token cap of one compilation, repairs included (F6, research R4).
+  LLM_MAX_TOKENS_PER_COMPILATION: positiveInt(30_000),
   LLM_MAX_TOKENS_PER_ORG_DAY: positiveInt(500_000),
   LLM_MAX_INPUT_CHARS: positiveInt(20_000),
   TEMPORAL_LLM_TASK_QUEUE: z.string().min(1).default('cognitive-dag-llm'),
@@ -102,7 +106,10 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
     rateLimits: rateLimits.limits,
     llmModels,
     llmPrices: prices.prices,
-    llmModelsWithoutPrice: modelsWithoutPrice(Object.values(llmModels), prices.prices),
+    llmModelsWithoutPrice: modelsWithoutPrice(
+      [...Object.values(llmModels), data.LLM_MODEL_COMPILER],
+      prices.prices,
+    ),
     llmModelRateLimit: modelLimit,
   };
 }

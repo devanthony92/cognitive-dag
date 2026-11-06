@@ -35,6 +35,9 @@ export const EnvSchema = z.object({
   SSE_HEARTBEAT_MS: z.coerce.number().int().min(50).max(60_000).default(15_000),
   // Daily token limit per organization (F5, research R4): the worker enforces it, the API shows it.
   LLM_MAX_TOKENS_PER_ORG_DAY: z.coerce.number().int().min(1).max(1_000_000_000).default(500_000),
+  // Compilations per person per hour and per organization per UTC day (F6, research R13).
+  COMPILER_MAX_PER_USER_HOUR: z.coerce.number().int().min(1).max(10_000).default(10),
+  COMPILER_MAX_PER_ORG_DAY: z.coerce.number().int().min(1).max(100_000).default(50),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });

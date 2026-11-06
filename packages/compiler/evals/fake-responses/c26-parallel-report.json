@@ -1,0 +1,80 @@
+[
+  {
+    "title": "Weekly report",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "first",
+        "type": "mock.service",
+        "label": "Pull sales data",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "second",
+        "type": "mock.service",
+        "label": "Pull marketing data",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "join",
+        "type": "logic.merge",
+        "label": "Unir ramas",
+        "config": {
+          "strategy": "all"
+        }
+      },
+      {
+        "id": "finish",
+        "type": "mock.service",
+        "label": "Build weekly report",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "first"
+      },
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "second"
+      },
+      {
+        "from": "first",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "second",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "join",
+        "fromHandle": "out",
+        "to": "finish"
+      }
+    ]
+  }
+]

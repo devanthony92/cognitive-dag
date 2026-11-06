@@ -1,0 +1,111 @@
+[
+  {
+    "title": "Stock reorder",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "stock",
+              "type": {
+                "kind": "number"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "check",
+        "type": "logic.condition",
+        "label": "Comparar",
+        "config": {
+          "condition": {
+            "op": "lt",
+            "left": {
+              "kind": "ref",
+              "path": "nodes.start.output.stock"
+            },
+            "right": {
+              "kind": "literal",
+              "type": "number",
+              "value": 10
+            }
+          }
+        }
+      },
+      {
+        "id": "yes",
+        "type": "mock.service",
+        "label": "Reorder from supplier",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "no",
+        "type": "mock.service",
+        "label": "Skip reorder",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "join",
+        "type": "logic.merge",
+        "label": "Unir ramas",
+        "config": {
+          "strategy": "any"
+        }
+      },
+      {
+        "id": "finish",
+        "type": "mock.service",
+        "label": "Update dashboard",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "check"
+      },
+      {
+        "from": "check",
+        "fromHandle": "true",
+        "to": "yes"
+      },
+      {
+        "from": "check",
+        "fromHandle": "false",
+        "to": "no"
+      },
+      {
+        "from": "yes",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "no",
+        "fromHandle": "out",
+        "to": "join"
+      },
+      {
+        "from": "join",
+        "fromHandle": "out",
+        "to": "finish"
+      }
+    ]
+  }
+]

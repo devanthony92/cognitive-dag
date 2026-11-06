@@ -33,6 +33,11 @@ export class LlmError extends Error {
   usage?: LlmUsage;
   /** Repairs attempted before the failure. */
   repairs?: number;
+  /**
+   * Last answer that passed the schema but failed the extra check, on `LLM_INVALID_OUTPUT` (F6,
+   * research R9): the compiler offers it as a draft. Never logged.
+   */
+  lastValue?: unknown;
   /** Wait asked by the provider, when it said so. */
   retryAfterMs?: number;
 

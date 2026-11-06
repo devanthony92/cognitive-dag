@@ -1,0 +1,69 @@
+[
+  {
+    "title": "Resumen semanal",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "news",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "write",
+        "type": "llm.generate",
+        "label": "Generar texto",
+        "config": {
+          "instruction": "Resume las novedades de la semana: {{nodes.start.output.news}}",
+          "language": "es",
+          "maxLength": 500
+        }
+      },
+      {
+        "id": "email",
+        "type": "mock.service",
+        "label": "Enviar por correo",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "chat",
+        "type": "mock.service",
+        "label": "Enviar por chat",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "write"
+      },
+      {
+        "from": "write",
+        "fromHandle": "out",
+        "to": "email"
+      },
+      {
+        "from": "write",
+        "fromHandle": "out",
+        "to": "chat"
+      }
+    ]
+  }
+]
