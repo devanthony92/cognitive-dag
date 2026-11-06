@@ -1,0 +1,188 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F6 NL compiler
+  version: 0.7.0
+  description: >
+    Extiende los contratos de F0–F5 (specs/006-cognitive-nodes/contracts/api.openapi.yaml). Solo se
+    listan los endpoints nuevos. Todos exigen sesión y membresía en la organización de la ruta. Crear
+    exige rol owner o editor (403 FORBIDDEN para viewer); leer, cualquier rol. Con el flag
+    nl-compiler-enabled apagado, todos responden 404 FEATURE_NOT_AVAILABLE. Aplicar el resultado usa
+    los endpoints de workflows de F2 (POST /workflows y PUT /workflows/{id}/draft); no hay endpoint de
+    aplicar aquí.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/organizations/{organizationId}/compilations:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    post:
+      operationId: createCompilation
+      description: >
+        Pide compilar una intención. Responde 202 con la compilación en estado queued y arranca el
+        workflow de Temporal compile-<id>. Sin workflowId crea en modo create; con workflowId, en modo
+        regenerate y guarda la draftRevision actual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompilationRequest' }
+      responses:
+        '202':
+          description: Compilación aceptada
+          headers:
+            Location: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Compilation' }
+        '400': { $ref: '#/components/responses/Problem' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '429':
+          description: COMPILER_RATE_LIMITED (por persona, con Retry-After) o COMPILER_DAILY_LIMIT (por organización)
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: listCompilations
+      description: Compilaciones recientes de la organización, más nuevas primero (máx. 20).
+      parameters:
+        - { name: workflowId, in: query, required: false, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    maxItems: 20
+                    items: { $ref: '#/components/schemas/Compilation' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/compilations/{compilationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/CompilationId'
+    get:
+      operationId: getCompilation
+      description: Estado y métricas, sin contenido. Para polling.
+      responses:
+        '200':
+          description: Compilación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Compilation' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/compilations/{compilationId}/result:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/CompilationId'
+    get:
+      operationId: getCompilationResult
+      description: >
+        Resultado leído del historial de Temporal. Si succeeded, el DAG generado; si failed con
+        hasFallback, el último intento con sus errores de validación. 409 COMPILER_NOT_FINISHED si
+        aún no termina; 409 COMPILER_NO_RESULT si falló sin fallback; 410 COMPILER_RESULT_EXPIRED si
+        Temporal ya purgó el historial.
+      responses:
+        '200':
+          description: Resultado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompilationResult' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: __Host-session }
+  parameters:
+    OrganizationId: { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
+    CompilationId: { name: compilationId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        code:
+          type: string
+          description: >
+            Nuevos en F6: COMPILER_INTENT_TOO_LONG, COMPILER_RATE_LIMITED, COMPILER_DAILY_LIMIT,
+            COMPILER_NOT_FINISHED, COMPILER_NO_RESULT, COMPILER_RESULT_EXPIRED. En la compilación
+            fallida (errorCode): COMPILER_INVALID_DAG, LLM_CONTENT_BLOCKED, LLM_DAILY_BUDGET_EXHAUSTED,
+            COMPILER_BUDGET_EXHAUSTED, LLM_DISABLED y los de la taxonomía de F4.
+        correlationId: { type: string, format: uuid }
+    CreateCompilationRequest:
+      type: object
+      additionalProperties: false
+      required: [intent]
+      properties:
+        intent: { type: string, minLength: 1, maxLength: 2000, description: Se recorta; vacía tras recortar es 400 }
+        workflowId: { type: string, format: uuid, description: Solo en modo regenerate }
+    ErrorClass:
+      type: string
+      enum: [transient, rate_limited, timeout, permanent, invalid_output, budget_exhausted]
+    Compilation:
+      type: object
+      required: [id, mode, status, model, calls, repairs, tokensUsed, costMicroUsd, hasFallback, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        workflowId: { type: [string, 'null'], format: uuid }
+        mode: { type: string, enum: [create, regenerate] }
+        baseDraftRevision: { type: [integer, 'null'], minimum: 1 }
+        status: { type: string, enum: [queued, running, succeeded, failed] }
+        model: { type: string }
+        calls: { type: integer, minimum: 0, maximum: 3 }
+        repairs: { type: integer, minimum: 0, maximum: 2 }
+        tokensUsed: { type: integer, minimum: 0 }
+        costMicroUsd: { type: integer, minimum: 0 }
+        nodeCount: { type: [integer, 'null'], minimum: 0 }
+        hasFallback: { type: boolean }
+        errorClass: { oneOf: [{ $ref: '#/components/schemas/ErrorClass' }, { type: 'null' }] }
+        errorCode: { type: [string, 'null'] }
+        requestedBy: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+    CompilationResult:
+      type: object
+      required: [kind, title, definition, validation]
+      properties:
+        kind: { type: string, enum: [result, fallback] }
+        title: { type: string, maxLength: 100, description: Nombre propuesto para un workflow nuevo }
+        definition:
+          type: object
+          description: DagDefinition de F2 (schemaVersion 1), con posiciones calculadas por capas.
+        validation:
+          type: object
+          required: [valid, issues]
+          properties:
+            valid: { type: boolean }
+            issues:
+              type: array
+              description: Mismo formato de errores de validación del borrador (F2).
+              items: { type: object }
+        omittedSensitiveFields:
+          type: array
+          description: Campos sensibles que el compilador quitó y la persona debe completar.
+          items:
+            type: object
+            required: [nodeId, field]
+            properties:
+              nodeId: { type: string }
+              field: { type: string }
