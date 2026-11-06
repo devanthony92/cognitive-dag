@@ -42,6 +42,8 @@ export async function loadRunLlmUsage(tx: Tx, runId: string): Promise<RunLlmUsag
   const byNode = new Map<string, LlmUsage>();
   const total = { calls: 0, inputTokens: 0, outputTokens: 0, costMicroUsd: 0, repairs: 0 };
   for (const row of rows) {
+    // The rows of a run always have a node; only a compilation's calls (F6) have none.
+    if (row.nodeId === null) continue;
     byNode.set(row.nodeId, {
       calls: row.calls,
       model: row.models === 1 ? row.model : null,

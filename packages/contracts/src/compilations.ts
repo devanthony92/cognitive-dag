@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { ErrorClassSchema } from './runs.js';
 import { DraftValidationSchema } from './workflows.js';
 
+/** Name of the Temporal workflow of a compilation; its id is `compile-<compilationId>`. */
+export const COMPILE_INTENT_WORKFLOW_NAME = 'compileIntent';
+
 /** Longest intent the compiler accepts (F6, research R13). */
 export const COMPILER_INTENT_MAX_CHARS = 2000;
 

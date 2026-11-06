@@ -12,10 +12,11 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --dir test/unit",
-    "test:integration": "vitest run test/integration test/replay",
+    "test:integration": "vitest run test/integration test/replay test/compiler",
     "test:chaos": "vitest run --config vitest.chaos.config.ts"
   },
   "dependencies": {
+    "@cognitive-dag/compiler": "workspace:*",
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/db": "workspace:*",

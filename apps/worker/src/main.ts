@@ -106,6 +106,10 @@ async function run(): Promise<void> {
       prices: config.llmPrices,
       maxInputChars: config.LLM_MAX_INPUT_CHARS,
       maxConcurrentActivities: config.LLM_MAX_CONCURRENT_ACTIVITIES,
+      compiler: {
+        model: config.LLM_MODEL_COMPILER,
+        maxTokensPerCompilation: config.LLM_MAX_TOKENS_PER_COMPILATION,
+      },
     });
     logger.info(
       { taskQueue: config.TEMPORAL_TASK_QUEUE, llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE },

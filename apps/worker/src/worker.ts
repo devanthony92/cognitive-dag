@@ -15,6 +15,9 @@ import type { BucketConfig } from './resilience/rate-limit-config';
 import type { LlmProvider, Prices } from '@cognitive-dag/llm';
 import { createLlmActivities, type LlmNodeType } from './llm/activities';
 import { createBudget, type BudgetLimits } from './llm/budget';
+import { createCompilerActivities } from './compiler/activities';
+import { createCompilerBudget } from './compiler/budget';
+import { createCompilationStore } from './compiler/store';
 
 /** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
 export function createWorkerId(): string {
@@ -123,6 +126,13 @@ export interface LlmWorkerOptions {
   maxInputChars: number;
   /** `LLM_MAX_CONCURRENT_ACTIVITIES`: LLM calls never take the slots of the other nodes. */
   maxConcurrentActivities: number;
+  /** The NL -> DAG compiler (F6); without it the worker does not serve `compileIntent`. */
+  compiler?: {
+    /** `LLM_MODEL_COMPILER` */
+    model: string;
+    /** `LLM_MAX_TOKENS_PER_COMPILATION` */
+    maxTokensPerCompilation: number;
+  };
 }
 
 /**
@@ -157,11 +167,34 @@ export function createLlmWorker(options: LlmWorkerOptions): Promise<Worker> {
         }
       : {}),
   });
+  const modelRateLimiter =
+    options.valkey && options.modelRateLimit
+      ? createModelRateLimiter({ valkey: options.valkey, limit: options.modelRateLimit })
+      : undefined;
+  const compiler = options.compiler
+    ? createCompilerActivities({
+        logger,
+        provider: options.provider,
+        budget: createCompilerBudget({
+          withContext: options.withContext,
+          limits: {
+            perCompilation: options.compiler.maxTokensPerCompilation,
+            perOrganizationDay: options.limits.perOrganizationDay,
+          },
+          logger,
+        }),
+        store: createCompilationStore(options.withContext),
+        enabled: options.enabled,
+        model: options.compiler.model,
+        prices: options.prices,
+        ...(modelRateLimiter ? { modelRateLimiter } : {}),
+      })
+    : {};
   return Worker.create({
     connection: options.connection,
     namespace: options.namespace,
     taskQueue: options.taskQueue,
-    activities: { ...activities },
+    activities: { ...activities, ...compiler },
     maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
     ...(options.shutdownGraceTime === undefined
       ? {}
