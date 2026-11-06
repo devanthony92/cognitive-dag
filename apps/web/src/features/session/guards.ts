@@ -6,6 +6,7 @@ import {
   isDagEditorEnabled,
   isExecutionEnabled,
   isIdentityEnabled,
+  isNlCompilerEnabled,
   isResilienceEnabled,
 } from '../flags';
 import { sessionQuery } from './session';
@@ -81,6 +82,20 @@ export async function requireResilience(
   await requireExecution(queryClient, organizationId);
   const features = await queryClient.ensureQueryData(featuresQuery);
   if (!isResilienceEnabled(features)) {
+    throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
+  }
+}
+
+/**
+ * The compiler screen does not exist for the user while `nl-compiler-enabled` (or the editor it
+ * feeds) is off (F6). The flag only hides the screen; the API answers 404 regardless of it.
+ */
+export async function requireCompiler(
+  queryClient: QueryClient,
+  organizationId: string,
+): Promise<void> {
+  const features = await queryClient.ensureQueryData(featuresQuery);
+  if (!isDagEditorEnabled(features) || !isNlCompilerEnabled(features)) {
     throw redirect({ to: '/orgs/$organizationId', params: { organizationId } });
   }
 }

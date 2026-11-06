@@ -4,7 +4,7 @@ import Valkey from 'iovalkey';
 import { NativeConnection } from '@temporalio/worker';
 import request from 'supertest';
 import type { Run, RunDetail } from '@cognitive-dag/contracts';
-import { FakeProvider } from '@cognitive-dag/llm';
+import { FakeProvider, type LlmProvider } from '@cognitive-dag/llm';
 import { createLlmWorker, createWorker } from '../../../worker/src/worker';
 import { startTestApp, testConfig, httpServer } from './helpers';
 import { authHeaders, type LoggedIn } from './identity-helpers';
@@ -35,7 +35,7 @@ export interface RunsEnv extends WorkflowsEnv {
 /** The workflows environment with `execution-enabled` on and a real worker that records runs. */
 export async function setupRunsEnv(
   overrides: Parameters<typeof startTestApp>[0] = {},
-  options: { llm?: boolean } = {},
+  options: { llm?: boolean; provider?: LlmProvider; compiler?: boolean } = {},
 ): Promise<RunsEnv> {
   const taskQueue = uniqueTaskQueue();
   const llmTaskQueue = options.llm ? uniqueTaskQueue() : undefined;
@@ -51,7 +51,7 @@ export async function setupRunsEnv(
   const valkey = new Valkey(testConfig().VALKEY_URL);
   const worker = await startRunsWorker(taskQueue, base.database, valkey);
   const llmWorker = llmTaskQueue
-    ? await startLlmWorker(llmTaskQueue, base.database, valkey)
+    ? await startLlmWorker(llmTaskQueue, base.database, valkey, options)
     : undefined;
   return { ...base, app, taskQueue, worker, valkey, ...(llmWorker ? { llmWorker } : {}) };
 }
@@ -60,6 +60,7 @@ async function startLlmWorker(
   taskQueue: string,
   database: WorkflowsEnv['database'],
   valkey: Valkey,
+  options: { provider?: LlmProvider; compiler?: boolean } = {},
 ): Promise<RunningWorker> {
   const config = testConfig();
   const connection = await NativeConnection.connect({ address: config.TEMPORAL_ADDRESS });
@@ -67,7 +68,7 @@ async function startLlmWorker(
     connection,
     namespace: config.TEMPORAL_NAMESPACE,
     taskQueue,
-    provider: new FakeProvider(),
+    provider: options.provider ?? new FakeProvider(),
     withContext: database.withContext,
     valkey,
     limits: { perRun: 50_000, perOrganizationDay: 500_000 },
@@ -81,6 +82,9 @@ async function startLlmWorker(
     maxInputChars: 10_000,
     maxConcurrentActivities: 2,
     shutdownGraceTime: '1s',
+    ...(options.compiler
+      ? { compiler: { model: 'test-compiler', maxTokensPerCompilation: 30_000 } }
+      : {}),
   });
   const done = worker.run().finally(() => connection.close());
   return {

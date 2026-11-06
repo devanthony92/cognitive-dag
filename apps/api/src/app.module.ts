@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { ZodValidationPipe } from 'nestjs-zod';
+import { CompilationsModule } from './compilations/compilations.module';
 import { CorrelationModule } from './common/correlation/correlation.module';
 import { ProblemDetailsFilter } from './common/errors/problem-details.filter';
 import { JsonBodyMiddleware } from './common/http/json-body.middleware';
@@ -50,6 +51,7 @@ export class AppModule implements NestModule {
         WorkflowsModule,
         RunsModule,
         LlmUsageModule,
+        CompilationsModule,
       ],
       providers: [
         { provide: APP_FILTER, useClass: ProblemDetailsFilter },

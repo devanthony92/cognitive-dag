@@ -208,6 +208,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@cognitive-dag/compiler':
+        specifier: workspace:*
+        version: link:../../packages/compiler
       '@cognitive-dag/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

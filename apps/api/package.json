@@ -15,6 +15,7 @@
     "test:integration": "vitest run --dir test/integration"
   },
   "dependencies": {
+    "@cognitive-dag/compiler": "workspace:*",
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/db": "workspace:*",
