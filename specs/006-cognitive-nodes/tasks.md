@@ -87,7 +87,7 @@ día). Kill switch del worker: `LLM_ENABLED`.
 - [X] T037 [P] ADRs (research, "ADRs previstos"), enmienda PATCH de la constitution (TDD en `packages/llm`), actualización de ADR-0060
 - [X] T038 [P] `docs/threat-model.md` (filas LLM a `mitigated`, riesgo de capa gratuita aceptado), `docs/PLAN.md` (O6 cerrada, F5 completada, §5.4), `README.md`
 - [X] T039 Issue para eliminar `llm-nodes-enabled`
-- [ ] T040 Ejecutar los 13 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T040 Ejecutar los 13 escenarios de `quickstart.md` y registrar resultados en la PR
 - [X] T041 Checklist de Security Considerations en la PR
 
 ---
