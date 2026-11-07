@@ -47,5 +47,5 @@
   reintentos de 3 intentos y 30 s, pausa de la aprobación fuera del límite de concurrencia.
 - Desviaciones de `docs/PLAN.md` a registrar en ADR: token en lugar de HMAC (ADR-0072), Update en lugar
   de Signal y sin estado `waiting_approval` (ADR-0074).
-- Pendiente antes de `tasks.md`: aprobación del autor de `data-model.md`.
+- `data-model.md` aprobado por el autor el 2026-11-07; `tasks.md` puede generarse.
 - Validación: 1 iteración, todos los ítems pasan.

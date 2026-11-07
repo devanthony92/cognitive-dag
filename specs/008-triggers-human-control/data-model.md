@@ -1,8 +1,7 @@
 # Data Model: Triggers y control humano (F7)
 
-> **Estado: PENDIENTE de aprobación del autor.** Hasta que el autor lo apruebe no se genera
-> `tasks.md` ni se escribe ninguna migración. Cualquier cambio posterior a la aprobación requiere
-> nueva revisión del autor.
+> **Estado: APROBADO por el autor el 2026-11-07.** Cualquier cambio posterior requiere nueva
+> revisión del autor.
 
 Cinco tablas nuevas (`webhook_triggers`, `workflow_schedules`, `approvals`, `credentials`,
 `http_allowed_hosts`), dos tipos enumerados, cambios en `workflow_runs`, `workflow_run_steps` y
