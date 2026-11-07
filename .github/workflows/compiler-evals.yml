@@ -1,0 +1,32 @@
+name: Compiler evals
+
+# Evaluation of the NL -> DAG compiler (F6) against the real Gemini model: intent dataset plus the
+# prompt injection set. It spends the free tier of the key and sends test data only, so it never
+# runs on a pull request or on a schedule: it is started by hand. CI checks use recorded answers.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compiler-evals
+  cancel-in-progress: false
+
+jobs:
+  evals:
+    name: compiler-evals
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Evals against Gemini
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: pnpm eval:compiler -- --provider gemini

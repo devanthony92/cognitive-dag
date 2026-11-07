@@ -34,7 +34,7 @@ Razón: los fallos de terceros son la norma, no la excepción.
 ### III. Pruebas primero donde el riesgo es mayor
 
 - TDD es obligatorio (rojo → verde → refactor) en `packages/dag-schema`,
-  `packages/resilience`, `packages/llm` y en las reglas de autorización.
+  `packages/resilience`, `packages/llm`, `packages/compiler` y en las reglas de autorización.
 - Cada control OWASP aplicado DEBE tener al menos una prueba que lo demuestre.
 - Los workflows DEBEN tener pruebas de replay de historiales en CI.
 - Todo comportamiento detrás de un feature flag DEBE probarse con el flag encendido y apagado.
@@ -118,4 +118,4 @@ Razón: los fallos de terceros son la norma, no la excepción.
   DEBE indicar qué principios aplican y cómo se cumplen. Toda excepción DEBE justificarse en
   la sección "Complexity Tracking" del plan.
 
-**Version**: 1.0.1 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-05
+**Version**: 1.0.2 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-06
