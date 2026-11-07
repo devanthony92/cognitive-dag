@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0, F1, F2, F3, F4 y F5 completadas; F6 (compilador NL → DAG) es la siguiente fase. Fecha: 2026-11-05.
+> Estado: F0, F1, F2, F3, F4, F5 y F6 completadas; F7 (triggers y control humano) es la siguiente fase. Fecha: 2026-11-06.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -72,14 +72,14 @@ Modelo de amenazas v1.2: [`threat-model.md`](threat-model.md).
 
 ## 3. Decisiones abiertas
 
-| #   | Tema                                            | Opciones                         | Recomendación                                                                                                                                                                                                               |
-| --- | ----------------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely          | **Cerrada en F1: Drizzle** ([ADR-0024](adr/0024-drizzle-como-orm.md))                                                                                                                                                       |
-| O2  | Autenticación                                   | Propia o librería                | **Cerrada en F1: propia** con Argon2id y sesiones opacas en cookie ([ADR-0025](adr/0025-argon2id-para-contrasenas.md), [ADR-0027](adr/0027-sesiones-opacas-y-csrf.md))                                                      |
-| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL               | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4                                                       |
-| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | **Cerrada en F2: AST propio** pequeño y tipado en Zod; nunca `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md))                                                                                |
-| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio | Grafana Cloud free para no consumir RAM de la VM                                                                                                                                                                            |
-| O6  | Modelo Gemini concreto (**cerrada en F5**)      | Familia Flash / Flash-Lite / Pro | Cerrada: Flash-Lite (`gemini-3.5-flash-lite`) para clasificar, extraer y generar, por variable de entorno ([ADR-0066](adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md)); el compilador de F6 elegirá el suyo |
+| #   | Tema                                            | Opciones                         | Recomendación                                                                                                                                                                                                                                                                                                                                           |
+| --- | ----------------------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| O1  | ORM / acceso a datos                            | Drizzle, Prisma, Kysely          | **Cerrada en F1: Drizzle** ([ADR-0024](adr/0024-drizzle-como-orm.md))                                                                                                                                                                                                                                                                                   |
+| O2  | Autenticación                                   | Propia o librería                | **Cerrada en F1: propia** con Argon2id y sesiones opacas en cookie ([ADR-0025](adr/0025-argon2id-para-contrasenas.md), [ADR-0027](adr/0027-sesiones-opacas-y-csrf.md))                                                                                                                                                                                  |
+| O3  | Estado compartido (circuit breaker, rate limit) | Redis o PostgreSQL               | **Cerrada en F0: Valkey** (imagen en `compose.yaml`, cliente `iovalkey`; [ADR-0016](adr/0016-librerias-del-api.md)). Token bucket y CB con operaciones atómicas en F4                                                                                                                                                                                   |
+| O4  | Lenguaje de condiciones                         | JSONLogic, AST propio            | **Cerrada en F2: AST propio** pequeño y tipado en Zod; nunca `eval` ([ADR-0043](adr/0043-ast-de-condiciones-y-plantillas-sin-evaluacion.md))                                                                                                                                                                                                            |
+| O5  | Observabilidad en producción                    | Grafana Cloud free, stack propio | Grafana Cloud free para no consumir RAM de la VM                                                                                                                                                                                                                                                                                                        |
+| O6  | Modelo Gemini concreto (**cerrada en F5**)      | Familia Flash / Flash-Lite / Pro | Cerrada: Flash-Lite (`gemini-3.5-flash-lite`) para clasificar, extraer y generar, por variable de entorno ([ADR-0066](adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md)); el compilador de F6 usa el suyo, `LLM_MODEL_COMPILER` ([ADR-0071](adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md)); cerrada del todo en F6 |
 
 ## 4. Arquitectura
 
@@ -298,6 +298,10 @@ parcialmente al compilador y a futuras extensiones agénticas.
 - Pruebas de workflow y replay (sección 5.6).
 - **Evals del compilador**: dataset de intenciones con propiedades esperadas del DAG;
   se ejecutan bajo demanda o de forma programada por costo.
+- **Métrica de éxito del compilador (cerrada en F6)**: `pnpm eval:compiler` sobre 30 intenciones y 10 casos de
+  inyección. Umbral: ≥ 80 % de intenciones que compilan en un DAG válido con las propiedades esperadas y
+  0 escapes de inyección. Con respuestas grabadas corre en cada PR; contra Gemini corre a mano
+  (`compiler-evals.yml`). Resultado y modelo en [ADR-0071](adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md).
 - CI en GitHub Actions: lint, typecheck, test, audit, escaneo de secretos, build de imágenes.
 - ADRs para cada decisión relevante.
 

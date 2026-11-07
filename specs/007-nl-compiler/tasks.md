@@ -77,12 +77,12 @@ llama a Gemini: usan `FakeProvider`.
 
 ## Phase 5: Verificación y cierre (PR 4)
 
-- [ ] T031 [P] [US7] `pnpm eval:compiler` con Gemini (local) y job manual `.github/workflows/compiler-evals.yml` (`workflow_dispatch`, secret `GEMINI_API_KEY`); registrar tasa, reparaciones, tokens y costo
-- [ ] T032 [P] ADRs 0067–0071 (research, "ADRs previstos") y enmienda PATCH de la constitution (TDD en `packages/compiler`)
-- [ ] T033 [P] `docs/threat-model.md` (compilador: LLM01, LLM03, LLM06), `docs/PLAN.md` (F6 completada, O6 cerrada del todo, métrica de éxito del compilador), `README.md`
-- [ ] T034 Issue para eliminar `nl-compiler-enabled`
-- [ ] T035 Ejecutar los 12 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T036 Checklist de Security Considerations en la PR
+- [X] T031 [P] [US7] `pnpm eval:compiler` con Gemini (local) y job manual `.github/workflows/compiler-evals.yml` (`workflow_dispatch`, secret `GEMINI_API_KEY`); registrar tasa, reparaciones, tokens y costo
+- [X] T032 [P] ADRs 0067–0071 (research, "ADRs previstos") y enmienda PATCH de la constitution (TDD en `packages/compiler`)
+- [X] T033 [P] `docs/threat-model.md` (compilador: LLM01, LLM03, LLM06), `docs/PLAN.md` (F6 completada, O6 cerrada del todo, métrica de éxito del compilador), `README.md`
+- [X] T034 Issue para eliminar `nl-compiler-enabled`
+- [X] T035 Ejecutar los 12 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T036 Checklist de Security Considerations en la PR
 
 ---
 

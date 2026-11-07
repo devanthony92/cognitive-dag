@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`). **F6 — natural language compiler: complete** (behind `nl-compiler-enabled`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -74,7 +74,18 @@ F5 adds:
 | Verification  | Injection set run in CI against the fake provider; `pnpm eval:llm` against Gemini (manual, workflow `llm-evals.yml`)                                 |
 | Documentation | 66 architecture decision records; threat model v1.5 with the F5 rows; constitution 1.0.1 (TDD in `packages/llm`)                                     |
 
-**Next: F6 — natural language compiler.** Until F9 the system runs locally only and is not deployed
+F6 adds:
+
+| Area          | What F6 delivers                                                                                                                                         |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Compiler      | `packages/compiler`: closed node catalog, prompt, intermediate format, translation to `DagDefinition` and a layered layout; the output is only a draft   |
+| Execution     | `compileIntent` workflow with the activity on the LLM queue; the content lives only in the Temporal history, PostgreSQL keeps metadata                   |
+| Safety        | Filtered catalog, sensitive fields stripped, nonce and canary, bounded repair, intent limit, per-person and per-organization limits, shared token budget |
+| Web           | "Describir workflow" (create) and "Regenerar borrador" (replace the draft with a revision check), read-only preview, metrics and free tier notice        |
+| Verification  | `pnpm eval:compiler`: 30 intents and 10 injection cases; recorded answers in CI, Gemini by hand (workflow `compiler-evals.yml`)                          |
+| Documentation | 71 architecture decision records; threat model v1.6 with the F6 rows; constitution 1.0.2 (TDD in `packages/compiler`)                                    |
+
+**Next: F7 — triggers and human control.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -122,6 +133,7 @@ keeps sessions and rate-limit counters in Valkey.
 | [specs/002-identity-tenancy/](specs/002-identity-tenancy/)         | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 | [specs/005-resilience/](specs/005-resilience/)                     | F4 spec, plan, research, data model, tasks and quickstart (es)             |
 | [specs/006-cognitive-nodes/](specs/006-cognitive-nodes/)           | F5 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| [specs/007-nl-compiler/](specs/007-nl-compiler/)                   | F6 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 
 The project follows Spec-Driven Development with [GitHub Spec Kit](https://github.com/github/spec-kit).
 
@@ -274,6 +286,29 @@ pnpm eval:llm
 
 The decisions are in [ADR-0061](docs/adr/0061-paquete-llm-con-proveedor-intercambiable.md) to
 [ADR-0066](docs/adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md).
+
+## Natural language compiler (F6, behind `nl-compiler-enabled`)
+
+With `nl-compiler-enabled` on (default in `.env.example`) the workflows page offers "Describir workflow":
+describe an automation in up to 2000 characters and the compiler returns a **draft** DAG shown in a
+read-only preview. You can create a workflow with it or, from the editor, replace the current draft
+("Regenerar borrador"). Nothing runs until a person publishes the workflow. Owners and editors can
+compile; limits are 10 compilations per person per hour and 50 per organization per day, and the
+model (`LLM_MODEL_COMPILER`) and token cap per compilation are set in the environment (see
+`.env.example`). The free tier of Gemini may use what is sent: **test data only** until F9.
+
+`pnpm eval:compiler` compiles the intent dataset and the injection set. By default it replays recorded
+answers (deterministic, the same as in CI); with `--provider gemini` it calls the real model, needs
+`GEMINI_API_KEY` and spends free tier quota (also available as the `Compiler evals` workflow, started
+by hand). It exits 1 under 80 % success or on any escape.
+
+```bash
+pnpm eval:compiler
+pnpm eval:compiler -- --provider gemini
+```
+
+The decisions are in [ADR-0067](docs/adr/0067-compilador-asincrono-en-temporal-con-contenido-solo-en-el-historial.md) to
+[ADR-0071](docs/adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md).
 
 ## Recovery demo
 
