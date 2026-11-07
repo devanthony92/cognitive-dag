@@ -12,7 +12,7 @@ la IP, credenciales con cifrado de sobre, respuesta acotada, circuit breaker por
 cola `http`). Paquete nuevo `packages/connectors` (puro, TDD). Cinco tablas nuevas, RLS forzado y
 `app_runtime` sin `DELETE`. Todo detrás de `triggers-enabled`; el compilador de F6 no ofrece los nodos
 nuevos. Decisiones en [research.md](./research.md); modelo en [data-model.md](./data-model.md)
-(**pendiente de aprobación del autor**).
+(aprobado el 2026-11-07).
 
 ## Technical Context
 
