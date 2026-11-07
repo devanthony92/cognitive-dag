@@ -32,6 +32,21 @@ export interface IntermediateLimits {
 }
 
 /**
+ * The model writes `config` as the text of a JSON object: Gemini fills an object schema without
+ * properties with `{}`, so a free-form object never carries the fields of the node. An object (the
+ * recorded answers and the fake provider) is accepted as is; text that is not a JSON object stays
+ * as it is and fails the record check, which the repair loop reports.
+ */
+function parseConfigText(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+/**
  * Schema of the intermediate DAG: a Zod validator and the JSON Schema sent as structured output.
  * The configuration of each node is an open object here; its shape is checked per type by the
  * semantic validation, whose errors drive the repairs.
@@ -50,7 +65,7 @@ export function intermediateSchema(
           id: NodeIdSchema,
           type: typeEnum,
           label: z.string().trim().min(1).max(MAX_LABEL_LENGTH),
-          config: z.record(z.string(), z.unknown()),
+          config: z.preprocess(parseConfigText, z.record(z.string(), z.unknown())),
         }),
       )
       .min(1)
@@ -66,21 +81,27 @@ export function intermediateSchema(
       .max(limits.maxEdges),
   });
 
+  // No minItems/maxItems here: Gemini rejects (400 INVALID_ARGUMENT) the schema when both arrays carry
+  // them next to the id pattern and the length limits. The validator above still enforces the counts
+  // and a violation goes through the repair loop.
   const jsonSchema: JsonSchema = {
     type: 'object',
     properties: {
       title: { type: 'string', minLength: 1, maxLength: MAX_TITLE_LENGTH },
       nodes: {
         type: 'array',
-        minItems: 1,
-        maxItems: limits.maxNodes,
         items: {
           type: 'object',
           properties: {
             id: { type: 'string', pattern: NODE_ID_PATTERN.source },
             type: { type: 'string', enum: [...types] },
             label: { type: 'string', minLength: 1, maxLength: MAX_LABEL_LENGTH },
-            config: { type: 'object' },
+            config: {
+              type: 'string',
+              description:
+                'The node config as the text of a JSON object that follows the guide of its type. Use "{}" when the type has no fields.',
+              default: '{}',
+            },
           },
           required: ['id', 'type', 'label', 'config'],
           additionalProperties: false,
@@ -88,7 +109,6 @@ export function intermediateSchema(
       },
       edges: {
         type: 'array',
-        maxItems: limits.maxEdges,
         items: {
           type: 'object',
           properties: {

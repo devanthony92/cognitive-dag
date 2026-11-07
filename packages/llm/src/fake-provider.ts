@@ -19,6 +19,7 @@ const tokens = (text: string): number => Math.ceil(text.length / 4);
 export function sampleFromJsonSchema(schema: JsonSchema): unknown {
   const enumValues = schema.enum as unknown[] | undefined;
   if (enumValues) return enumValues[0];
+  if (typeof schema.default === 'string') return schema.default;
   switch (schema.type) {
     case 'string':
       return schema.format === 'date-time' ? '2026-01-01T00:00:00Z' : 'texto de ejemplo';

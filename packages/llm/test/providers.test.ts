@@ -3,6 +3,7 @@ import {
   FakeProvider,
   GeminiProvider,
   runGuarded,
+  sampleFromJsonSchema,
   toJsonSchema,
   type GeminiClient,
   type LlmRequest,
@@ -21,6 +22,13 @@ const request: LlmRequest = {
   }),
   maxOutputTokens: 100,
 };
+
+describe('sampleFromJsonSchema', () => {
+  it('uses the string default of a schema when it has one', () => {
+    expect(sampleFromJsonSchema({ type: 'string', default: '{}' })).toBe('{}');
+    expect(sampleFromJsonSchema({ type: 'string' })).toBe('texto de ejemplo');
+  });
+});
 
 describe('FakeProvider', () => {
   it('counts tokens as ceil(chars / 4)', async () => {
