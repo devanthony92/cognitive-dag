@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { CorrelationIdSchema } from './correlation.js';
 import { LlmUsageSchema } from './llm.js';
+import { PersonRefSchema } from './primitives.js';
 
 export const EXECUTE_DAG_WORKFLOW_NAME = 'executeDag';
 
@@ -15,6 +16,13 @@ export const RUN_EXECUTION_TIMEOUT = '31 minutes';
 
 /** Task queue of the LLM activities when the input does not name one (research R6). */
 export const DEFAULT_LLM_TASK_QUEUE = 'cognitive-dag-llm';
+
+/** Task queue of the HTTP activities when the input does not name one (F7, research R12). */
+export const DEFAULT_HTTP_TASK_QUEUE = 'cognitive-dag-http';
+
+/** What started a run (F7, research R14). */
+export const RunTriggerKindSchema = z.enum(['manual', 'webhook', 'schedule']);
+export type RunTriggerKind = z.infer<typeof RunTriggerKindSchema>;
 
 export const RUN_ID_PREFIX = 'run-';
 
@@ -58,6 +66,15 @@ export const ExecuteDagInputSchema = z.strictObject({
    * read the environment; without it the default queue is used.
    */
   llmTaskQueue: z.string().min(1).max(255).optional(),
+  /**
+   * Task queue of the HTTP activities (`TEMPORAL_HTTP_TASK_QUEUE`, F7 research R12). Same reason as
+   * `llmTaskQueue`: the workflow cannot read the environment.
+   */
+  httpTaskQueue: z.string().min(1).max(255).optional(),
+  /** What fired the run (F7). */
+  triggerKind: RunTriggerKindSchema.optional(),
+  /** Programmed time of a scheduled firing: the output of `trigger.schedule` reports it. */
+  scheduledAt: z.iso.datetime().optional(),
 });
 
 export type ExecuteDagInput = z.infer<typeof ExecuteDagInputSchema>;
@@ -87,8 +104,8 @@ export const ErrorClassSchema = z.enum([
 ]);
 export type ErrorClass = z.infer<typeof ErrorClassSchema>;
 
-/** Why a running step is not progressing. */
-export const WaitingReasonSchema = z.enum(['rate_limited']);
+/** Why a running step is not progressing (`approval` and `circuit_open` since F7). */
+export const WaitingReasonSchema = z.enum(['rate_limited', 'approval', 'circuit_open']);
 export type WaitingReason = z.infer<typeof WaitingReasonSchema>;
 
 export const FINAL_RUN_STATUSES = ['succeeded', 'failed', 'cancelled', 'timed_out'] as const;
@@ -118,6 +135,28 @@ export const RUN_ERROR_CODES = {
   timedOut: 'RUN_TIMED_OUT',
   internal: 'INTERNAL_ERROR',
 } as const;
+
+/**
+ * Error codes an `http.request` step can record (F7, research R9, R11, R12). The HTTP client of
+ * `@cognitive-dag/connectors` emits the first eleven; the worker adds the circuit breaker, the kill
+ * switch and the credential.
+ */
+export const HTTP_STEP_ERROR_CODES = [
+  'SSRF_BLOCKED_ADDRESS',
+  'HTTP_HOST_NOT_ALLOWED',
+  'HTTP_REDIRECT_NOT_ALLOWED',
+  'HTTP_TOO_MANY_REDIRECTS',
+  'HTTP_RESPONSE_TOO_LARGE',
+  'HTTP_CONTENT_TYPE_UNSUPPORTED',
+  'HTTP_URL_INVALID',
+  'HTTP_HEADER_FORBIDDEN',
+  'HTTP_TLS_ERROR',
+  'HTTP_NETWORK_ERROR',
+  'HTTP_TIMEOUT',
+  'HTTP_CIRCUIT_OPEN',
+  'HTTP_DISABLED',
+  'CREDENTIAL_UNAVAILABLE',
+] as const;
 
 /** Longest `error_message` the database accepts. */
 export const RUN_ERROR_MESSAGE_MAX = 500;
@@ -162,6 +201,45 @@ export const RunEventSchema = z.discriminatedUnion('transition', [
     /** Set while the step waits for the rate limit; a later `step.running` without it clears it. */
     waitingReason: WaitingReasonSchema.optional(),
   }).extend(NodeRefSchema.shape),
+  EventBaseSchema.extend({
+    transition: z.literal('approval.requested'),
+    /** Label of the node in the definition; the message itself lives only in Temporal. */
+    nodeLabel: z.string().min(1).max(100),
+    expiresAt: z.iso.datetime(),
+  }).extend(NodeRefSchema.shape),
+  EventBaseSchema.extend({
+    transition: z.literal('approval.resolved'),
+    outcome: z.enum(['approved', 'rejected', 'timed_out', 'cancelled']),
+    /** The person who decided; only for `approved` and `rejected`. */
+    decidedBy: z.uuid().optional(),
+    /** Whether the decision carried a comment; its text lives only in Temporal. */
+    hasComment: z.boolean(),
+  })
+    .extend(NodeRefSchema.shape)
+    .superRefine((event, ctx) => {
+      const decided = event.outcome === 'approved' || event.outcome === 'rejected';
+      if (decided && event.decidedBy === undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Una decisión necesita quién la tomó.',
+          path: ['decidedBy'],
+        });
+      }
+      if (!decided && event.decidedBy !== undefined) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Sin decisión no hay quién decidió.',
+          path: ['decidedBy'],
+        });
+      }
+      if (!decided && event.hasComment) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Sin decisión no hay comentario.',
+          path: ['hasComment'],
+        });
+      }
+    }),
   EventBaseSchema.extend({
     transition: z.enum([
       'step.succeeded',
@@ -222,12 +300,22 @@ const ErrorBodySchema = z.object({
   class: ErrorClassSchema.optional(),
 });
 
+/** What started the run; `eventId` and `scheduledAt` apply to a webhook and a schedule (F7, R14). */
+export const RunTriggerSchema = z.object({
+  kind: RunTriggerKindSchema,
+  eventId: z.string().nullable(),
+  scheduledAt: z.iso.datetime().nullable(),
+});
+export type RunTrigger = z.infer<typeof RunTriggerSchema>;
+
 export const RunSchema = z.object({
   id: z.uuid(),
   workflowId: z.uuid(),
   versionNumber: z.int().min(1),
   status: RunStatusSchema,
-  triggeredBy: z.object({ id: z.uuid(), name: z.string() }),
+  /** The person who started the run; null when a webhook or a schedule did (F7, research R14). */
+  triggeredBy: PersonRefSchema.nullable(),
+  trigger: RunTriggerSchema,
   rerunOf: z.uuid().nullable(),
   /** Node a rerun started from; null for a complete run or a complete rerun. */
   rerunFromNodeId: z.string().nullable(),

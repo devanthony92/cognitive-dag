@@ -54,6 +54,13 @@ export const LLM_RETRY_DEFAULTS: RetryPolicy = {
   initialIntervalMs: 2000,
 };
 
+/** Retry policy of `http.request` (F7, research R11): 3 attempts of 30 s, 1 s of initial wait. */
+export const HTTP_RETRY_DEFAULTS: RetryPolicy = {
+  maxAttempts: 3,
+  timeoutSeconds: 30,
+  initialIntervalMs: 1000,
+};
+
 /** Optional per-node switch that masks personal data before the text leaves (F5, R9). */
 export const redactPii = () => z.boolean().default(false);
 

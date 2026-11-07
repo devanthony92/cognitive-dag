@@ -19,6 +19,7 @@
     "format:check": "prettier --check .",
     "db:generate": "pnpm --filter @cognitive-dag/db generate",
     "db:migrate": "pnpm --filter @cognitive-dag/db migrate",
+    "credentials:gen-key": "node scripts/credentials-gen-key.ts",
     "ops:set-limits": "turbo run build --filter=@cognitive-dag/scripts^... && node scripts/ops/set-limits.ts",
     "test:chaos": "turbo run test:chaos --concurrency=1",
     "eval:llm": "turbo run build --filter=@cognitive-dag/scripts^... && node scripts/eval/llm.ts",

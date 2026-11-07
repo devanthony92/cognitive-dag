@@ -65,6 +65,7 @@ describe('LlmUsage', () => {
       versionNumber: 1,
       status: 'succeeded',
       triggeredBy: { id: randomUUID(), name: 'Ana' },
+      trigger: { kind: 'manual', eventId: null, scheduledAt: null },
       rerunOf: null,
       rerunFromNodeId: null,
       correlationId: randomUUID(),

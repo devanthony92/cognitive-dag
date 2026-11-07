@@ -48,6 +48,8 @@ export function toRun(row: RunRow, names: Map<string, string>): Run {
     versionNumber: row.versionNumber,
     status: row.status,
     triggeredBy: { id: row.triggeredBy, name: names.get(row.triggeredBy) ?? UNKNOWN_USER },
+    // Every run is manual until F7 adds the trigger columns (PR 2); webhooks and schedules come later.
+    trigger: { kind: 'manual', eventId: null, scheduledAt: null },
     rerunOf: row.rerunOf,
     rerunFromNodeId: row.rerunFromNodeId,
     correlationId: row.correlationId,

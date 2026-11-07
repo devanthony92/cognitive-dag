@@ -30,6 +30,7 @@ describe('retry setting on nodes', () => {
       'llm.classify',
       'llm.extract',
       'llm.generate',
+      'http.request',
       'mock.service',
     ]);
   });

@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { DEFAULT_LLM_TASK_QUEUE } from '@cognitive-dag/contracts';
+import { parseMasterKey } from '@cognitive-dag/connectors';
+import {
+  DEFAULT_HTTP_TASK_QUEUE,
+  DEFAULT_LLM_TASK_QUEUE,
+  DEFAULT_WEBHOOK_MAX_BODY_BYTES,
+  DEFAULT_WEBHOOK_TIMESTAMP_WINDOW_SECONDS,
+} from '@cognitive-dag/contracts';
 import { ABSOLUTE_LIMITS } from '@cognitive-dag/dag-schema';
 
 /** A ceiling can only lower the absolute maximum of the platform (research R12). */
@@ -40,6 +46,24 @@ export const EnvSchema = z.object({
   COMPILER_MAX_PER_ORG_DAY: z.coerce.number().int().min(1).max(100_000).default(50),
   // Model recorded on each compilation; the worker reads the same variable to call it (F6, R5).
   LLM_MODEL_COMPILER: z.string().min(1).max(64).default('gemini-3.5-flash-lite'),
+  // Queue of the HTTP activities (F7, R12): handed to the workflow like the LLM one.
+  TEMPORAL_HTTP_TASK_QUEUE: z.string().min(1).max(255).default(DEFAULT_HTTP_TASK_QUEUE),
+  // Master key of the envelope encryption of credentials (F7, R10): base64 of 32 bytes. Optional
+  // outside production; without it the credential endpoints answer CREDENTIALS_NOT_CONFIGURED.
+  CREDENTIALS_MASTER_KEY: z.string().optional(),
+  // Public webhook (F7, R3): body cap and half-width of the accepted timestamp window.
+  WEBHOOK_MAX_BODY_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(10_485_760)
+    .default(DEFAULT_WEBHOOK_MAX_BODY_BYTES),
+  WEBHOOK_TIMESTAMP_WINDOW_SECONDS: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(3600)
+    .default(DEFAULT_WEBHOOK_TIMESTAMP_WINDOW_SECONDS),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });
@@ -47,7 +71,10 @@ export const EnvSchema = z.object({
 /** Shape of FEATURE_FLAGS: flag key to boolean value. */
 export const FeatureFlagsSchema = z.record(z.string().min(1), z.boolean());
 
-export type AppConfig = z.infer<typeof EnvSchema>;
+export type AppConfig = z.infer<typeof EnvSchema> & {
+  /** `CREDENTIALS_MASTER_KEY` decoded; absent when the variable is not set (never in production). */
+  credentialsMasterKey: Buffer | undefined;
+};
 
 export class InvalidConfigError extends Error {
   constructor(readonly variables: string[]) {
@@ -62,9 +89,22 @@ export class InvalidConfigError extends Error {
  */
 export function parseEnv(env: NodeJS.ProcessEnv): AppConfig {
   const result = EnvSchema.safeParse(env);
+  const invalid = new Set<string>();
   if (!result.success) {
-    const variables = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
-    throw new InvalidConfigError(variables.sort());
+    for (const issue of result.error.issues) invalid.add(String(issue.path[0]));
   }
-  return result.data;
+  const masterKeyText = env.CREDENTIALS_MASTER_KEY === '' ? undefined : env.CREDENTIALS_MASTER_KEY;
+  let credentialsMasterKey: Buffer | undefined;
+  if (masterKeyText !== undefined) {
+    try {
+      credentialsMasterKey = parseMasterKey(masterKeyText);
+    } catch {
+      invalid.add('CREDENTIALS_MASTER_KEY');
+    }
+  } else if (env.NODE_ENV === 'production') {
+    invalid.add('CREDENTIALS_MASTER_KEY');
+  }
+  if (!result.success || invalid.size > 0) throw new InvalidConfigError([...invalid].sort());
+  // The raw key stays out of the config object: only the decoded buffer travels.
+  return { ...result.data, CREDENTIALS_MASTER_KEY: undefined, credentialsMasterKey };
 }

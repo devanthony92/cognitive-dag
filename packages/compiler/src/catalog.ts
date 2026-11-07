@@ -84,8 +84,15 @@ export function nodeTypesExecutableIn(phases: readonly ExecutableFrom[]): NodeTy
   return NODE_TYPES.filter((type) => phases.includes(NODE_CATALOG[type].executableFrom));
 }
 
-/** Types the compiler may offer to an organization: F3, plus F5 with `llm-nodes-enabled`. */
-export function allowedNodeTypes(flags: { llmNodesEnabled: boolean }): NodeType[] {
+/**
+ * Types the compiler may offer to an organization: F3, plus F5 with `llm-nodes-enabled`. The nodes of
+ * F7 are not offered even with `triggers-enabled` on (F7 decision 13C: they reach the compiler in
+ * F8), so that flag is accepted and ignored.
+ */
+export function allowedNodeTypes(flags: {
+  llmNodesEnabled: boolean;
+  triggersEnabled?: boolean;
+}): NodeType[] {
   return nodeTypesExecutableIn(flags.llmNodesEnabled ? ['F3', 'F5'] : ['F3']);
 }
 

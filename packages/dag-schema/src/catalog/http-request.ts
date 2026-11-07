@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defineNode, object, templateText } from './shared.js';
+import { HTTP_RETRY_DEFAULTS, defineNode, object, templateText } from './shared.js';
 
 const HTTPS_URL = /^https:\/\/[^\s/{}@?#:]+(?::\d{1,5})?(?:[/?#]\S*)?$/i;
 const HEADER_NAME = /^[A-Za-z0-9-]{1,64}$/;
@@ -41,19 +41,34 @@ const HttpConfigSchema = z.strictObject({
   }),
   headers: HeadersSchema,
   body: z.string().max(20_000).default(''),
+  /**
+   * Credential of the organization the call authenticates with (F7, research R10). Only the id lives
+   * in the definition; the worker decrypts the secret inside the activity.
+   */
+  credentialId: z.uuid().optional(),
 });
 
 export const httpRequest = defineNode({
   type: 'http.request' as const,
   label: 'Petición HTTP',
-  description: 'Llama a una API externa por https, sin credenciales en la definición.',
+  description:
+    'Llama a una API externa por https; la credencial se elige por referencia, nunca en la definición.',
   category: 'integration',
   executableFrom: 'F7',
+  retryDefaults: HTTP_RETRY_DEFAULTS,
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['url', 'body'],
+  // `credentialId` is left out on purpose: the nodes of F7 do not reach the compiler until F8
+  // (decision 13C), and listing it would report a credential as missing on every call.
   sensitiveFields: ['url', 'headers', 'body'],
-  fieldLabels: { method: 'Método', url: 'URL', headers: 'Cabeceras', body: 'Cuerpo' },
+  fieldLabels: {
+    method: 'Método',
+    url: 'URL',
+    headers: 'Cabeceras',
+    body: 'Cuerpo',
+    credentialId: 'Credencial',
+  },
   itemLabels: { headers: 'La cabecera' },
   configSchema: HttpConfigSchema,
   defaultConfig: () => ({

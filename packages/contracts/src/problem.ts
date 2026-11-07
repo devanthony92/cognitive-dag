@@ -40,6 +40,21 @@ export const ProblemCodeSchema = z.enum([
   'COMPILER_NOT_FINISHED',
   'COMPILER_NO_RESULT',
   'COMPILER_RESULT_EXPIRED',
+  'WEBHOOK_TOKEN_INVALID',
+  'WEBHOOK_TIMESTAMP_INVALID',
+  'WEBHOOK_EVENT_ID_INVALID',
+  'WEBHOOK_NOT_ACTIVE',
+  'WEBHOOK_RATE_LIMITED',
+  'SCHEDULE_LIMIT_REACHED',
+  'APPROVAL_SELF_DECISION_FORBIDDEN',
+  'APPROVAL_ALREADY_RESOLVED',
+  'APPROVAL_CONTENT_EXPIRED',
+  'CREDENTIAL_NAME_TAKEN',
+  'CREDENTIAL_ARCHIVED',
+  'CREDENTIAL_NOT_FOUND',
+  'CREDENTIALS_NOT_CONFIGURED',
+  'HTTP_HOST_EXISTS',
+  'HTTP_HOST_LIMIT_REACHED',
 ]);
 
 export type ProblemCode = z.infer<typeof ProblemCodeSchema>;
@@ -76,10 +91,11 @@ export const ProblemDetailsSchema = z
       problem.retryAfterSeconds === undefined ||
       problem.code === 'RATE_LIMITED' ||
       problem.code === 'RUN_LIMIT_REACHED' ||
-      problem.code === 'COMPILER_RATE_LIMITED',
+      problem.code === 'COMPILER_RATE_LIMITED' ||
+      problem.code === 'WEBHOOK_RATE_LIMITED',
     {
       error:
-        'retryAfterSeconds solo se admite con RATE_LIMITED, RUN_LIMIT_REACHED o COMPILER_RATE_LIMITED.',
+        'retryAfterSeconds solo se admite con RATE_LIMITED, RUN_LIMIT_REACHED, COMPILER_RATE_LIMITED o WEBHOOK_RATE_LIMITED.',
       path: ['retryAfterSeconds'],
     },
   )
