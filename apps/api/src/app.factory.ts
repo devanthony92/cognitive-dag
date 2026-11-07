@@ -33,7 +33,7 @@ export async function createApp(config: AppConfig): Promise<INestApplication> {
       IDEMPOTENCY_KEY_HEADER,
       CSRF_HEADER,
     ],
-    exposedHeaders: [CORRELATION_ID_HEADER, 'Location', 'ETag'],
+    exposedHeaders: [CORRELATION_ID_HEADER, 'Location', 'ETag', 'Retry-After'],
   });
   app.enableShutdownHooks();
   return app;
