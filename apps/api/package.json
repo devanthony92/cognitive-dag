@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@cognitive-dag/compiler": "workspace:*",
+    "@cognitive-dag/connectors": "workspace:*",
     "@cognitive-dag/contracts": "workspace:*",
     "@cognitive-dag/dag-schema": "workspace:*",
     "@cognitive-dag/db": "workspace:*",

@@ -48,6 +48,7 @@ describe('feature flags (requires docker compose up)', () => {
       'resilience-enabled': false,
       'llm-nodes-enabled': false,
       'nl-compiler-enabled': false,
+      'triggers-enabled': false,
     });
   });
 
@@ -62,6 +63,7 @@ describe('feature flags (requires docker compose up)', () => {
       'resilience-enabled': false,
       'llm-nodes-enabled': false,
       'nl-compiler-enabled': false,
+      'triggers-enabled': false,
     });
   });
 });

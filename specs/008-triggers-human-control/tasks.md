@@ -25,37 +25,37 @@ anti-SSRF, US7 breaker y bulkhead, US8 credenciales, US9 allowlist, US10 flag y 
 
 ## Phase 1: Setup
 
-- [ ] T001 Flag `triggers-enabled` en `packages/contracts/src/flags.ts`, catálogo del API (dueño `devanthony92`) y `.env.example` (`true`); abrir el issue de eliminación y enlazarlo en `flags.catalog.ts`
-- [ ] T002 [P] Paquete `packages/connectors` (tsconfig, Vitest, exportación `@cognitive-dag/source`), sin dependencias nuevas
-- [ ] T003 [P] Variables validadas al arrancar. Worker: `CREDENTIALS_MASTER_KEY` (32 bytes base64; obligatoria si `NODE_ENV=production`), `TRIGGERS_ENABLED`, `HTTP_ENABLED`, `TEMPORAL_HTTP_TASK_QUEUE`, `HTTP_MAX_CONCURRENT_ACTIVITIES`, `HTTP_CB_FAILURES`, `HTTP_CB_WINDOW_SECONDS`, `HTTP_CB_COOLDOWN_SECONDS`, `HTTP_CB_MAX_WAIT_SECONDS`, `SCHEDULE_CATCHUP_WINDOW_SECONDS`, `APPROVAL_EMAIL_MAX_RECIPIENTS`, `SMTP_*`, `HTTP_TEST_ALLOW_LOOPBACK` (el validador falla si está definida con `NODE_ENV=production`). API: `CREDENTIALS_MASTER_KEY`, `WEBHOOK_MAX_BODY_BYTES`, `WEBHOOK_TIMESTAMP_WINDOW_SECONDS`; ejemplos en `.env.example` (sin valores secretos)
-- [ ] T004 [P] `scripts/credentials-gen-key.ts` y `pnpm credentials:gen-key` (imprime una llave aleatoria de 32 bytes en base64)
+- [x] T001 Flag `triggers-enabled` en `packages/contracts/src/flags.ts`, catálogo del API (dueño `devanthony92`) y `.env.example` (`true`); abrir el issue de eliminación y enlazarlo en `flags.catalog.ts`
+- [x] T002 [P] Paquete `packages/connectors` (tsconfig, Vitest, exportación `@cognitive-dag/source`), sin dependencias nuevas
+- [x] T003 [P] Variables validadas al arrancar. Worker: `CREDENTIALS_MASTER_KEY` (32 bytes base64; obligatoria si `NODE_ENV=production`), `TRIGGERS_ENABLED`, `HTTP_ENABLED`, `TEMPORAL_HTTP_TASK_QUEUE`, `HTTP_MAX_CONCURRENT_ACTIVITIES`, `HTTP_CB_FAILURES`, `HTTP_CB_WINDOW_SECONDS`, `HTTP_CB_COOLDOWN_SECONDS`, `HTTP_CB_MAX_WAIT_SECONDS`, `SCHEDULE_CATCHUP_WINDOW_SECONDS`, `APPROVAL_EMAIL_MAX_RECIPIENTS`, `SMTP_*`, `HTTP_TEST_ALLOW_LOOPBACK` (el validador falla si está definida con `NODE_ENV=production`). API: `CREDENTIALS_MASTER_KEY`, `WEBHOOK_MAX_BODY_BYTES`, `WEBHOOK_TIMESTAMP_WINDOW_SECONDS`; ejemplos en `.env.example` (sin valores secretos)
+- [x] T004 [P] `scripts/credentials-gen-key.ts` y `pnpm credentials:gen-key` (imprime una llave aleatoria de 32 bytes en base64)
 
 ## Phase 2: Fundaciones (PR 1)
 
 ### Tests
 
-- [ ] T005 [P] `packages/connectors/test/address.test.ts`: clasificación de IPv4 e IPv6 públicas y no públicas con todos los rangos de research R9 (incluye `169.254.169.254`, CGNAT, `::ffff:` mapeadas, NAT64, 6to4, Teredo, ULA, link-local, multicast); formas alternativas (decimal, octal, hexadecimal) normalizadas antes de decidir
-- [ ] T006 [P] `packages/connectors/test/dns-lookup.test.ts`: `lookup` guardado con un DNS falso; si alguna dirección es no pública se rechaza todo; devuelve solo direcciones públicas; el nombre no se vuelve a resolver (rebinding: primera respuesta pública, segunda privada → se conecta a la primera)
-- [ ] T007 [P] `packages/connectors/test/http-client.test.ts` contra un servidor local (con `HTTP_TEST_ALLOW_LOOPBACK`): solo https; sin proxy del entorno; respuesta cortada a 1 MiB leyendo el flujo (con `Content-Length` mentiroso y sin él); solo `application/json`, `+json` y `text/*`; cuerpo UTF-8 como texto; timeout de conexión y total
-- [ ] T008 [P] `packages/connectors/test/redirect.test.ts`: máximo 3 saltos; solo https; cada salto revalidado (IP y allowlist); salto a otro origen descarta la cabecera de la credencial y `Idempotency-Key`; `303` y `301/302` de `POST` pasan a `GET`; `307/308` conservan método y cuerpo; salto a `169.254.169.254` bloqueado
-- [ ] T009 [P] `packages/connectors/test/allowlist.test.ts`: coincidencia exacta y `*.dominio` (sin incluir el dominio base); rechazo de IP, esquema, puerto y ruta; lista vacía = sin restricción; lista no vacía = restringe host y saltos
-- [ ] T010 [P] `packages/connectors/test/crypto.test.ts`: cifrado de sobre AES-256-GCM (DEK por credencial, IV aleatorio de 12 bytes, tag de 16); ida y vuelta; AAD `credential:<id>:<organization_id>` (un blob movido a otra fila o organización no descifra); llave maestra incorrecta falla; el secreto no aparece en el objeto serializado ni en los errores
-- [ ] T011 [P] `packages/connectors/test/credential-headers.test.ts`: `bearer`, `api_key_header` y `basic` producen la cabecera correcta; nombres prohibidos rechazados (`Host`, `Content-Length`, `Content-Type`, `Transfer-Encoding`, `Connection`, `Cookie`, `Set-Cookie`, `Authorization`, `Idempotency-Key`, `Proxy-*`)
-- [ ] T012 [P] `packages/connectors/test/circuit-breaker.test.ts`: máquina de estados pura con reloj inyectado: cerrado → abierto tras N fallos en la ventana → semiabierto tras el enfriamiento con una sola prueba → cerrado o abierto; 429, 4xx y bloqueos SSRF no cuentan
-- [ ] T013 [P] `packages/connectors/test/ssrf-battery.test.ts` (SC-002): ≥ 25 destinos (loopback, privadas, link-local, metadata, CGNAT, IPv6, mapeadas, decimal/octal, hostnames que resuelven a lo interno, rebinding, redirecciones) con 0 conexiones abiertas a no públicas
-- [ ] T014 [P] `packages/dag-schema/test/catalog/http-request-credential.test.ts`: `credentialId` opcional (uuid); sigue prohibido poner credenciales en cabeceras; `retry` por defecto del tipo (3 intentos, 30 s, 1 s) dentro de los límites de F4; validación de publicación `CREDENTIAL_NOT_FOUND` con un resolvedor inyectado
-- [ ] T015 [P] `packages/dag-schema/test/catalog/schedule-timezone.test.ts`: zona IANA existente y cron de 5 campos; `Mars/Olympus` rechazada
-- [ ] T016 [P] `packages/contracts/test/triggers.test.ts`: contratos de `webhooks`, `schedules`, `approvals`, `credentials` y `http-hosts` según `contracts/api.openapi.yaml`; `Run.triggeredBy` nulo y `Run.trigger`; `ExecuteDagInput` con `httpTaskQueue`, `triggerKind` y `scheduledAt`; `RunEvent` con `approval.requested` y `approval.resolved`
-- [ ] T017 [P] `packages/compiler/test/catalog-f7.test.ts`: ningún tipo `executableFrom: 'F7'` llega al prompt con `triggers-enabled` encendido (US10)
+- [x] T005 [P] `packages/connectors/test/address.test.ts`: clasificación de IPv4 e IPv6 públicas y no públicas con todos los rangos de research R9 (incluye `169.254.169.254`, CGNAT, `::ffff:` mapeadas, NAT64, 6to4, Teredo, ULA, link-local, multicast); formas alternativas (decimal, octal, hexadecimal) normalizadas antes de decidir
+- [x] T006 [P] `packages/connectors/test/dns-lookup.test.ts`: `lookup` guardado con un DNS falso; si alguna dirección es no pública se rechaza todo; devuelve solo direcciones públicas; el nombre no se vuelve a resolver (rebinding: primera respuesta pública, segunda privada → se conecta a la primera)
+- [x] T007 [P] `packages/connectors/test/http-client.test.ts` contra un servidor local (con `HTTP_TEST_ALLOW_LOOPBACK`): solo https; sin proxy del entorno; respuesta cortada a 1 MiB leyendo el flujo (con `Content-Length` mentiroso y sin él); solo `application/json`, `+json` y `text/*`; cuerpo UTF-8 como texto; timeout de conexión y total
+- [x] T008 [P] `packages/connectors/test/redirect.test.ts`: máximo 3 saltos; solo https; cada salto revalidado (IP y allowlist); salto a otro origen descarta la cabecera de la credencial y `Idempotency-Key`; `303` y `301/302` de `POST` pasan a `GET`; `307/308` conservan método y cuerpo; salto a `169.254.169.254` bloqueado
+- [x] T009 [P] `packages/connectors/test/allowlist.test.ts`: coincidencia exacta y `*.dominio` (sin incluir el dominio base); rechazo de IP, esquema, puerto y ruta; lista vacía = sin restricción; lista no vacía = restringe host y saltos
+- [x] T010 [P] `packages/connectors/test/crypto.test.ts`: cifrado de sobre AES-256-GCM (DEK por credencial, IV aleatorio de 12 bytes, tag de 16); ida y vuelta; AAD `credential:<id>:<organization_id>` (un blob movido a otra fila o organización no descifra); llave maestra incorrecta falla; el secreto no aparece en el objeto serializado ni en los errores
+- [x] T011 [P] `packages/connectors/test/credential-headers.test.ts`: `bearer`, `api_key_header` y `basic` producen la cabecera correcta; nombres prohibidos rechazados (`Host`, `Content-Length`, `Content-Type`, `Transfer-Encoding`, `Connection`, `Cookie`, `Set-Cookie`, `Authorization`, `Idempotency-Key`, `Proxy-*`)
+- [x] T012 [P] `packages/connectors/test/circuit-breaker.test.ts`: máquina de estados pura con reloj inyectado: cerrado → abierto tras N fallos en la ventana → semiabierto tras el enfriamiento con una sola prueba → cerrado o abierto; 429, 4xx y bloqueos SSRF no cuentan
+- [x] T013 [P] `packages/connectors/test/ssrf-battery.test.ts` (SC-002): ≥ 25 destinos (loopback, privadas, link-local, metadata, CGNAT, IPv6, mapeadas, decimal/octal, hostnames que resuelven a lo interno, rebinding, redirecciones) con 0 conexiones abiertas a no públicas
+- [x] T014 [P] `packages/dag-schema/test/catalog/http-request-credential.test.ts`: `credentialId` opcional (uuid); sigue prohibido poner credenciales en cabeceras; `retry` por defecto del tipo (3 intentos, 30 s, 1 s) dentro de los límites de F4; validación de publicación `CREDENTIAL_NOT_FOUND` con un resolvedor inyectado
+- [x] T015 [P] `packages/dag-schema/test/catalog/schedule-timezone.test.ts`: zona IANA existente y cron de 5 campos; `Mars/Olympus` rechazada
+- [x] T016 [P] `packages/contracts/test/triggers.test.ts`: contratos de `webhooks`, `schedules`, `approvals`, `credentials` y `http-hosts` según `contracts/api.openapi.yaml`; `Run.triggeredBy` nulo y `Run.trigger`; `ExecuteDagInput` con `httpTaskQueue`, `triggerKind` y `scheduledAt`; `RunEvent` con `approval.requested` y `approval.resolved`
+- [x] T017 [P] `packages/compiler/test/catalog-f7.test.ts`: ningún tipo `executableFrom: 'F7'` llega al prompt con `triggers-enabled` encendido (US10)
 
 ### Implementation
 
-- [ ] T018 `packages/connectors/src/{address,dns-lookup,allowlist,redirect,http-client,ssrf}.ts`: cliente sobre `node:https` con `lookup` guardado, sin dependencias nuevas
-- [ ] T019 `packages/connectors/src/{crypto,credential-headers}.ts`
-- [ ] T020 `packages/connectors/src/circuit-breaker.ts` (lógica pura; el almacenamiento en Valkey va en PR 2)
-- [ ] T021 `dag-schema`: `credentialId` y política por defecto en `catalog/http-request.ts` y `catalog/retry.ts`; validación de zona IANA en `catalog/trigger-schedule.ts`; `validate/credentials.ts`
-- [ ] T022 [P] `packages/contracts/src/{webhooks,schedules,approvals,credentials,http-hosts,runs}.ts` y códigos de error nuevos
-- [ ] T023 [P] Enmienda PATCH de `.specify/memory/constitution.md` (TDD en `packages/connectors`)
+- [x] T018 `packages/connectors/src/{address,dns-lookup,allowlist,redirect,http-client,ssrf}.ts`: cliente sobre `node:https` con `lookup` guardado, sin dependencias nuevas
+- [x] T019 `packages/connectors/src/{crypto,credential-headers}.ts`
+- [x] T020 `packages/connectors/src/circuit-breaker.ts` (lógica pura; el almacenamiento en Valkey va en PR 2)
+- [x] T021 `dag-schema`: `credentialId` y política por defecto en `catalog/http-request.ts` y `catalog/retry.ts`; validación de zona IANA en `catalog/trigger-schedule.ts`; `validate/credentials.ts`
+- [x] T022 [P] `packages/contracts/src/{webhooks,schedules,approvals,credentials,http-hosts,runs}.ts` y códigos de error nuevos
+- [x] T023 [P] Enmienda PATCH de `.specify/memory/constitution.md` (TDD en `packages/connectors`)
 
 ## Phase 3: Datos y motor (PR 2)
 

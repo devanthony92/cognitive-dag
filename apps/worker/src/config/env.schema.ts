@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { parseMasterKey } from '@cognitive-dag/connectors';
+import { DEFAULT_HTTP_TASK_QUEUE } from '@cognitive-dag/contracts';
 import { modelsWithoutPrice, parsePrices, type Prices } from '@cognitive-dag/llm';
 import {
   LLM_MODEL_RATE_LIMIT_VARIABLE,
@@ -47,6 +49,42 @@ export const EnvSchema = z.object({
   LLM_MAX_CONCURRENT_ACTIVITIES: positiveInt(4, 100),
   // Global token bucket per model (provider quota); parsed apart.
   RATE_LIMIT_LLM_MODEL: z.string().optional(),
+
+  // --- Triggers, human control and HTTP (F7). Secrets are never logged. ---
+  // Master key of the envelope encryption of credentials: base64 of 32 bytes. Optional outside
+  // production (an `http.request` with a credential then fails `CREDENTIALS_NOT_CONFIGURED`).
+  CREDENTIALS_MASTER_KEY: z.string().optional(),
+  // Kill switches: false makes the schedule launcher skip firings, or the HTTP activities fail
+  // `HTTP_DISABLED` without calling the destination.
+  TRIGGERS_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  HTTP_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  TEMPORAL_HTTP_TASK_QUEUE: z.string().min(1).max(255).default(DEFAULT_HTTP_TASK_QUEUE),
+  HTTP_MAX_CONCURRENT_ACTIVITIES: positiveInt(20, 100),
+  // Circuit breaker per organization and host (research R12).
+  HTTP_CB_FAILURES: positiveInt(5, 1000),
+  HTTP_CB_WINDOW_SECONDS: positiveInt(60, 3600),
+  HTTP_CB_COOLDOWN_SECONDS: positiveInt(30, 3600),
+  HTTP_CB_MAX_WAIT_SECONDS: positiveInt(120, 3600),
+  // How late a missed schedule firing may still run (research R6).
+  SCHEDULE_CATCHUP_WINDOW_SECONDS: positiveInt(3600, 86_400),
+  // The data model caps `approvals.notified_count` at 20.
+  APPROVAL_EMAIL_MAX_RECIPIENTS: positiveInt(20, 20),
+  SMTP_HOST: z.string().min(1).default('127.0.0.1'),
+  SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
+  MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),
+  // Origin of the web app: base of the links inside the approval emails.
+  APP_BASE_URL: z.url().optional(),
+  // Tests only (research R9.10): lets the HTTP client reach loopback. Must not exist in production.
+  HTTP_TEST_ALLOW_LOOPBACK: z
+    .enum(['true', 'false', ''])
+    .default('false')
+    .transform((value) => value === 'true'),
 });
 
 /** Global per-model bucket when the variable is not set (research R14). */
@@ -63,6 +101,8 @@ export type WorkerConfig = z.infer<typeof EnvSchema> & {
   llmModelsWithoutPrice: string[];
   /** Token bucket shared by every organization, per model (`rl:global:<model>`). */
   llmModelRateLimit: BucketConfig;
+  /** `CREDENTIALS_MASTER_KEY` decoded; absent when the variable is not set (never in production). */
+  credentialsMasterKey: Buffer | undefined;
 };
 
 export class InvalidConfigError extends Error {
@@ -91,6 +131,26 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
   if (!result.success) {
     for (const issue of result.error.issues) invalid.add(String(issue.path[0]));
   }
+  const production = env.NODE_ENV === 'production';
+  const masterKeyText = env.CREDENTIALS_MASTER_KEY === '' ? undefined : env.CREDENTIALS_MASTER_KEY;
+  let credentialsMasterKey: Buffer | undefined;
+  if (masterKeyText !== undefined) {
+    try {
+      credentialsMasterKey = parseMasterKey(masterKeyText);
+    } catch {
+      invalid.add('CREDENTIALS_MASTER_KEY');
+    }
+  } else if (production) {
+    invalid.add('CREDENTIALS_MASTER_KEY');
+  }
+  // The loopback escape hatch of the tests must not even be defined in production.
+  if (
+    production &&
+    env.HTTP_TEST_ALLOW_LOOPBACK !== undefined &&
+    env.HTTP_TEST_ALLOW_LOOPBACK !== ''
+  ) {
+    invalid.add('HTTP_TEST_ALLOW_LOOPBACK');
+  }
   if (!result.success || invalid.size > 0 || modelLimit === undefined) {
     throw new InvalidConfigError([...invalid].sort());
   }
@@ -102,6 +162,8 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
   } as const;
   return {
     ...data,
+    // The raw key stays out of the config object: only the decoded buffer travels.
+    CREDENTIALS_MASTER_KEY: undefined,
     GEMINI_API_KEY: data.GEMINI_API_KEY === '' ? undefined : data.GEMINI_API_KEY,
     rateLimits: rateLimits.limits,
     llmModels,
@@ -111,5 +173,6 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
       prices.prices,
     ),
     llmModelRateLimit: modelLimit,
+    credentialsMasterKey,
   };
 }

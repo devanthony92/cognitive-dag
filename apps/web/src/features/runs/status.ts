@@ -83,3 +83,6 @@ export function runDurationMs(
 }
 
 export const formatDateTime = (iso: string): string => new Date(iso).toLocaleString('es');
+
+/** Who started a run that no person started (a webhook or a schedule); PR 3 names the origin. */
+export const SYSTEM_ORIGIN = 'Sistema';

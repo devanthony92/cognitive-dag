@@ -81,6 +81,7 @@ export const run = (overrides: Partial<Run> = {}): Run => ({
   versionNumber: 2,
   status: 'running',
   triggeredBy: { id: '0192f0a0-0000-7000-8000-000000000001', name: 'Ana' },
+  trigger: { kind: 'manual', eventId: null, scheduledAt: null },
   rerunOf: null,
   rerunFromNodeId: null,
   correlationId: CORRELATION_ID,

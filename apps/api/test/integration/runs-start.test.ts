@@ -65,7 +65,7 @@ describe('start a run (requires docker compose up and pnpm db:migrate)', () => {
     for (const session of [env.viewer, env.editor]) {
       const response = await startRun(env, session, workflowId).expect(202);
       const run = RunSchema.parse(response.body);
-      expect(run.triggeredBy.id).toBe(session.body.user.id);
+      expect(run.triggeredBy?.id).toBe(session.body.user.id);
       await waitForTerminal(env, env.owner, run.id);
     }
   });

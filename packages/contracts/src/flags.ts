@@ -8,6 +8,7 @@ export const FEATURE_FLAGS = {
   resilienceEnabled: 'resilience-enabled',
   llmNodesEnabled: 'llm-nodes-enabled',
   nlCompilerEnabled: 'nl-compiler-enabled',
+  triggersEnabled: 'triggers-enabled',
 } as const;
 
 /** Flags exposed to the web app through GET /api/v1/features. */

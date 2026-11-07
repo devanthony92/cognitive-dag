@@ -42,7 +42,10 @@ const STEP_STATUS: Record<string, StepStatus> = {
 /** States a step can still leave: a repeated or late write never moves a finished step. */
 const OPEN_STEP_STATES = ['pending', 'running'] as const;
 
-type StepEvent = Exclude<RunEvent, { transition: 'run.started' | 'run.finished' }>;
+type StepEvent = Exclude<
+  RunEvent,
+  { transition: 'run.started' | 'run.finished' | 'approval.requested' | 'approval.resolved' }
+>;
 
 async function runStarted(
   tx: Tx,
@@ -164,6 +167,9 @@ function liveEventFor(event: RunEvent): RunLiveEvent {
         ...(event.errorClass ? { errorClass: event.errorClass } : {}),
         ...(event.errorMessage ? { errorMessage: event.errorMessage } : {}),
       };
+    case 'approval.requested':
+    case 'approval.resolved':
+      return { ...base, nodeId: event.nodeId, nodeType: event.nodeType };
     case 'step.running':
       return {
         ...base,
@@ -211,6 +217,15 @@ export function createRunEventActivities(options: RunEventActivityOptions): RunE
             return runStarted(tx, event);
           case 'run.finished':
             return runFinished(tx, event);
+          case 'approval.requested':
+          case 'approval.resolved':
+            // The contract carries them since F7 PR 1; the `approvals` table and their recording
+            // arrive with the data PR (T044). Nothing emits them yet, so refuse rather than drop.
+            throw ApplicationFailure.create({
+              type: 'APPROVAL_EVENTS_NOT_SUPPORTED',
+              message: 'Approval events cannot be recorded yet.',
+              nonRetryable: true,
+            });
           default:
             return stepChanged(tx, event);
         }

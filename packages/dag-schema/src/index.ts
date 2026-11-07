@@ -7,3 +7,4 @@ export * from './runtime/index.js';
 export * from './templates.js';
 export * from './types.js';
 export * from './validate.js';
+export * from './validate/credentials.js';
