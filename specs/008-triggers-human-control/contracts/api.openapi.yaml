@@ -1,0 +1,563 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F7 triggers y control humano
+  version: 0.8.0
+  description: >
+    Extiende los contratos de F0–F6 (specs/007-nl-compiler/contracts/api.openapi.yaml). Solo se
+    listan los endpoints nuevos y los cambios. Salvo el webhook público, todos exigen sesión y
+    membresía en la organización de la ruta, y los métodos que cambian estado exigen CSRF. Con el
+    flag triggers-enabled apagado, todos responden 404 FEATURE_NOT_AVAILABLE (el webhook público
+    también). Los errores usan application/problem+json (RFC 9457). Cambios en contratos existentes:
+    Run.triggeredBy pasa a ser nullable y Run gana trigger (kind, eventId, scheduledAt); la
+    configuración del nodo http.request gana credentialId (uuid, opcional); RunStep.waitingReason
+    admite approval y circuit_open.
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/hooks/{triggerId}/{token}:
+    parameters:
+      - { name: triggerId, in: path, required: true, schema: { type: string, format: uuid } }
+      - name: token
+        in: path
+        required: true
+        description: Token secreto del webhook (cdw_ + base64url). Nunca se registra en logs.
+        schema: { type: string, pattern: '^cdw_[A-Za-z0-9_-]{43}$' }
+    post:
+      operationId: fireWebhook
+      description: >
+        Dispara el workflow con la versión activa en este momento. Sin sesión ni CSRF: la
+        autenticación es el token de la ruta. Valida, en este orden: flag, límite por IP de intentos
+        inválidos, token (comparación en tiempo constante; mismo 401 para trigger inexistente y
+        token incorrecto), límite de 60 por minuto por trigger, Content-Type y tamaño (64 KiB),
+        X-Event-Id, X-Event-Timestamp (±5 min), versión activa con trigger.webhook y cuerpo contra
+        bodySchema. Responde 202 de inmediato sin esperar la ejecución. Un X-Event-Id repetido
+        para el mismo workflow no crea otra ejecución y responde 200 con el runId original.
+      security: []
+      parameters:
+        - name: X-Event-Id
+          in: header
+          required: true
+          schema: { type: string, pattern: '^[A-Za-z0-9._:-]{1,128}$' }
+        - name: X-Event-Timestamp
+          in: header
+          required: true
+          description: ISO 8601 UTC; debe estar a ±5 minutos del reloj del servidor.
+          schema: { type: string, format: date-time }
+        - name: X-Correlation-Id
+          in: header
+          required: false
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '202':
+          description: Ejecución creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookAccepted' }
+        '200':
+          description: Evento duplicado; devuelve la ejecución original
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookAccepted' }
+        '400':
+          description: WEBHOOK_EVENT_ID_INVALID o WEBHOOK_TIMESTAMP_INVALID
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '401':
+          description: WEBHOOK_TOKEN_INVALID (token incorrecto, regenerado o trigger inexistente)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: WEBHOOK_NOT_ACTIVE (sin versión activa con trigger.webhook)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '413': { $ref: '#/components/responses/Problem' }
+        '415': { $ref: '#/components/responses/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '429':
+          description: WEBHOOK_RATE_LIMITED o RUN_LIMIT_REACHED, con Retry-After
+          headers:
+            Retry-After: { schema: { type: integer } }
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/webhook:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      operationId: getWebhook
+      description: >
+        Estado del webhook sin el token: URL base, generación, fecha y quién lo generó. Cualquier rol.
+        404 si todavía no se generó un token.
+      responses:
+        '200':
+          description: Estado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Webhook' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/webhook/token:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    post:
+      operationId: regenerateWebhookToken
+      description: >
+        Genera el token (primera vez) o lo regenera e invalida el anterior al instante. Owner o editor
+        (403 para viewer). Es la única respuesta que contiene el token; no se puede volver a leer.
+        Responde con Cache-Control no-store.
+      responses:
+        '201':
+          description: Token generado
+          headers:
+            Cache-Control: { schema: { type: string, example: no-store } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookWithToken' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/WorkflowId'
+    get:
+      operationId: getSchedule
+      description: >
+        Programación del workflow: estado deseado, estado de sincronización y, si el Schedule existe
+        en Temporal, los próximos disparos. La crea, actualiza y borra la activación de versiones de F2,
+        no hay escritura aquí. Cualquier rol.
+      responses:
+        '200':
+          description: Programación
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Schedule' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/approvals:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    get:
+      operationId: listApprovals
+      description: >
+        Owner o editor (403 para viewer). status=pending devuelve solo lo que la persona puede decidir
+        (excluye las de ejecuciones que ella inició); status=resolved devuelve el historial. Paginación
+        por cursor, más nuevas primero. Sin el mensaje.
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [pending, resolved], default: pending } }
+        - { name: cursor, in: query, required: false, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 100, default: 20 } }
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items, nextCursor]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Approval' }
+                  nextCursor: { type: [string, 'null'] }
+        '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/approvals/count:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    get:
+      operationId: countApprovals
+      description: Contador de la bandeja: solicitudes pendientes que la persona puede decidir. Owner o editor.
+      responses:
+        '200':
+          description: Contador
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pending]
+                properties:
+                  pending: { type: integer, minimum: 0 }
+        '403': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/approvals/{approvalId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/ApprovalId'
+    get:
+      operationId: getApproval
+      description: >
+        Detalle con el mensaje leído del historial de Temporal y, si ya se decidió, el comentario.
+        410 APPROVAL_CONTENT_EXPIRED si Temporal ya purgó el historial (quedan los metadatos). Owner o
+        editor.
+      responses:
+        '200':
+          description: Detalle
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApprovalDetail' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '410': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/approvals/{approvalId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/ApprovalId'
+    post:
+      operationId: decideApproval
+      description: >
+        Aprueba o rechaza enviando el Update decideApproval al workflow y esperando su resultado. Owner
+        o editor vigente que no inició la ejecución. La primera decisión gana. El mensaje y el
+        comentario solo se escriben en Temporal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideApprovalRequest' }
+      responses:
+        '200':
+          description: Decisión aceptada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Approval' }
+        '403':
+          description: FORBIDDEN (viewer) o APPROVAL_SELF_DECISION_FORBIDDEN (inició la ejecución)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: APPROVAL_ALREADY_RESOLVED (otra decisión, plazo vencido o ejecución terminada)
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    get:
+      operationId: listCredentials
+      description: Metadatos de las credenciales vigentes (nunca el secreto). Owner o editor.
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Credential' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCredential
+      description: >
+        Solo owner. Cifra el secreto con cifrado de sobre y responde solo con metadatos. 503
+        CREDENTIALS_NOT_CONFIGURED si el servidor no tiene la llave maestra.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCredentialRequest' }
+      responses:
+        '201':
+          description: Creada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Credential' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: CREDENTIAL_NAME_TAKEN
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/credentials/{credentialId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - $ref: '#/components/parameters/CredentialId'
+    put:
+      operationId: rotateCredential
+      description: Solo owner. Reemplaza el secreto; el tipo, el nombre de cabecera y el id no cambian.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RotateCredentialRequest' }
+      responses:
+        '200':
+          description: Rotada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Credential' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: CREDENTIAL_ARCHIVED
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '503': { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: archiveCredential
+      description: Solo owner. Archiva (no borra). Publicar o ejecutar un nodo que la usa falla desde entonces.
+      responses:
+        '204': { description: Archivada }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/http-allowed-hosts:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+    get:
+      operationId: listHttpAllowedHosts
+      description: Allowlist vigente. Lista vacía significa que solo rige el bloqueo de direcciones. Owner o editor.
+      responses:
+        '200':
+          description: Lista
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/HttpAllowedHost' }
+        '403': { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addHttpAllowedHost
+      description: >
+        Solo owner. Dominio exacto o *.dominio, en minúsculas, sin IP, esquema, puerto ni ruta. Máximo
+        100 vigentes (422 HTTP_HOST_LIMIT_REACHED).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [pattern]
+              properties:
+                pattern: { type: string, minLength: 4, maxLength: 253, examples: ['api.example.com', '*.partner.com'] }
+      responses:
+        '201':
+          description: Agregado
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HttpAllowedHost' }
+        '403': { $ref: '#/components/responses/Problem' }
+        '409':
+          description: HTTP_HOST_EXISTS
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422': { $ref: '#/components/responses/Problem' }
+  /api/v1/organizations/{organizationId}/http-allowed-hosts/{hostId}:
+    parameters:
+      - $ref: '#/components/parameters/OrganizationId'
+      - { name: hostId, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: removeHttpAllowedHost
+      description: Solo owner. Marca la entrada como retirada (no borra).
+      responses:
+        '204': { description: Retirada }
+        '403': { $ref: '#/components/responses/Problem' }
+        '404': { $ref: '#/components/responses/Problem' }
+components:
+  securitySchemes:
+    session: { type: apiKey, in: cookie, name: __Host-session }
+  parameters:
+    OrganizationId: { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
+    WorkflowId: { name: workflowId, in: path, required: true, schema: { type: string, format: uuid } }
+    ApprovalId: { name: approvalId, in: path, required: true, schema: { type: string, format: uuid } }
+    CredentialId: { name: credentialId, in: path, required: true, schema: { type: string, format: uuid } }
+  responses:
+    Problem:
+      description: Error RFC 9457
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [title, status, code]
+      properties:
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          type: string
+          description: >
+            Nuevos en F7. Webhook: WEBHOOK_TOKEN_INVALID, WEBHOOK_TIMESTAMP_INVALID,
+            WEBHOOK_EVENT_ID_INVALID, WEBHOOK_NOT_ACTIVE, WEBHOOK_RATE_LIMITED. Programación:
+            SCHEDULE_LIMIT_REACHED. Aprobación: APPROVAL_SELF_DECISION_FORBIDDEN,
+            APPROVAL_ALREADY_RESOLVED, APPROVAL_CONTENT_EXPIRED. Credenciales: CREDENTIAL_NAME_TAKEN,
+            CREDENTIAL_ARCHIVED, CREDENTIAL_NOT_FOUND (al publicar), CREDENTIALS_NOT_CONFIGURED.
+            Allowlist: HTTP_HOST_EXISTS, HTTP_HOST_LIMIT_REACHED. En la ejecución del paso (errorCode):
+            SSRF_BLOCKED_ADDRESS, HTTP_HOST_NOT_ALLOWED, HTTP_REDIRECT_NOT_ALLOWED,
+            HTTP_TOO_MANY_REDIRECTS, HTTP_RESPONSE_TOO_LARGE, HTTP_CONTENT_TYPE_UNSUPPORTED,
+            HTTP_CIRCUIT_OPEN, HTTP_DISABLED, CREDENTIAL_UNAVAILABLE y los de la taxonomía de F4.
+        correlationId: { type: string, format: uuid }
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              path: { type: string }
+              message: { type: string }
+    WebhookAccepted:
+      type: object
+      required: [runId, status, duplicate]
+      properties:
+        runId: { type: string, format: uuid }
+        status: { type: string, enum: [queued, running, succeeded, failed, cancelled, timed_out] }
+        duplicate: { type: boolean }
+    Webhook:
+      type: object
+      required: [urlBase, generation, generatedAt, generatedBy, active]
+      properties:
+        urlBase:
+          type: string
+          description: Ruta sin el token, p. ej. https://host/api/v1/hooks/{triggerId}/
+        generation: { type: integer, minimum: 1 }
+        generatedAt: { type: string, format: date-time }
+        generatedBy: { $ref: '#/components/schemas/PersonRef' }
+        active:
+          type: boolean
+          description: El workflow tiene una versión activa con trigger.webhook.
+    WebhookWithToken:
+      allOf:
+        - $ref: '#/components/schemas/Webhook'
+        - type: object
+          required: [url]
+          properties:
+            url:
+              type: string
+              description: URL completa con el token. Se muestra una sola vez.
+    PersonRef:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+    Schedule:
+      type: object
+      required: [desiredState, syncStatus, cron, timezone, versionNumber, nextRuns]
+      properties:
+        desiredState: { type: string, enum: [scheduled, removed] }
+        syncStatus: { type: string, enum: [pending, synced, failed] }
+        cron: { type: string }
+        timezone: { type: string }
+        versionNumber: { type: integer, minimum: 1 }
+        lastErrorCode: { type: [string, 'null'] }
+        nextRuns:
+          type: array
+          maxItems: 5
+          items: { type: string, format: date-time }
+    Approval:
+      type: object
+      required: [id, runId, workflowId, workflowName, nodeId, nodeLabel, status, requestedAt, expiresAt, resolvedAt, decidedBy, hasComment]
+      properties:
+        id: { type: string, format: uuid }
+        runId: { type: string, format: uuid }
+        workflowId: { type: string, format: uuid }
+        workflowName: { type: string }
+        nodeId: { type: string }
+        nodeLabel: { type: string }
+        status: { type: string, enum: [pending, approved, rejected, timed_out, cancelled] }
+        requestedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        decidedBy:
+          oneOf:
+            - $ref: '#/components/schemas/PersonRef'
+            - type: 'null'
+        hasComment: { type: boolean }
+        canDecide:
+          type: boolean
+          description: La persona que consulta puede decidir esta solicitud ahora.
+    ApprovalDetail:
+      allOf:
+        - $ref: '#/components/schemas/Approval'
+        - type: object
+          required: [message]
+          properties:
+            message:
+              type: string
+              maxLength: 2000
+              description: Leído de Temporal; no está en PostgreSQL.
+            comment:
+              type: [string, 'null']
+              maxLength: 500
+              description: Comentario de la decisión, leído de Temporal.
+    DecideApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        comment: { type: string, maxLength: 500, description: Opcional; se guarda solo en Temporal }
+    Credential:
+      type: object
+      required: [id, name, kind, headerName, createdAt, createdBy, rotatedAt]
+      description: Solo metadatos; el secreto nunca se devuelve.
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 64 }
+        kind: { type: string, enum: [bearer, api_key_header, basic] }
+        headerName:
+          type: [string, 'null']
+          description: Solo en api_key_header.
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/PersonRef' }
+        rotatedAt: { type: [string, 'null'], format: date-time }
+    CreateCredentialRequest:
+      type: object
+      additionalProperties: false
+      required: [name, kind, secret]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 64 }
+        kind: { type: string, enum: [bearer, api_key_header, basic] }
+        headerName:
+          type: string
+          description: Obligatorio en api_key_header; prohibido en los demás. No puede ser Host, Content-Length, Content-Type, Transfer-Encoding, Connection, Cookie, Set-Cookie, Authorization, Idempotency-Key ni Proxy-*.
+        secret:
+          type: string
+          writeOnly: true
+          minLength: 1
+          maxLength: 4096
+          description: En basic, "usuario:clave". Se cifra y no se vuelve a devolver.
+    RotateCredentialRequest:
+      type: object
+      additionalProperties: false
+      required: [secret]
+      properties:
+        secret: { type: string, writeOnly: true, minLength: 1, maxLength: 4096 }
+    HttpAllowedHost:
+      type: object
+      required: [id, pattern, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        pattern: { type: string }
+        createdAt: { type: string, format: date-time }
+    RunTrigger:
+      type: object
+      description: Nuevo campo `trigger` de Run (junto con triggeredBy nullable).
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [manual, webhook, schedule] }
+        eventId: { type: [string, 'null'], description: X-Event-Id del webhook }
+        scheduledAt: { type: [string, 'null'], format: date-time }
