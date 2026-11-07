@@ -63,8 +63,24 @@ describe('intermediate format (research R6)', () => {
       additionalProperties: boolean;
     };
     expect(node.properties.type?.enum).toEqual([...F5_TYPES]);
-    expect(node.properties.config?.type).toBe('object');
+    expect(node.properties.config?.type).toBe('string');
     expect(node.required).toEqual(['id', 'type', 'label', 'config']);
     expect(node.additionalProperties).toBe(false);
+  });
+
+  it('does not send item counts to the provider: Gemini rejects that schema with a 400', () => {
+    expect(JSON.stringify(jsonSchema)).not.toMatch(/maxItems|minItems/);
+  });
+
+  it('reads the config as the text of a JSON object or as an object', () => {
+    const base = { title: 'T', edges: [] };
+    const node = (config: unknown) => ({
+      ...base,
+      nodes: [{ id: 'start', type: 'trigger.manual', label: 'Start', config }],
+    });
+    expect(validator.safeParse(node('{"a":1}')).data?.nodes[0]?.config).toEqual({ a: 1 });
+    expect(validator.safeParse(node({ a: 1 })).data?.nodes[0]?.config).toEqual({ a: 1 });
+    expect(validator.safeParse(node('not json')).success).toBe(false);
+    expect(validator.safeParse(node('[1]')).success).toBe(false);
   });
 });
