@@ -1,0 +1,83 @@
+[
+  {
+    "title": "Aprobar pago",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": [
+            {
+              "name": "invoice_id",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "approve",
+        "type": "human.approval",
+        "label": "Aprobación del gerente",
+        "config": {
+          "message": "Aprueba el pago de la factura {{nodes.start.output.invoice_id}}",
+          "timeoutSeconds": 172800
+        }
+      },
+      {
+        "id": "pay",
+        "type": "mock.service",
+        "label": "Pagar factura",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "notify",
+        "type": "mock.service",
+        "label": "Avisar al solicitante",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "escalate",
+        "type": "mock.service",
+        "label": "Escalar a finanzas",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "approve"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "approved",
+        "to": "pay"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "rejected",
+        "to": "notify"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "timeout",
+        "to": "escalate"
+      }
+    ]
+  }
+]

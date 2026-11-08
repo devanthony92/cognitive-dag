@@ -1,0 +1,56 @@
+[
+  {
+    "title": "Pagar sin aprobar",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "approve",
+        "type": "human.approval",
+        "label": "Aprobación",
+        "config": {
+          "message": "Aprobar",
+          "timeoutSeconds": 60
+        }
+      },
+      {
+        "id": "pay",
+        "type": "mock.service",
+        "label": "Pagar",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "approve"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "approved",
+        "to": "pay"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "rejected",
+        "to": "pay"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "timeout",
+        "to": "pay"
+      }
+    ]
+  }
+]

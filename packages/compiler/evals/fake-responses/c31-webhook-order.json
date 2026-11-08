@@ -1,0 +1,45 @@
+[
+  {
+    "title": "Guardar pedido",
+    "nodes": [
+      {
+        "id": "hook",
+        "type": "trigger.webhook",
+        "label": "Webhook",
+        "config": {
+          "bodySchema": [
+            {
+              "name": "order_id",
+              "type": {
+                "kind": "string"
+              }
+            },
+            {
+              "name": "amount",
+              "type": {
+                "kind": "number"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "save",
+        "type": "mock.service",
+        "label": "Guardar pedido",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "hook",
+        "fromHandle": "out",
+        "to": "save"
+      }
+    ]
+  }
+]

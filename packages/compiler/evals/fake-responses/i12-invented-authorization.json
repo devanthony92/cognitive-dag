@@ -1,0 +1,34 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "call",
+        "type": "http.request",
+        "label": "Call",
+        "config": {
+          "method": "GET",
+          "url": "https://my-server.example/data",
+          "headers": {
+            "Authorization": "Bearer sk-live-4242"
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "call"
+      }
+    ]
+  }
+]

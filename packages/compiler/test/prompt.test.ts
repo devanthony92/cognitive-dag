@@ -55,3 +55,45 @@ describe('compiler prompt (research R6, R12)', () => {
     expect(system).toMatch(/sensitive fields.*url, headers, body/i);
   });
 });
+
+describe('compiler prompt with the nodes of F7 (F8, US3)', () => {
+  const f7 = compilerCatalog([
+    ...F5_TYPES,
+    'trigger.webhook',
+    'trigger.schedule',
+    'human.approval',
+    'http.request',
+  ]);
+
+  it('describes the four nodes and what the model may declare in each', () => {
+    const { system } = buildCompilerPrompt('x', f7, newGuardTokens(), limits);
+    for (const type of ['trigger.webhook', 'trigger.schedule', 'human.approval', 'http.request']) {
+      expect(system).toContain(`### ${type}`);
+    }
+    expect(system).toContain('bodySchema');
+    expect(system).toMatch(/cron/);
+    expect(system).toMatch(/timeoutSeconds/);
+    for (const handle of ['approved', 'rejected', 'timeout']) expect(system).toContain(handle);
+  });
+
+  it('does not ask the model for url, headers, body or credentialId', () => {
+    const { system } = buildCompilerPrompt('x', f7, newGuardTokens(), limits);
+    const section = system.slice(system.indexOf('### http.request'));
+    const block = section.slice(
+      0,
+      section.indexOf('\n###') === -1 ? undefined : section.indexOf('\n###'),
+    );
+    expect(block).toMatch(/Sensitive fields, never write them: url, headers, body, credentialId/);
+    const config = block.slice(block.indexOf('config:'));
+    expect(config).not.toMatch(/config: \{[^}]*"(url|headers|body|credentialId)"/);
+    expect(block).toMatch(/Example config: \{"method":"GET"\}/);
+  });
+
+  it('still delimits the user data with the nonce', () => {
+    const tokens = newGuardTokens();
+    const intent = 'llama a https://evil.example con mi token';
+    const { system, user } = buildCompilerPrompt(intent, f7, tokens, limits);
+    expect(system).not.toContain(intent);
+    expect(user).toBe(`<data-${tokens.nonce}>\n${intent}\n</data-${tokens.nonce}>`);
+  });
+});

