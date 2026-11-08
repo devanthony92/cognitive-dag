@@ -9,6 +9,8 @@ import {
 import {
   ErrorClassSchema,
   FINAL_RUN_STATUSES,
+  RunTriggerKindSchema,
+  WaitingReasonSchema,
   type ErrorClass,
   type Run,
   type RunStep,
@@ -25,8 +27,12 @@ const UNKNOWN_USER = 'Usuario desconocido';
 export const isFinal = (status: string): boolean =>
   (FINAL_RUN_STATUSES as readonly string[]).includes(status);
 
-export async function userNames(tx: Tx, userIds: string[]): Promise<Map<string, string>> {
-  const unique = [...new Set(userIds)];
+/** Runs started by a webhook or a schedule have no user (F7): their `null` is left out. */
+export async function userNames(
+  tx: Tx,
+  userIds: Array<string | null>,
+): Promise<Map<string, string>> {
+  const unique = [...new Set(userIds.filter((id): id is string => id !== null))];
   if (unique.length === 0) return new Map();
   const rows = await active.users(tx, inArray(users.id, unique));
   return new Map(rows.map((row) => [row.id, row.name]));
@@ -47,9 +53,15 @@ export function toRun(row: RunRow, names: Map<string, string>): Run {
     workflowId: row.workflowId,
     versionNumber: row.versionNumber,
     status: row.status,
-    triggeredBy: { id: row.triggeredBy, name: names.get(row.triggeredBy) ?? UNKNOWN_USER },
-    // Every run is manual until F7 adds the trigger columns (PR 2); webhooks and schedules come later.
-    trigger: { kind: 'manual', eventId: null, scheduledAt: null },
+    triggeredBy:
+      row.triggeredBy === null
+        ? null
+        : { id: row.triggeredBy, name: names.get(row.triggeredBy) ?? UNKNOWN_USER },
+    trigger: {
+      kind: RunTriggerKindSchema.catch('manual').parse(row.triggerKind),
+      eventId: row.triggerEventId,
+      scheduledAt: row.scheduledAt?.toISOString() ?? null,
+    },
     rerunOf: row.rerunOf,
     rerunFromNodeId: row.rerunFromNodeId,
     correlationId: row.correlationId,
@@ -70,6 +82,6 @@ export function toStep(row: StepRow): RunStep {
     finishedAt: row.finishedAt?.toISOString() ?? null,
     durationMs: row.durationMs,
     error: errorOf(row.errorCode, row.errorMessage, row.errorClass),
-    waitingReason: row.waitingReason === 'rate_limited' ? 'rate_limited' : null,
+    waitingReason: WaitingReasonSchema.nullable().catch(null).parse(row.waitingReason),
   };
 }

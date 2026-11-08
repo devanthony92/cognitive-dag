@@ -264,3 +264,42 @@ describe('isRunFinished', () => {
     expect(isRunFinished(stateOf({ a: 'running', b: 'skipped' }))).toBe(false);
   });
 });
+
+describe('planNext with a human approval', () => {
+  /** trigger -> ask -(approved)-> go ; ask -(rejected)-> stop ; ask -(timeout)-> late */
+  const approval = asDefinition(
+    def(
+      [
+        trigger(),
+        node('ask', 'human.approval'),
+        node('go', 'mock.service'),
+        node('stop', 'mock.service'),
+        node('late', 'mock.service'),
+      ],
+      [
+        edge('trigger', 'ask'),
+        edge('ask', 'go', 'approved'),
+        edge('ask', 'stop', 'rejected'),
+        edge('ask', 'late', 'timeout'),
+      ],
+    ),
+  );
+  const graph = buildExecutionGraph(approval);
+  const base = {
+    trigger: 'succeeded',
+    ask: 'succeeded',
+    go: 'pending',
+    stop: 'pending',
+    late: 'pending',
+  } as const;
+
+  it.each([
+    ['approved', 'go', ['stop', 'late']],
+    ['rejected', 'stop', ['go', 'late']],
+    ['timeout', 'late', ['go', 'stop']],
+  ])('takes only the %s branch', (choice, ready, skipped) => {
+    const plan = planNext(graph, { ...stateOf({ ...base }, { ask: choice }) });
+    expect(plan.ready).toEqual([ready]);
+    expect([...plan.skip].sort()).toEqual([...skipped].sort());
+  });
+});
