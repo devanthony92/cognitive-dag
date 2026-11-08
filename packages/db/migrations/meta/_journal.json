@@ -99,6 +99,20 @@
       "when": 1794002248487,
       "tag": "0013_compilations_rls_triggers_grants",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1794100573220,
+      "tag": "0014_triggers_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1794100576589,
+      "tag": "0015_triggers_rls_triggers_grants",
+      "breakpoints": true
     }
   ]
 }

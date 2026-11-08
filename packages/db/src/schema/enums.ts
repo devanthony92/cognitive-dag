@@ -36,3 +36,15 @@ export const stepStatus = pgEnum('step_status', [
 
 /** An effect is `started` before it runs and `committed` once its destination confirmed it. */
 export const effectStatus = pgEnum('effect_status', ['started', 'committed']);
+
+/** Connector credentials are always sent as a header (F7, decision 10B). */
+export const credentialKind = pgEnum('credential_kind', ['bearer', 'api_key_header', 'basic']);
+
+/** The last four are final (F7, data-model `approvals`). */
+export const approvalStatus = pgEnum('approval_status', [
+  'pending',
+  'approved',
+  'rejected',
+  'timed_out',
+  'cancelled',
+]);

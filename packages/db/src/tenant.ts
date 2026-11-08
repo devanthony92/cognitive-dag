@@ -16,6 +16,10 @@ export interface TenantContext {
   organizationId?: string;
   lookupEmail?: string;
   lookupTokenHash?: string;
+  /** Public id of a webhook trigger: makes that one row readable (F7, data-model). Read only. */
+  lookupWebhookTriggerId?: string;
+  /** `schedules` lets the reconciler read the schedules not yet synced. Read only. */
+  reconciler?: 'schedules';
 }
 
 const SETTING_NAMES: Record<keyof TenantContext, string> = {
@@ -23,6 +27,8 @@ const SETTING_NAMES: Record<keyof TenantContext, string> = {
   organizationId: 'app.organization_id',
   lookupEmail: 'app.lookup_email',
   lookupTokenHash: 'app.lookup_token_hash',
+  lookupWebhookTriggerId: 'app.lookup_webhook_trigger_id',
+  reconciler: 'app.reconciler',
 };
 
 /** Adds keys to the context of the running transaction (e.g. the user id found by a lookup). */

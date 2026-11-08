@@ -1,6 +1,8 @@
 export * from './active.js';
 export * from './client.js';
+export * from './runs/credential-metadata.js';
+export * from './runs/start-run.js';
 export * from './schema/index.js';
 export * from './tenant.js';
 
-export { and, desc, eq, gt, inArray, isNull, lt, ne, sql } from 'drizzle-orm';
+export { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from 'drizzle-orm';

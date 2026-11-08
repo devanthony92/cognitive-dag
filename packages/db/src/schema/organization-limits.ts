@@ -17,6 +17,8 @@ export const organizationLimits = pgTable(
     maxDefinitionBytes: integer('max_definition_bytes').notNull(),
     /** Runs in progress (queued or running) allowed at the same time. */
     maxConcurrentRuns: integer('max_concurrent_runs').notNull().default(5),
+    /** Active schedules allowed at the same time (F7, research R6). */
+    maxActiveSchedules: integer('max_active_schedules').notNull().default(10),
     /** Identifier of the operator who made the change. */
     updatedBy: text('updated_by').notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -31,6 +33,10 @@ export const organizationLimits = pgTable(
     check(
       'organization_limits_max_concurrent_runs',
       sql`${table.maxConcurrentRuns} BETWEEN 1 AND 100`,
+    ),
+    check(
+      'organization_limits_max_active_schedules',
+      sql`${table.maxActiveSchedules} BETWEEN 0 AND 100`,
     ),
     check(
       'organization_limits_updated_by_length',

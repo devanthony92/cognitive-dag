@@ -37,9 +37,8 @@ export const workflowRuns = pgTable(
     /** Copy of the version number, to list runs without a join. */
     versionNumber: integer('version_number').notNull(),
     status: runStatus('status').notNull().default('queued'),
-    triggeredBy: uuid('triggered_by')
-      .notNull()
-      .references(() => users.id, { onDelete: 'restrict' }),
+    /** The person who started the run; null when a webhook or a schedule did (F7, research R14). */
+    triggeredBy: uuid('triggered_by').references(() => users.id, { onDelete: 'restrict' }),
     cancelledBy: uuid('cancelled_by').references(() => users.id, { onDelete: 'restrict' }),
     rerunOf: uuid('rerun_of').references((): AnyPgColumn => workflowRuns.id, {
       onDelete: 'restrict',
@@ -55,6 +54,12 @@ export const workflowRuns = pgTable(
     errorClass: text('error_class'),
     /** Tokens reserved and adjusted by the LLM nodes of the run (F5, research R4). */
     llmTokensUsed: integer('llm_tokens_used').notNull().default(0),
+    /** What fired the run (F7): `manual`, `webhook` or `schedule`. */
+    triggerKind: text('trigger_kind').notNull().default('manual'),
+    /** The `X-Event-Id` of the webhook call (F7). */
+    triggerEventId: text('trigger_event_id'),
+    /** The programmed time of a scheduled firing (F7). */
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
     startedAt: timestamp('started_at', { withTimezone: true }),
     finishedAt: timestamp('finished_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -108,6 +113,23 @@ export const workflowRuns = pgTable(
     check(
       'workflow_runs_cancelled_by_consistent',
       sql`${table.cancelledBy} IS NULL OR ${table.status} = 'cancelled'`,
+    ),
+    check(
+      'workflow_runs_trigger_kind_valid',
+      sql`${table.triggerKind} IN ('manual', 'webhook', 'schedule')`,
+    ),
+    check(
+      'workflow_runs_trigger_event_id_length',
+      sql`char_length(${table.triggerEventId}) BETWEEN 1 AND 128`,
+    ),
+    check(
+      'workflow_runs_trigger_consistent',
+      sql`(${table.triggerKind} = 'manual' AND ${table.triggeredBy} IS NOT NULL
+          AND ${table.triggerEventId} IS NULL AND ${table.scheduledAt} IS NULL)
+        OR (${table.triggerKind} = 'webhook' AND ${table.triggeredBy} IS NULL
+          AND ${table.triggerEventId} IS NOT NULL AND ${table.scheduledAt} IS NULL AND ${table.rerunOf} IS NULL)
+        OR (${table.triggerKind} = 'schedule' AND ${table.triggeredBy} IS NULL
+          AND ${table.triggerEventId} IS NULL AND ${table.scheduledAt} IS NOT NULL AND ${table.rerunOf} IS NULL)`,
     ),
   ],
 );
