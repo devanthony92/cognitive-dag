@@ -139,7 +139,7 @@ export function mount(path: string, handlers: Handlers = {}) {
     if (custom) return Promise.resolve(custom);
     if (url.endsWith('/features')) return Promise.resolve(json(flags));
     if (url.endsWith('/auth/session'))
-      return Promise.resolve(json(session(handlers.role ?? 'viewer')));
+      return Promise.resolve(json(session(handlers.role ?? 'editor')));
     if (url.endsWith('/limits')) {
       return Promise.resolve(
         json(

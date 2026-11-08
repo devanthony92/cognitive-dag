@@ -20,12 +20,16 @@ import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
 import { errorMessage } from './error-messages';
+import { useRunPermission } from './permissions';
 import { RunGraph } from './RunGraph';
 import { StatusBadge } from './StatusBadge';
 import { formatCostUsd, formatTokens } from '../llm/format';
 import { StepPanel } from './StepPanel';
 import { formatDateTime, originOf, formatDuration, isFinalRun, runDurationMs } from './status';
 import { useNow, useRunLive } from './useRunLive';
+
+/** Id of the sentence that says why the run controls are disabled. */
+const REASON_ID = 'run-role-reason';
 
 const MODE_TEXT = {
   connecting: 'Conectando…',
@@ -90,6 +94,8 @@ export function RunDetailPage({
       });
     },
   });
+
+  const { canExecute, blockedReason } = useRunPermission(organizationId);
 
   if (run.isError) {
     return (
@@ -192,10 +198,16 @@ export function RunDetailPage({
               {MODE_TEXT[mode]}
             </span>
           )}
+          {blockedReason && (
+            <span id={REASON_ID} className="text-xs text-muted-foreground">
+              {blockedReason}
+            </span>
+          )}
           {!final && (
             <Button
               variant="outline"
-              disabled={cancel.isPending}
+              disabled={cancel.isPending || !canExecute}
+              aria-describedby={blockedReason ? REASON_ID : undefined}
               onClick={() => {
                 cancel.reset();
                 setCancelOpen(true);
@@ -208,7 +220,8 @@ export function RunDetailPage({
           {final && (
             <Button
               variant="outline"
-              disabled={rerun.isPending}
+              disabled={rerun.isPending || !canExecute}
+              aria-describedby={blockedReason ? REASON_ID : undefined}
               onClick={() => rerun.mutate(undefined)}
             >
               <RotateCw aria-hidden />
@@ -282,6 +295,7 @@ export function RunDetailPage({
                 ? {
                     onRerunFrom: () => rerun.mutate(selectedStep.nodeId),
                     rerunning: rerun.isPending,
+                    ...(blockedReason ? { rerunBlockedBy: REASON_ID } : {}),
                   }
                 : {})}
             />
