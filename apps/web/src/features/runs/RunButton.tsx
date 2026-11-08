@@ -3,7 +3,7 @@ import { Link } from '@tanstack/react-router';
 import { History, Play } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/button';
-import { featuresQuery, isExecutionEnabled, isLlmNodesEnabled } from '../flags';
+import { featuresQuery, isExecutionEnabled, isLlmNodesEnabled, isTriggersEnabled } from '../flags';
 import { versionQuery, versionsQuery } from '../workflows/api';
 import { RunDialog } from './RunDialog';
 import { runBlockReason } from './runnable';
@@ -50,6 +50,7 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
           activeVersion.data?.definition,
           active !== undefined,
           isLlmNodesEnabled(features.data),
+          isTriggersEnabled(features.data),
         );
   const blocked = loading || reason !== undefined || activeVersion.data === undefined;
 

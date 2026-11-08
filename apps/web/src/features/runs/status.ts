@@ -46,6 +46,13 @@ export const ERROR_CLASS_LABELS: Record<ErrorClass, { label: string; hint: strin
 
 export const WAITING_RATE_LIMIT_LABEL = 'Esperando por el límite';
 
+/** Why a running step is waiting (F7 adds a human decision and an open circuit). */
+export const WAITING_REASON_LABELS = {
+  rate_limited: WAITING_RATE_LIMIT_LABEL,
+  approval: 'Esperando una aprobación',
+  circuit_open: 'Esperando: el destino falla y el circuito está abierto',
+} as const;
+
 const FINAL: ReadonlySet<RunStatus> = new Set(['succeeded', 'failed', 'cancelled', 'timed_out']);
 
 export const isFinalRun = (status: RunStatus): boolean => FINAL.has(status);
@@ -84,5 +91,16 @@ export function runDurationMs(
 
 export const formatDateTime = (iso: string): string => new Date(iso).toLocaleString('es');
 
-/** Who started a run that no person started (a webhook or a schedule); PR 3 names the origin. */
+/** Who started a run when no person did and the origin is unknown. */
 export const SYSTEM_ORIGIN = 'Sistema';
+
+/** Who or what started a run: the person, or "Webhook" / "Programación" (F7). */
+export function originOf(run: {
+  triggeredBy: { name: string } | null;
+  trigger: { kind: 'manual' | 'webhook' | 'schedule' };
+}): string {
+  if (run.triggeredBy) return run.triggeredBy.name;
+  if (run.trigger.kind === 'webhook') return 'Webhook';
+  if (run.trigger.kind === 'schedule') return 'Programación';
+  return SYSTEM_ORIGIN;
+}

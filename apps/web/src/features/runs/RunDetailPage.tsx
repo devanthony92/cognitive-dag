@@ -24,7 +24,7 @@ import { RunGraph } from './RunGraph';
 import { StatusBadge } from './StatusBadge';
 import { formatCostUsd, formatTokens } from '../llm/format';
 import { StepPanel } from './StepPanel';
-import { SYSTEM_ORIGIN, formatDateTime, formatDuration, isFinalRun, runDurationMs } from './status';
+import { formatDateTime, originOf, formatDuration, isFinalRun, runDurationMs } from './status';
 import { useNow, useRunLive } from './useRunLive';
 
 const MODE_TEXT = {
@@ -147,11 +147,8 @@ export function RunDetailPage({
           </div>
           <div className="flex min-w-0 gap-1">
             <dt>Inició</dt>
-            <dd
-              className="max-w-40 truncate text-foreground"
-              title={data.triggeredBy?.name ?? SYSTEM_ORIGIN}
-            >
-              {data.triggeredBy?.name ?? SYSTEM_ORIGIN}
+            <dd className="max-w-40 truncate text-foreground" title={originOf(data)}>
+              {originOf(data)}
             </dd>
           </div>
           <div className="flex gap-1">

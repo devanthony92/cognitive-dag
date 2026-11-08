@@ -31,13 +31,15 @@ export function runBlockReason(
   activeDefinition: unknown,
   hasActiveVersion: boolean,
   llmNodes = false,
+  triggerNodes = false,
 ): string | undefined {
   if (!hasActiveVersion) return RUN_TEXT.noVersion;
   if (activeDefinition === undefined) return undefined;
-  const unsupported = findUnsupportedNodes(
-    toEditableDefinition(activeDefinition).definition,
-    llmNodes ? ['F3', 'F5'] : ['F3'],
-  );
+  const unsupported = findUnsupportedNodes(toEditableDefinition(activeDefinition).definition, [
+    'F3',
+    ...(llmNodes ? (['F5'] as const) : []),
+    ...(triggerNodes ? (['F7'] as const) : []),
+  ]);
   return unsupported.length > 0 ? unsupportedText(unsupported) : undefined;
 }
 

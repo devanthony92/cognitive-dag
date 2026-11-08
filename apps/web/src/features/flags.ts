@@ -31,3 +31,7 @@ export function isExecutionEnabled(features: Record<string, boolean> | undefined
 export function isNlCompilerEnabled(features: Record<string, boolean> | undefined): boolean {
   return features?.[FEATURE_FLAGS.nlCompilerEnabled] === true;
 }
+
+export function isTriggersEnabled(features: Record<string, boolean> | undefined): boolean {
+  return features?.[FEATURE_FLAGS.triggersEnabled] === true;
+}
