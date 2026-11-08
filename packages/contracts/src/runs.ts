@@ -144,8 +144,8 @@ export const RUN_ERROR_CODES = {
 
 /**
  * Error codes an `http.request` step can record (F7, research R9, R11, R12). The HTTP client of
- * `@cognitive-dag/connectors` emits the first eleven; the worker adds the circuit breaker, the kill
- * switch and the credential.
+ * `@cognitive-dag/connectors` emits the first eleven; the worker adds the answer of the destination
+ * (5xx, 429, other 4xx), the circuit breaker, the kill switch and the credential.
  */
 export const HTTP_STEP_ERROR_CODES = [
   'SSRF_BLOCKED_ADDRESS',
@@ -159,9 +159,14 @@ export const HTTP_STEP_ERROR_CODES = [
   'HTTP_TLS_ERROR',
   'HTTP_NETWORK_ERROR',
   'HTTP_TIMEOUT',
+  'HTTP_SERVER_ERROR',
+  'HTTP_RATE_LIMITED',
+  'HTTP_CLIENT_ERROR',
   'HTTP_CIRCUIT_OPEN',
+  'HTTP_CIRCUIT_UNAVAILABLE',
   'HTTP_DISABLED',
   'CREDENTIAL_UNAVAILABLE',
+  'CREDENTIALS_NOT_CONFIGURED',
 ] as const;
 
 /** Longest `error_message` the database accepts. */

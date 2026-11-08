@@ -596,9 +596,14 @@ describe('problem codes (F7)', () => {
         'HTTP_TLS_ERROR',
         'HTTP_NETWORK_ERROR',
         'HTTP_TIMEOUT',
+        'HTTP_SERVER_ERROR',
+        'HTTP_RATE_LIMITED',
+        'HTTP_CLIENT_ERROR',
         'HTTP_CIRCUIT_OPEN',
+        'HTTP_CIRCUIT_UNAVAILABLE',
         'HTTP_DISABLED',
         'CREDENTIAL_UNAVAILABLE',
+        'CREDENTIALS_NOT_CONFIGURED',
       ].sort(),
     );
   });
