@@ -4,20 +4,28 @@ import {
   CancellationScope,
   CancelledFailure,
   TimeoutFailure,
+  condition,
+  defineUpdate,
   isCancellation,
   patched,
   proxyActivities,
+  setHandler,
   sleep,
 } from '@temporalio/workflow';
 import {
+  DECIDE_APPROVAL_UPDATE_NAME,
+  DEFAULT_HTTP_TASK_QUEUE,
   DEFAULT_LLM_TASK_QUEUE,
   DEFAULT_RUN_MAX_DURATION_MS,
+  DecideApprovalUpdateInputSchema,
   ExecuteDagInputSchema,
   RUN_ERROR_CODES,
   RUN_ERROR_CODE_MAX,
   RUN_ERROR_MESSAGE_MAX,
   type ExecuteDagInput,
   type ErrorClass,
+  type DecideApprovalUpdateInput,
+  type DecideApprovalUpdateResult,
   type ExecuteDagResult,
   type FinalRunStatus,
   type RunEvent,
@@ -40,6 +48,8 @@ import {
 import type { RunEventActivities } from '../activities/record-run-event';
 import type { MockServiceActivities, MockServiceInput } from '../activities/mock-service';
 import type { LlmActivities, LlmNodeInput } from '../llm/activities';
+import type { HttpActivities, HttpRequestInput } from '../http/activities';
+import type { ApprovalActivities } from '../approvals/activities';
 
 // Workflow code must stay deterministic: no I/O, clock, randomness or flag reads here. Everything
 // with an effect runs in an activity; only types are imported from the activity modules so the
@@ -121,6 +131,56 @@ function llmFor(taskQueue: string, policy: RetryPolicy): LlmActivities {
     llmProxies.set(key, proxy);
   }
   return proxy;
+}
+
+const httpProxies = new Map<string, HttpActivities>();
+
+/** Time on top of the per-attempt limit of the client for the work around the call. */
+const HTTP_ATTEMPT_MARGIN_SECONDS = 5;
+/** An open circuit may make a node wait up to its maximum wait (120 s) before it counts attempts. */
+const HTTP_TOTAL_TIME_MARGIN_SECONDS = TOTAL_TIME_MARGIN_SECONDS + 120;
+
+/**
+ * Proxy of the HTTP activities on their own task queue (bulkhead, F7 research R12). Temporal retries
+ * without limit and the activity applies the node policy, as with the LLM. The start-to-close time
+ * leaves a margin over the time per attempt the client enforces itself.
+ */
+function httpFor(taskQueue: string, policy: RetryPolicy): HttpActivities {
+  const key = `${taskQueue}/${policy.maxAttempts}/${policy.timeoutSeconds}/${policy.initialIntervalMs}`;
+  let proxy = httpProxies.get(key);
+  if (!proxy) {
+    proxy = proxyActivities<HttpActivities>({
+      taskQueue,
+      startToCloseTimeout: `${policy.timeoutSeconds + HTTP_ATTEMPT_MARGIN_SECONDS} seconds`,
+      scheduleToCloseTimeout: `${policy.maxAttempts * policy.timeoutSeconds + HTTP_TOTAL_TIME_MARGIN_SECONDS} seconds`,
+      retry: {
+        initialInterval: policy.initialIntervalMs,
+        backoffCoefficient: 2,
+        maximumInterval: MAX_TEMPORAL_BACKOFF,
+        maximumAttempts: 0,
+      },
+    });
+    httpProxies.set(key, proxy);
+  }
+  return proxy;
+}
+
+/** The email is best effort: its failure never fails the run (research R8). */
+const { notifyApprovers } = proxyActivities<ApprovalActivities>({
+  startToCloseTimeout: '60 seconds',
+  retry: { initialInterval: '2 seconds', backoffCoefficient: 2, maximumAttempts: 3 },
+});
+
+const decideApprovalUpdate = defineUpdate<DecideApprovalUpdateResult, [DecideApprovalUpdateInput]>(
+  DECIDE_APPROVAL_UPDATE_NAME,
+);
+
+/** What the workflow knows about the approval of one node (F7, research R7). */
+interface ApprovalSlot {
+  /** The first accepted decision; later ones are refused. */
+  decision?: { decision: 'approved' | 'rejected'; decidedBy: string; hasComment: boolean };
+  /** The wait is over (decided, timed out or cancelled): nothing else is accepted. */
+  resolved: boolean;
 }
 
 /** Recording is not a node: it is retried for longer, and it never retries what cannot succeed. */
@@ -258,6 +318,37 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
   const parsedDefinition = DagDefinitionSchema.safeParse(input.definition);
   const definition = parsedDefinition.success ? parsedDefinition.data : undefined;
 
+  // Registered before the first await so no decision arrives without a handler. The first decision
+  // to reach a waiting node wins; the comment is not kept: it stays in the history of the Update.
+  const approvalSlots = new Map<string, ApprovalSlot>();
+  setHandler(
+    decideApprovalUpdate,
+    (update) => {
+      const node = definition?.nodes.find((candidate) => candidate.id === update.nodeId);
+      if (node?.type !== 'human.approval') return { accepted: false, reason: 'unknown_node' };
+      const slot = approvalSlots.get(update.nodeId);
+      if (!slot) return { accepted: false, reason: 'not_waiting' };
+      if (slot.resolved || slot.decision) return { accepted: false, reason: 'already_resolved' };
+      slot.decision = {
+        decision: update.decision,
+        decidedBy: update.decidedBy,
+        hasComment: update.comment !== undefined && update.comment !== '',
+      };
+      return { accepted: true };
+    },
+    {
+      validator: (update) => {
+        if (!DecideApprovalUpdateInputSchema.safeParse(update).success) {
+          throw ApplicationFailure.create({
+            type: 'INVALID_INPUT',
+            message: 'The decision does not match the contract.',
+            nonRetryable: true,
+          });
+        }
+      },
+    },
+  );
+
   await record({
     ...base(),
     transition: 'run.started',
@@ -300,6 +391,13 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
       switch (node.type) {
         case 'trigger.manual':
           outputs[id] = input.triggerInput;
+          break;
+        case 'trigger.webhook':
+          // The API validated the body against `bodySchema` before starting the run (F7).
+          outputs[id] = input.triggerInput;
+          break;
+        case 'trigger.schedule':
+          outputs[id] = { firedAt: input.scheduledAt ?? now() };
           break;
         case 'logic.condition': {
           const { condition } = node.config as { condition: Condition };
@@ -351,9 +449,106 @@ export async function executeDag(rawInput: unknown): Promise<ExecuteDagResult> {
           attempts = result.attempts;
           break;
         }
+        case 'http.request': {
+          await record({ ...base(), transition: 'step.running', ...ref });
+          const policy = resolveRetryPolicy(node.type, node.retry) as RetryPolicy;
+          const activities = httpFor(input.httpTaskQueue ?? DEFAULT_HTTP_TASK_QUEUE, policy);
+          const result = await activities.httpRequest({
+            runId,
+            nodeId: id,
+            correlationId,
+            organizationId,
+            policy,
+            config: resolveNodeConfig(
+              node.type,
+              node.config,
+              outputs,
+            ) as HttpRequestInput['config'],
+          });
+          outputs[id] = result.output;
+          attempts = result.attempts;
+          break;
+        }
+        case 'human.approval': {
+          const config = resolveNodeConfig(node.type, node.config, outputs) as {
+            message: string;
+            timeoutSeconds: number;
+          };
+          const timeoutMs = config.timeoutSeconds * 1000;
+          await record({
+            ...base(),
+            transition: 'step.running',
+            ...ref,
+            waitingReason: 'approval',
+          });
+          const slot: ApprovalSlot = { resolved: false };
+          approvalSlots.set(id, slot);
+          await record({
+            ...base(),
+            transition: 'approval.requested',
+            ...ref,
+            nodeLabel: node.label,
+            expiresAt: new Date(Date.now() + timeoutMs).toISOString(),
+          });
+          // The message travels only as an input of this activity, so it lives in the Temporal
+          // history and nowhere else (decision 5C); the email does not include it.
+          void notifyApprovers({
+            organizationId,
+            runId,
+            nodeId: id,
+            correlationId,
+            message: config.message,
+          }).catch(() => undefined);
+
+          let decided: boolean;
+          try {
+            // No worker is held while waiting: this is a durable timer plus the Update.
+            decided = await condition(() => slot.decision !== undefined, timeoutMs);
+          } catch (error) {
+            slot.resolved = true;
+            if (isCancellation(error)) {
+              await record({
+                ...base(),
+                transition: 'approval.resolved',
+                ...ref,
+                outcome: 'cancelled',
+                hasComment: false,
+              });
+            }
+            throw error;
+          }
+          slot.resolved = true;
+          const decision = decided ? slot.decision : undefined;
+          if (decision) {
+            await record({
+              ...base(),
+              transition: 'approval.resolved',
+              ...ref,
+              outcome: decision.decision,
+              decidedBy: decision.decidedBy,
+              hasComment: decision.hasComment,
+            });
+            selections.set(id, decision.decision);
+            outputs[id] = { decision: decision.decision, approvedBy: decision.decidedBy };
+          } else {
+            await record({
+              ...base(),
+              transition: 'approval.resolved',
+              ...ref,
+              outcome: 'timed_out',
+              hasComment: false,
+            });
+            selections.set(id, 'timeout');
+            outputs[id] = { decision: 'timeout', approvedBy: '' };
+          }
+          break;
+        }
         default:
           // Unreachable: findUnsupportedNodes refused the version before the first node ran.
-          throw new RuntimeEvaluationError('REFERENCE_MALFORMED', `Unsupported node ${node.type}.`);
+          throw new RuntimeEvaluationError(
+            'REFERENCE_MALFORMED',
+            `Unsupported node ${(node as { type: string }).type}.`,
+          );
       }
       statuses.set(id, 'succeeded');
       await record({

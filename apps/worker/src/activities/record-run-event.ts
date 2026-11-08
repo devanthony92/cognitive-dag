@@ -1,6 +1,7 @@
 import { ApplicationFailure } from '@temporalio/activity';
 import {
   and,
+  approvals,
   eq,
   inArray,
   sql,
@@ -85,6 +86,63 @@ async function runStarted(
       )
       .onConflictDoNothing({ target: [workflowRunSteps.runId, workflowRunSteps.nodeId] });
   }
+}
+
+/**
+ * The run reached a `human.approval` node: one `approvals` row per node and run (T044). The unique
+ * key makes the event idempotent. The workflow and the requester are copied from the run, which the
+ * database checks again. The message lives only in Temporal.
+ */
+async function approvalRequested(
+  tx: Tx,
+  event: Extract<RunEvent, { transition: 'approval.requested' }>,
+): Promise<void> {
+  const [run] = await tx
+    .select({ workflowId: workflowRuns.workflowId, triggeredBy: workflowRuns.triggeredBy })
+    .from(workflowRuns)
+    .where(eq(workflowRuns.id, event.runId));
+  if (!run) {
+    throw ApplicationFailure.create({
+      type: 'RUN_NOT_FOUND',
+      message: 'The run record does not exist in this organization.',
+      nonRetryable: true,
+    });
+  }
+  await tx
+    .insert(approvals)
+    .values({
+      organizationId: event.organizationId,
+      runId: event.runId,
+      workflowId: run.workflowId,
+      nodeId: event.nodeId,
+      nodeLabel: event.nodeLabel,
+      runTriggeredBy: run.triggeredBy,
+      requestedAt: new Date(event.at),
+      expiresAt: new Date(event.expiresAt),
+    })
+    .onConflictDoNothing({ target: [approvals.runId, approvals.nodeId] });
+}
+
+/** Closes the request with how it ended; a repeated or late event never changes a final one. */
+async function approvalResolved(
+  tx: Tx,
+  event: Extract<RunEvent, { transition: 'approval.resolved' }>,
+): Promise<void> {
+  await tx
+    .update(approvals)
+    .set({
+      status: event.outcome,
+      resolvedAt: new Date(event.at),
+      decidedBy: event.decidedBy ?? null,
+      hasComment: event.hasComment,
+    })
+    .where(
+      and(
+        eq(approvals.runId, event.runId),
+        eq(approvals.nodeId, event.nodeId),
+        eq(approvals.status, 'pending'),
+      ),
+    );
 }
 
 async function runFinished(
@@ -218,14 +276,9 @@ export function createRunEventActivities(options: RunEventActivityOptions): RunE
           case 'run.finished':
             return runFinished(tx, event);
           case 'approval.requested':
+            return approvalRequested(tx, event);
           case 'approval.resolved':
-            // The contract carries them since F7 PR 1; the `approvals` table and their recording
-            // arrive with the data PR (T044). Nothing emits them yet, so refuse rather than drop.
-            throw ApplicationFailure.create({
-              type: 'APPROVAL_EVENTS_NOT_SUPPORTED',
-              message: 'Approval events cannot be recorded yet.',
-              nonRetryable: true,
-            });
+            return approvalResolved(tx, event);
           default:
             return stepChanged(tx, event);
         }
