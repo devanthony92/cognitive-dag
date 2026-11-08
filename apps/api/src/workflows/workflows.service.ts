@@ -21,6 +21,7 @@ import {
   WorkflowNameTakenException,
 } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
+import { SchedulesService } from '../schedules/schedules.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 import { LimitsService } from './limits.service';
 import { activeVersionNumbers, findActiveWorkflow } from './workflow-queries';
@@ -46,6 +47,7 @@ export class WorkflowsService {
     @Inject(DATABASE) private readonly database: DatabaseClient,
     private readonly limits: LimitsService,
     private readonly events: SecurityEventLogger,
+    private readonly schedules: SchedulesService,
   ) {}
 
   list(actor: WorkflowActor): Promise<WorkflowSummary[]> {
@@ -159,6 +161,7 @@ export class WorkflowsService {
           )
           .returning({ id: workflows.id });
         if (archived.length === 0) throw new ResourceNotFoundException();
+        await this.schedules.remove(tx, workflowId);
       },
     );
     this.events.emit({
