@@ -25,6 +25,9 @@ export const RATE_RULES = {
   previewInvitationIp: { name: 'invite-preview:ip', points: 60, durationSeconds: 3600 },
   resetIp: { name: 'reset:ip', points: 10, durationSeconds: 3600 },
   resetEmail: { name: 'reset:email', points: 3, durationSeconds: 3600 },
+  // Public webhook (F7, research R3): per trigger, and per address for the attempts that fail.
+  webhookTrigger: { name: 'hook', points: 60, durationSeconds: 60 },
+  webhookBadAttempts: { name: 'hook-bad', points: 20, durationSeconds: 100 },
 } as const satisfies Record<string, FixedRule>;
 
 /**
@@ -45,6 +48,20 @@ export class RateLimitService {
       if (error instanceof RateLimiterRes) {
         throw new RateLimitedException(Math.max(1, Math.ceil(error.msBeforeNext / 1000)));
       }
+      throw new ServiceUnavailableException();
+    }
+  }
+
+  /**
+   * Seconds left before `key` has points again, or 0 if it has some. It counts nothing: the webhook
+   * looks at the budget of failed attempts before it spends effort on a token (fail closed).
+   */
+  async secondsUntilAvailable(rule: FixedRule, key: string): Promise<number> {
+    try {
+      const state = await this.limiter(rule).get(key);
+      if (state === null || state.remainingPoints > 0) return 0;
+      return Math.max(1, Math.ceil(state.msBeforeNext / 1000));
+    } catch {
       throw new ServiceUnavailableException();
     }
   }

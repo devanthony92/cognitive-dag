@@ -8,6 +8,12 @@ const DRAFT_PATH = /^\/api\/v1\/organizations\/[^/]+\/workflows\/[^/]+\/draft\/?
 const DRAFT_ENVELOPE_SLACK = 1024;
 
 /**
+ * The public webhook reads its own body, after the token is accepted (F7): the global parser would
+ * read it, and cap it with another limit, before anyone is authenticated.
+ */
+const HOOK_PATH = /^\/api\/v1\/hooks\//;
+
+/**
  * JSON body parsing as Nest middleware (instead of Nest's built-in parser) so that parse and
  * size errors run after the correlation middleware and reach ProblemDetailsFilter.
  */
@@ -26,6 +32,10 @@ export class JsonBodyMiddleware implements NestMiddleware {
   }
 
   use(req: Request, res: Response, next: NextFunction): void {
+    if (HOOK_PATH.test(req.path)) {
+      next();
+      return;
+    }
     const parser =
       req.method === 'PUT' && DRAFT_PATH.test(req.path) ? this.draftParser : this.parser;
     parser(req, res, next);

@@ -64,6 +64,9 @@ export const EnvSchema = z.object({
     .min(1)
     .max(3600)
     .default(DEFAULT_WEBHOOK_TIMESTAMP_WINDOW_SECONDS),
+  // Public origin of this API, base of the webhook URLs the UI shows (F7). Without it the URL is
+  // built for localhost, which is right only for development.
+  API_PUBLIC_URL: z.url().optional(),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
 });
