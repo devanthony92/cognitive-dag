@@ -1,6 +1,6 @@
 # CognitiveDAG — Plan técnico
 
-> Estado: F0, F1, F2, F3, F4, F5 y F6 completadas; F7 (triggers y control humano) es la siguiente fase. Fecha: 2026-11-06.
+> Estado: F0, F1, F2, F3, F4, F5, F6 y F7 completadas; F8 (endurecimiento) es la siguiente fase. Fecha: 2026-11-07.
 > Documento vivo: cada decisión cerrada se registra aquí o en un ADR ([`docs/adr/`](adr/)).
 
 ## 1. Visión
@@ -112,7 +112,8 @@ apps/
 packages/
   dag-schema/   Zod: nodos, aristas, DAG, validación semántica (fuente única de verdad)
   llm/          Gateway Gemini: structured output, guardrails, presupuesto, telemetría
-  connectors/   Interfaz de conector + http genérico + simulado
+  connectors/   Cliente HTTP guardado (anti-SSRF y allowlist), cifrado de credenciales y circuit
+                breaker puro (F7, TDD)
   resilience/   Taxonomía de errores, circuit breaker, rate limiter
   config/       eslint, tsconfig, utilidades compartidas
 docs/
@@ -127,19 +128,19 @@ docs/
 - Solo una versión publicada está activa a la vez; cada ejecución queda ligada a su versión.
 - Nodos del MVP:
 
-| Tipo               | Categoría | Descripción                                          |
-| ------------------ | --------- | ---------------------------------------------------- |
-| `trigger.manual`   | Trigger   | Ejecución desde la UI o API                          |
-| `trigger.webhook`  | Trigger   | URL única por trigger, firmada                       |
-| `trigger.schedule` | Trigger   | Temporal Schedules                                   |
-| `llm.classify`     | Cognitivo | Devuelve un enum/booleanos según esquema             |
-| `llm.extract`      | Cognitivo | Extrae campos tipados de texto libre                 |
-| `llm.generate`     | Cognitivo | Genera texto; su salida nunca se ejecuta             |
-| `logic.condition`  | Lógica    | Ramifica según un AST de condición tipado            |
-| `logic.merge`      | Lógica    | Une ramas                                            |
-| `human.approval`   | Control   | Pausa hasta aprobación (Temporal signal) con timeout |
-| `http.request`     | Acción    | Llamada HTTP saliente con allowlist anti-SSRF        |
-| `mock.service`     | Acción    | Conector simulado con fallos configurables           |
+| Tipo               | Categoría | Descripción                                                                                                            |
+| ------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `trigger.manual`   | Trigger   | Ejecución desde la UI o API                                                                                            |
+| `trigger.webhook`  | Trigger   | URL única por trigger con token secreto (sin firma HMAC, [ADR-0072](adr/0072-webhook-con-token-en-la-url-sin-hmac.md)) |
+| `trigger.schedule` | Trigger   | Temporal Schedules                                                                                                     |
+| `llm.classify`     | Cognitivo | Devuelve un enum/booleanos según esquema                                                                               |
+| `llm.extract`      | Cognitivo | Extrae campos tipados de texto libre                                                                                   |
+| `llm.generate`     | Cognitivo | Genera texto; su salida nunca se ejecuta                                                                               |
+| `logic.condition`  | Lógica    | Ramifica según un AST de condición tipado                                                                              |
+| `logic.merge`      | Lógica    | Une ramas                                                                                                              |
+| `human.approval`   | Control   | Pausa hasta aprobación (Temporal Update) con timeout                                                                   |
+| `http.request`     | Acción    | Llamada HTTP saliente con allowlist anti-SSRF                                                                          |
+| `mock.service`     | Acción    | Conector simulado con fallos configurables                                                                             |
 
 - Las referencias entre nodos usan rutas declarativas (`nodes.classify.output.tone`),
   resueltas por un resolver seguro. No hay plantillas evaluables ni `eval`.
@@ -152,7 +153,8 @@ docs/
   topológico. Las ramas independientes corren en paralelo.
 - Cada nodo de efecto o de LLM es una **activity**; la lógica pura (condiciones, merge)
   corre dentro del workflow, que es determinista.
-- `human.approval` usa signals; el estado en vivo se expone con queries y con una tabla
+- `human.approval` usa un Temporal Update (`decideApproval`) en lugar de signals, para responder 409 a
+  la segunda decisión con certeza ([ADR-0074](adr/0074-aprobacion-humana-con-temporal-update.md)); el estado en vivo se expone con queries y con una tabla
   de eventos de ejecución que el API transmite por SSE.
 - Implementado en F3: `executeDag` recibe la definición completa en su entrada
   ([ADR-0048](adr/0048-interprete-unico-con-la-definicion-en-la-entrada.md)); el registro de
@@ -160,7 +162,10 @@ docs/
   y el contenido solo en Temporal ([ADR-0050](adr/0050-contenido-de-entradas-y-salidas-solo-en-temporal.md));
   la vista en vivo usa SSE con Valkey pub/sub ([ADR-0051](adr/0051-vista-en-vivo-por-sse-con-valkey-pub-sub.md)).
 - `workflowId` = clave de idempotencia del evento disparador, para que Temporal descarte
-  duplicados.
+  duplicados. En webhooks, `hook-<workflowId>-<eventId>` con `REJECT_DUPLICATE` ([ADR-0072](adr/0072-webhook-con-token-en-la-url-sin-hmac.md)).
+- Desde F7, `trigger.schedule` usa un Temporal Schedule por workflow que arranca un lanzador
+  (`fireSchedule`) con solape `SKIP` y catch-up de 1 hora; el lanzador ejecuta `executeDag` como child
+  workflow ([ADR-0073](adr/0073-temporal-schedule-por-workflow.md)).
 - Grafos grandes o bucles futuros: `continueAsNew` y child workflows para respetar los
   límites de historial.
 - Versionado del código del workflow: `patched()` / Worker Versioning, y pruebas de
@@ -212,16 +217,20 @@ Implementado en F4: la taxonomía y su clasificación por nodo ([ADR-0055](adr/0
 
 ### 5.4 Contención
 
-- **Circuit breaker** por (tenant, conector) con estado en Redis: cerrado → abierto → semiabierto.
+- **Circuit breaker** por (organización, host) con estado en Valkey: cerrado → abierto → semiabierto.
+  Implementado en F7 ([ADR-0079](adr/0079-circuit-breaker-por-organizacion-y-host.md)).
 - **Rate limiting** por (tenant, conector) con token bucket, más límites por task queue de Temporal.
 - **Bulkheads**: task queues separadas para LLM, HTTP y conectores simulados.
 - **Cuotas por tenant**: ejecuciones concurrentes, ejecuciones por día y tokens LLM.
 - Implementado en F4: rate limit por organización y tipo de nodo, con token bucket en Valkey y sin ocupar el worker ([ADR-0057](adr/0057-rate-limit-con-token-bucket-sin-ocupar-el-worker.md)). Diferidos a F5 y F7: circuit breaker (decisión 3C), granularidad por servicio, cuotas diarias y bulkheads ([ADR-0060](adr/0060-decisiones-diferidas-de-resiliencia.md)).
-- Implementado en F5: cuota diaria de tokens LLM por organización con reserva atómica en PostgreSQL ([ADR-0062](adr/0062-presupuesto-de-tokens-con-reserva-en-postgresql.md)) y bulkhead de LLM con una task queue propia en el mismo proceso ([ADR-0063](adr/0063-bulkhead-con-cola-llm-en-el-mismo-proceso.md)). Siguen diferidos: circuit breaker y granularidad por servicio (F7), cuotas de ejecuciones por día, y bulkheads de HTTP y conectores (F7).
+- Implementado en F5: cuota diaria de tokens LLM por organización con reserva atómica en PostgreSQL ([ADR-0062](adr/0062-presupuesto-de-tokens-con-reserva-en-postgresql.md)) y bulkhead de LLM con una task queue propia en el mismo proceso ([ADR-0063](adr/0063-bulkhead-con-cola-llm-en-el-mismo-proceso.md)).
+- Implementado en F7 (cierra la deuda de [ADR-0060](adr/0060-decisiones-diferidas-de-resiliencia.md)): circuit breaker y granularidad por servicio (servicio = host) con clave `cb:<organizationId>:<host>` en Valkey (5 fallos transitorios en 60 s, 30 s de enfriamiento, 120 s de espera máxima por nodo), y bulkhead HTTP con la task queue `cognitive-dag-http`. Siguen diferidos: cuotas de ejecuciones por día y rate limit por host.
 
 ### 5.5 Recuperación
 
-- Estados de ejecución: `running`, `waiting_approval`, `succeeded`, `failed`, `cancelled`.
+- Estados de ejecución: `running`, `succeeded`, `failed`, `cancelled` (y `timed_out` desde F3). Una
+  ejecución en espera de aprobación sigue `running`: la espera se muestra en el paso con
+  `waiting_reason = 'approval'`; no hay estado `waiting_approval` ([ADR-0074](adr/0074-aprobacion-humana-con-temporal-update.md)).
 - Ejecuciones fallidas quedan como **cola de revisión** (equivalente a una DLQ) con el
   error clasificado y las entradas/salidas de cada nodo.
 - **Reejecución desde un nodo**: nueva ejecución que reutiliza las salidas memorizadas de
@@ -264,18 +273,18 @@ parcialmente al compilador y a futuras extensiones agénticas.
 
 ### 6.2 OWASP Top 10:2025 (web)
 
-| Riesgo                                     | Mitigación                                                                                                                                                                                                                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A01 Broken Access Control (incluye SSRF)   | Guards de NestJS por rol (owner/editor/viewer); `tenant_id` en toda consulta; **RLS en PostgreSQL** como defensa en profundidad; pruebas de acceso cruzado entre tenants; `http.request` con allowlist, bloqueo de IPs privadas/metadata y protección contra DNS rebinding |
-| A02 Security Misconfiguration              | Headers con Helmet; CORS estricto; sin stack traces en producción; configuración validada al arrancar; Temporal UI y Postgres sin exposición pública                                                                                                                       |
-| A03 Software Supply Chain Failures         | Lockfile; `pnpm audit` y Dependabot/Renovate; escaneo de secretos (gitleaks) en CI; imágenes base fijadas por digest; SBOM opcional                                                                                                                                        |
-| A04 Cryptographic Failures                 | TLS en todo; credenciales de conectores con cifrado de sobre (AES-256-GCM, llave maestra fuera de la DB); argon2id para contraseñas                                                                                                                                        |
-| A05 Injection                              | Consultas parametrizadas vía ORM; validación Zod en cada borde; AST de condiciones sin `eval`; resolver de rutas seguro                                                                                                                                                    |
-| A06 Insecure Design                        | Modelo de amenazas; límites por tenant; flujos de aprobación; este documento                                                                                                                                                                                               |
-| A07 Authentication Failures                | argon2id; access token corto + refresh rotado en cookie `httpOnly` `Secure` `SameSite`; protección CSRF; bloqueo progresivo y rate limit en login; MFA TOTP (fase posterior)                                                                                               |
-| A08 Software or Data Integrity Failures    | Webhooks firmados con HMAC + timestamp anti-replay; versiones de DAG inmutables; artefactos de CI firmados/etiquetados                                                                                                                                                     |
-| A09 Security Logging and Alerting Failures | Log de auditoría por tenant (login, publicación, cambios de credenciales, aprobaciones); logs estructurados con redacción; alertas de fallos de auth y de costo                                                                                                            |
-| A10 Mishandling of Exceptional Conditions  | Falla cerrada (fail-closed) en autorización y validación; taxonomía de errores de la sección 5; filtro global de excepciones en NestJS; nunca continuar un flujo ante un estado desconocido                                                                                |
+| Riesgo                                     | Mitigación                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A01 Broken Access Control (incluye SSRF)   | Guards de NestJS por rol (owner/editor/viewer); `tenant_id` en toda consulta; **RLS en PostgreSQL** como defensa en profundidad; pruebas de acceso cruzado entre tenants; `http.request` con allowlist, bloqueo de IPs privadas/metadata y protección contra DNS rebinding                                                                                                                                                  |
+| A02 Security Misconfiguration              | Headers con Helmet; CORS estricto; sin stack traces en producción; configuración validada al arrancar; Temporal UI y Postgres sin exposición pública                                                                                                                                                                                                                                                                        |
+| A03 Software Supply Chain Failures         | Lockfile; `pnpm audit` y Dependabot/Renovate; escaneo de secretos (gitleaks) en CI; imágenes base fijadas por digest; SBOM opcional                                                                                                                                                                                                                                                                                         |
+| A04 Cryptographic Failures                 | TLS en todo; credenciales de conectores con cifrado de sobre (AES-256-GCM, llave maestra fuera de la DB); argon2id para contraseñas                                                                                                                                                                                                                                                                                         |
+| A05 Injection                              | Consultas parametrizadas vía ORM; validación Zod en cada borde; AST de condiciones sin `eval`; resolver de rutas seguro                                                                                                                                                                                                                                                                                                     |
+| A06 Insecure Design                        | Modelo de amenazas; límites por tenant; flujos de aprobación; este documento                                                                                                                                                                                                                                                                                                                                                |
+| A07 Authentication Failures                | argon2id; access token corto + refresh rotado en cookie `httpOnly` `Secure` `SameSite`; protección CSRF; bloqueo progresivo y rate limit en login; MFA TOTP (fase posterior)                                                                                                                                                                                                                                                |
+| A08 Software or Data Integrity Failures    | Webhooks con token secreto de 256 bits (guardado como SHA-256, comparación en tiempo constante), `X-Event-Id` y ventana de ±5 min contra replay. **Sin firma HMAC**: desviación de este plan, aceptada por el autor (decisión 2B, [ADR-0072](adr/0072-webhook-con-token-en-la-url-sin-hmac.md); riesgo en [threat-model](threat-model.md), sección 3.6). Versiones de DAG inmutables; artefactos de CI firmados/etiquetados |
+| A09 Security Logging and Alerting Failures | Log de auditoría por tenant (login, publicación, cambios de credenciales, aprobaciones); logs estructurados con redacción; alertas de fallos de auth y de costo                                                                                                                                                                                                                                                             |
+| A10 Mishandling of Exceptional Conditions  | Falla cerrada (fail-closed) en autorización y validación; taxonomía de errores de la sección 5; filtro global de excepciones en NestJS; nunca continuar un flujo ante un estado desconocido                                                                                                                                                                                                                                 |
 
 ### 6.3 Herramientas de verificación
 
@@ -359,20 +368,31 @@ Reglas derivadas:
 - Postgres de Temporal separado lógicamente (otra base) del Postgres de la aplicación.
 - Desarrollo local: `docker compose` + `temporal server start-dev`.
 
+### Requisitos para F9 derivados de F7
+
+- **Caddy debe redactar la ruta `/api/v1/hooks/*` en sus logs de acceso** (T068). El token de los
+  webhooks viaja en la ruta (`/api/v1/hooks/{triggerId}/{token}`, [ADR-0072](adr/0072-webhook-con-token-en-la-url-sin-hmac.md)), y el proxy es el primer
+  registro que lo ve. La API ya lo redacta; el proxy no lo hace por defecto. Verificar con una
+  petición de prueba que ninguna línea de acceso contiene el token.
+- Los webhooks se sirven solo por TLS (Caddy), porque sin firma el token es el único secreto de la
+  petición.
+- Antes del despliegue, el autor decide si `http.request` y `human.approval` pueden iniciarlos los
+  viewers (ADR-0053; ver threat-model, sección 3.6).
+
 ## 10. Fases
 
 Cada fase termina con: código en `main`, pruebas en verde, criterios de seguridad cumplidos y ADRs al día.
 
-| Fase                             | Contenido                                                                                                                  | Terminado cuando                                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **F0 Fundaciones**               | Monorepo, tooling, CI, Docker Compose dev, ADRs iniciales, modelo de amenazas v1                                           | CI en verde con lint/typecheck/test/audit/escaneo de secretos; entorno local arranca con un comando |
-| **F1 Identidad y multi-tenant**  | Registro, login, refresh, tenants, roles, RLS, log de auditoría                                                            | Pruebas de acceso cruzado entre tenants fallan como se espera; controles A01/A04/A07 cubiertos      |
-| **F2 Modelo DAG y editor**       | `dag-schema` (Zod), validación semántica, versionado inmutable, editor React Flow                                          | Se crea, edita, valida y publica un DAG manualmente                                                 |
-| **F3 Motor de ejecución**        | Workflow intérprete, activities base, `trigger.manual`, `logic.*`, `mock.service`, tabla de eventos, vista en vivo por SSE | Un DAG con ramas paralelas y condiciones se ejecuta y se observa en vivo                            |
-| **F4 Resiliencia**               | Taxonomía, políticas, idempotencia, rate limit, reejecución desde nodo, listado de ejecuciones, pruebas de caos y replay   | Pruebas de caos (sección 5.6) pasan; demo de recuperación tras matar el worker                      |
-| **F5 Nodos cognitivos**          | Paquete `llm` (Gemini, structured output, presupuesto, redacción), `llm.classify/extract/generate`                         | Nodos LLM validados por esquema; límites de consumo activos; set de inyección sin escapes           |
-| **F6 Compilador NL → DAG**       | Prompt con catálogo, ciclo de reparación, UI de intención → borrador, evals                                                | Tasa de éxito medida en el dataset de evals; nada se ejecuta sin publicar                           |
-| **F7 Triggers y control humano** | `trigger.webhook` firmado, `trigger.schedule`, `human.approval`, `http.request` con anti-SSRF                              | Webhook con firma inválida o replay rechazado; SSRF a IPs internas bloqueado                        |
-| **F8 Endurecimiento**            | Revisión completa de OWASP (sección 6), ZAP, revisión del modelo de amenazas                                               | Todas las filas de las tablas 6.1 y 6.2 verificadas con evidencia                                   |
-| **F9 Despliegue**                | VM Oracle, Compose producción, Caddy, backups, observabilidad                                                              | Demo pública con TLS; restauración de backup probada                                                |
-| **F10 Integraciones**            | Gmail, Slack, OAuth por tenant (pendiente de definir)                                                                      | Se define al llegar                                                                                 |
+| Fase                             | Contenido                                                                                                                                                                                                        | Terminado cuando                                                                                    |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **F0 Fundaciones**               | Monorepo, tooling, CI, Docker Compose dev, ADRs iniciales, modelo de amenazas v1                                                                                                                                 | CI en verde con lint/typecheck/test/audit/escaneo de secretos; entorno local arranca con un comando |
+| **F1 Identidad y multi-tenant**  | Registro, login, refresh, tenants, roles, RLS, log de auditoría                                                                                                                                                  | Pruebas de acceso cruzado entre tenants fallan como se espera; controles A01/A04/A07 cubiertos      |
+| **F2 Modelo DAG y editor**       | `dag-schema` (Zod), validación semántica, versionado inmutable, editor React Flow                                                                                                                                | Se crea, edita, valida y publica un DAG manualmente                                                 |
+| **F3 Motor de ejecución**        | Workflow intérprete, activities base, `trigger.manual`, `logic.*`, `mock.service`, tabla de eventos, vista en vivo por SSE                                                                                       | Un DAG con ramas paralelas y condiciones se ejecuta y se observa en vivo                            |
+| **F4 Resiliencia**               | Taxonomía, políticas, idempotencia, rate limit, reejecución desde nodo, listado de ejecuciones, pruebas de caos y replay                                                                                         | Pruebas de caos (sección 5.6) pasan; demo de recuperación tras matar el worker                      |
+| **F5 Nodos cognitivos**          | Paquete `llm` (Gemini, structured output, presupuesto, redacción), `llm.classify/extract/generate`                                                                                                               | Nodos LLM validados por esquema; límites de consumo activos; set de inyección sin escapes           |
+| **F6 Compilador NL → DAG**       | Prompt con catálogo, ciclo de reparación, UI de intención → borrador, evals                                                                                                                                      | Tasa de éxito medida en el dataset de evals; nada se ejecuta sin publicar                           |
+| **F7 Triggers y control humano** | `trigger.webhook` con token secreto (sin HMAC, [ADR-0072](adr/0072-webhook-con-token-en-la-url-sin-hmac.md)), `trigger.schedule`, `human.approval`, `http.request` con anti-SSRF, credenciales y circuit breaker | Webhook con token inválido o regenerado y replay rechazados; SSRF a IPs internas bloqueado          |
+| **F8 Endurecimiento**            | Revisión completa de OWASP (sección 6), ZAP, revisión del modelo de amenazas                                                                                                                                     | Todas las filas de las tablas 6.1 y 6.2 verificadas con evidencia                                   |
+| **F9 Despliegue**                | VM Oracle, Compose producción, Caddy, backups, observabilidad                                                                                                                                                    | Demo pública con TLS; restauración de backup probada                                                |
+| **F10 Integraciones**            | Gmail, Slack, OAuth por tenant (pendiente de definir)                                                                                                                                                            | Se define al llegar                                                                                 |

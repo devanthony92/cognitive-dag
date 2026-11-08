@@ -14,7 +14,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 ## Status
 
 **F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`). **F6 — natural language compiler: complete** (behind `nl-compiler-enabled`).
+the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`). **F6 — natural language compiler: complete** (behind `nl-compiler-enabled`). **F7 — triggers and human control: complete** (behind `triggers-enabled`).
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -85,7 +85,17 @@ F6 adds:
 | Verification  | `pnpm eval:compiler`: 30 intents and 10 injection cases; recorded answers in CI, Gemini by hand (workflow `compiler-evals.yml`)                          |
 | Documentation | 71 architecture decision records; threat model v1.6 with the F6 rows; constitution 1.0.2 (TDD in `packages/compiler`)                                    |
 
-**Next: F7 — triggers and human control.** Until F9 the system runs locally only and is not deployed
+F7 adds:
+
+| Area          | What F7 delivers                                                                                                                                                                                                                                                  |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Triggers      | `trigger.webhook` (`POST /api/v1/hooks/{triggerId}/{token}`, token shown once, `202` with `runId`, duplicates answered with the original run) and `trigger.schedule` (one Temporal Schedule per workflow, overlaps skipped, 1-hour catch-up)                      |
+| Human control | `human.approval` pauses the run without holding a worker; an inbox with a counter; owners and editors decide, except the person who started the run; `approved`, `rejected` or `timeout` branches; email without the message                                      |
+| HTTP          | `http.request` over https only, with anti-SSRF (validated DNS, connection to the validated IP, revalidated redirects), 1 MiB limit, `Idempotency-Key`, circuit breaker per organization and host, and its own task queue                                          |
+| Credentials   | Connector credentials (bearer, API key header, basic) encrypted with AES-256-GCM envelope encryption; never returned after creation; optional per-organization allowlist of destinations                                                                          |
+| Documentation | 81 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md)); threat model v1.7 with the F7 rows; constitution 1.0.3 (TDD in `packages/connectors`) |
+
+**Next: F8 — hardening.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
@@ -123,17 +133,18 @@ keeps sessions and rate-limit counters in Valkey.
 
 ## Documentation
 
-| Document                                                           | Content                                                                    |
-| ------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| [docs/PLAN.md](docs/PLAN.md)                                       | Technical plan: decisions, architecture, resilience, security, phases (es) |
-| [Constitution](.specify/memory/constitution.md)                    | Non-negotiable principles every spec, plan and PR must meet (es)           |
-| [docs/adr/](docs/adr/)                                             | Architecture decision records, one per decision (es)                       |
-| [docs/threat-model.md](docs/threat-model.md)                       | Data-flow diagram, trust boundaries and STRIDE analysis (es)               |
-| [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/) | F0 spec, plan, research, tasks and quickstart (es)                         |
-| [specs/002-identity-tenancy/](specs/002-identity-tenancy/)         | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
-| [specs/005-resilience/](specs/005-resilience/)                     | F4 spec, plan, research, data model, tasks and quickstart (es)             |
-| [specs/006-cognitive-nodes/](specs/006-cognitive-nodes/)           | F5 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
-| [specs/007-nl-compiler/](specs/007-nl-compiler/)                   | F6 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| Document                                                               | Content                                                                    |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [docs/PLAN.md](docs/PLAN.md)                                           | Technical plan: decisions, architecture, resilience, security, phases (es) |
+| [Constitution](.specify/memory/constitution.md)                        | Non-negotiable principles every spec, plan and PR must meet (es)           |
+| [docs/adr/](docs/adr/)                                                 | Architecture decision records, one per decision (es)                       |
+| [docs/threat-model.md](docs/threat-model.md)                           | Data-flow diagram, trust boundaries and STRIDE analysis (es)               |
+| [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/)     | F0 spec, plan, research, tasks and quickstart (es)                         |
+| [specs/002-identity-tenancy/](specs/002-identity-tenancy/)             | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| [specs/005-resilience/](specs/005-resilience/)                         | F4 spec, plan, research, data model, tasks and quickstart (es)             |
+| [specs/006-cognitive-nodes/](specs/006-cognitive-nodes/)               | F5 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| [specs/007-nl-compiler/](specs/007-nl-compiler/)                       | F6 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
+| [specs/008-triggers-human-control/](specs/008-triggers-human-control/) | F7 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 
 The project follows Spec-Driven Development with [GitHub Spec Kit](https://github.com/github/spec-kit).
 
@@ -231,7 +242,7 @@ With `execution-enabled` on (default in `.env.example`) the editor header shows 
 **Ejecuciones**. **Ejecutar** runs the active version and asks for the fields the manual trigger
 declares (a generated form, validated before it is sent); it is disabled, with the reason next to
 it, when the workflow has no active version or the version has nodes that are not executable yet
-(`http.request`, `human.approval`, webhook and schedule triggers; `llm.*` run when `llm-nodes-enabled` is on). Any member, viewers
+(`http.request`, `human.approval`, webhook and schedule triggers; they run when `triggers-enabled` is on, and `llm.*` run when `llm-nodes-enabled` is on). Any member, viewers
 included, can run, cancel and rerun (author decision, [ADR-0053](docs/adr/0053-cualquier-miembro-puede-ejecutar.md)).
 
 - **List:** the runs of a workflow, newest first, with state, version, who started it, start and duration.
@@ -310,6 +321,49 @@ pnpm eval:compiler -- --provider gemini
 The decisions are in [ADR-0067](docs/adr/0067-compilador-asincrono-en-temporal-con-contenido-solo-en-el-historial.md) to
 [ADR-0071](docs/adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md).
 
+## Triggers, human control and HTTP (F7, behind `triggers-enabled`)
+
+With `triggers-enabled` on (default in `.env.example`) the editor offers `trigger.webhook`,
+`trigger.schedule`, `human.approval` and `http.request`, the webhook panel shows the URL, the
+workflow page shows the schedule status, the header shows the approvals inbox with its counter, and
+the **Connections** page manages credentials and allowed hosts. With the flag off these nodes are not
+offered, and a version that contains them fails with `UNSUPPORTED_NODES`.
+
+- **Webhook:** owners and editors generate the token from the webhook panel; the URL with the token
+  is shown once. Callers send `POST /api/v1/hooks/{triggerId}/{token}` with `X-Event-Id`,
+  `X-Event-Timestamp` (ISO 8601 UTC, within 5 minutes of the server clock) and a JSON body of at most
+  64 KiB. The API answers `202` with the `runId`; a repeated `X-Event-Id` answers `200` with
+  `duplicate: true`. Regenerating the token invalidates the previous one at once. The token travels in
+  the path and there is no HMAC signature: this is an accepted risk
+  ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md)). TLS and log redaction at the proxy are required before deployment (F9).
+- **Schedule:** `trigger.schedule` takes a cron expression and an IANA time zone. Activating the
+  version creates the Temporal Schedule `sched-<workflowId>`; overlapping firings are skipped and
+  firings missed for less than an hour run once.
+- **Approvals:** `human.approval` pauses the run without holding a worker and emails the owners and
+  editors who can decide, without the message. Anyone with the owner or editor role decides, except
+  the person who started the run. The first decision wins; the run continues on `approved`,
+  `rejected` or `timeout`. The message and comment live only in the Temporal history.
+- **HTTP:** `http.request` accepts only https, resolves DNS once, connects to the validated address,
+  blocks private, loopback, link-local, carrier-grade NAT and metadata ranges (IPv4 and IPv6), and
+  revalidates every redirect (at most 3). It reads at most 1 MiB of JSON or text. Owners can restrict
+  destinations with an allowlist of hosts or `*.domain` entries. A circuit breaker per organization
+  and host, and a task queue of its own (`cognitive-dag-http`), keep failing services from affecting
+  the rest of the platform.
+- **Credentials:** owners create, rotate and archive connector credentials (bearer, API key header or
+  basic). Values are encrypted with AES-256-GCM envelope encryption under `CREDENTIALS_MASTER_KEY`,
+  are never returned, and are referenced by id from `http.request`. Generate the key with
+  `pnpm credentials:gen-key` and keep it in your local `.env`.
+
+The worker has two kill switches: `TRIGGERS_ENABLED` (schedule firings) and `HTTP_ENABLED` (HTTP
+activities). `HTTP_TEST_ALLOW_LOOPBACK` exists for tests only; the worker refuses to start with it in
+production.
+
+```bash
+pnpm credentials:gen-key
+```
+
+The decisions are in [ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md).
+
 ## Recovery demo
 
 `pnpm demo:recovery` starts a demonstration workflow, kills the worker in the middle of the run,
@@ -343,6 +397,7 @@ enforces it. `main` only accepts pull requests with all six CI checks green.
 Security is part of every spec's definition of done. The F0 controls (validated configuration,
 Helmet and strict CORS, no stack traces in errors, log redaction, locked-down supply chain, secret
 scanning), the F1 controls (sessions, CSRF, rate limiting, tenant isolation with Row-Level Security,
-security events), the accepted deviation from NIST 800-63B-4 in the password length and the risks
+security events), the accepted deviation from NIST 800-63B-4 in the password length, the F7 controls
+(webhook token and replay checks, anti-SSRF, encrypted credentials, approval rules) and the risks
 deferred to later phases are catalogued in the
 [threat model](docs/threat-model.md).
