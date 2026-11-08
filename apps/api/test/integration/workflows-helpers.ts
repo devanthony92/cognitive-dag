@@ -183,6 +183,7 @@ export async function setLimitsAsOperator(
     maxEdges: number;
     maxDefinitionBytes: number;
     maxConcurrentRuns?: number;
+    maxActiveSchedules?: number;
   },
 ): Promise<void> {
   const pool = new pg.Pool({ connectionString: process.env.DATABASE_MIGRATOR_URL, max: 1 });
@@ -192,18 +193,20 @@ export async function setLimitsAsOperator(
     await client.query(
       `INSERT INTO organization_limits
          (organization_id, max_nodes, max_edges, max_definition_bytes, max_concurrent_runs,
-          updated_by)
-       VALUES ($1, $2, $3, $4, $5, 'api-test')
+          max_active_schedules, updated_by)
+       VALUES ($1, $2, $3, $4, $5, $6, 'api-test')
        ON CONFLICT (organization_id) DO UPDATE SET
          max_nodes = EXCLUDED.max_nodes, max_edges = EXCLUDED.max_edges,
          max_definition_bytes = EXCLUDED.max_definition_bytes,
-         max_concurrent_runs = EXCLUDED.max_concurrent_runs, updated_at = now()`,
+         max_concurrent_runs = EXCLUDED.max_concurrent_runs,
+         max_active_schedules = EXCLUDED.max_active_schedules, updated_at = now()`,
       [
         organizationId,
         limits.maxNodes,
         limits.maxEdges,
         limits.maxDefinitionBytes,
         limits.maxConcurrentRuns ?? 5,
+        limits.maxActiveSchedules ?? 10,
       ],
     );
     await client.query('COMMIT');
