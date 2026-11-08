@@ -34,6 +34,19 @@ El estado de cada una se revisa al cerrar F5 y F7, y se registra en `docs/PLAN.m
 - **Circuit breaker**: sigue diferido a F7, con `http.request`. En F5 el rate limit global por modelo y el presupuesto acotan la presión sobre Gemini, pero no cortan el tráfico ante una caída sostenida.
 - **Granularidad por servicio**: sigue diferida junto con el circuit breaker.
 
+## Actualización al cerrar F7 (2026-11-07)
+
+- **Circuit breaker**: implementado en F7 por organización y host, en Valkey, con su cola propia
+  `cognitive-dag-http` ([ADR-0079](0079-circuit-breaker-por-organizacion-y-host.md)). Abre tras 5
+  fallos transitorios en 60 s y, con el circuito abierto, espera hasta 120 s antes de fallar el nodo.
+- **Granularidad por servicio**: implementada como organización y host, donde el host es el
+  "servicio" ([ADR-0079](0079-circuit-breaker-por-organizacion-y-host.md)). El rate limit de F4 sigue
+  por organización y tipo de nodo. Un límite por host queda diferido.
+- **Bulkhead HTTP**: implementado con una task queue propia en el mismo proceso, con concurrencia
+  configurable (`HTTP_MAX_CONCURRENT_ACTIVITIES`, 20 por defecto). Las colas de conectores distintos
+  de HTTP no existen en F7.
+- **Cuotas diarias de ejecuciones**: siguen diferidas, sin cambio desde la actualización de F5.
+
 ## Consecuencias
 
 - Bueno: F4 se cierra con lo que puede verificarse con el servicio simulado y sin inventar cargas.
