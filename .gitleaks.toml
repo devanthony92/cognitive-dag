@@ -7,3 +7,11 @@ useDefault = true
 [[allowlists]]
 description = "Local development defaults"
 paths = ['''^\.env\.example$''']
+
+# Canary values that tests plant to prove content never reaches logs, events or rows.
+[[allowlists]]
+description = "Test canaries"
+condition = "AND"
+paths = ['''^apps/[^/]+/test/.*\.test\.ts$''']
+regexTarget = "match"
+regexes = ['''[A-Z]+-CANARY-\d{4}''']
