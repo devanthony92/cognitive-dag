@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { OrganizationsModule } from '../organizations/organizations.module';
+import { SchedulesModule } from '../schedules/schedules.module';
 import { DagEditorEnabledGuard } from './dag-editor-enabled.guard';
 import { LimitsController } from './limits.controller';
 import { LimitsService } from './limits.service';
@@ -9,7 +10,7 @@ import { WorkflowsController } from './workflows.controller';
 import { WorkflowsService } from './workflows.service';
 
 @Module({
-  imports: [OrganizationsModule],
+  imports: [OrganizationsModule, SchedulesModule],
   controllers: [WorkflowsController, LimitsController],
   providers: [
     DagEditorEnabledGuard,

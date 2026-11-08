@@ -2,9 +2,11 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   active,
   and,
+  credentials,
   desc,
   eq,
   inArray,
+  isNull,
   users,
   workflowActiveVersions,
   workflowVersions,
@@ -12,6 +14,7 @@ import {
   type Tx,
 } from '@cognitive-dag/db';
 import type { VersionBody, VersionSummary } from '@cognitive-dag/contracts';
+import { validateCredentialReferences } from '@cognitive-dag/dag-schema';
 import { isCheckViolation, isUniqueViolation } from '../auth/pg-errors';
 import {
   DagInvalidException,
@@ -20,6 +23,7 @@ import {
   ResourceNotFoundException,
 } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
+import { SchedulesService } from '../schedules/schedules.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 import { definitionHash } from './canonical-json';
 import { LimitsService } from './limits.service';
@@ -39,6 +43,7 @@ export class VersionsService {
     @Inject(DATABASE) private readonly database: DatabaseClient,
     private readonly limits: LimitsService,
     private readonly events: SecurityEventLogger,
+    private readonly schedules: SchedulesService,
   ) {}
 
   list(actor: WorkflowActor, workflowId: string): Promise<VersionSummary[]> {
@@ -103,6 +108,11 @@ export class VersionsService {
           throw new DagInvalidException(validation.errors);
         }
         const definition = validation.definition;
+        // F7: a credential the nodes name must exist, be live and belong to this organization.
+        const credentialErrors = await validateCredentialReferences(definition, async (ids) =>
+          usableCredentials(tx, actor.organizationId, ids),
+        );
+        if (credentialErrors.length > 0) throw new DagInvalidException(credentialErrors);
         const hash = definitionHash(definition);
 
         const [latest] = await tx
@@ -146,6 +156,7 @@ export class VersionsService {
         if (!version) throw new Error('INSERT INTO workflow_versions returned no row');
 
         await setActive(tx, workflowId, version.id, actor.userId);
+        await this.schedules.syncActiveVersion(tx, actor.organizationId, workflowId, version);
         const authors = await authorNames(tx, [actor.userId]);
         return toVersionSummary(version, true, authors);
       },
@@ -172,6 +183,7 @@ export class VersionsService {
         await findActiveWorkflow(tx, actor.organizationId, workflowId, { lock: true });
         const version = await findVersion(tx, workflowId, versionNumber);
         await setActive(tx, workflowId, version.id, actor.userId);
+        await this.schedules.syncActiveVersion(tx, actor.organizationId, workflowId, version);
         const authors = await authorNames(tx, [version.publishedBy]);
         return toVersionSummary(version, true, authors);
       },
@@ -222,6 +234,26 @@ async function setActive(
     .where(eq(workflowActiveVersions.workflowId, workflowId))
     .returning({ workflowId: workflowActiveVersions.workflowId });
   if (updated.length === 0) throw new Error(`Workflow ${workflowId} has no active-version row`);
+}
+
+/** The credential ids, among `ids`, that are live and in the organization (RLS also filters). */
+async function usableCredentials(
+  tx: Tx,
+  organizationId: string,
+  ids: readonly string[],
+): Promise<ReadonlySet<string>> {
+  if (ids.length === 0) return new Set();
+  const rows = await tx
+    .select({ id: credentials.id })
+    .from(credentials)
+    .where(
+      and(
+        eq(credentials.organizationId, organizationId),
+        inArray(credentials.id, [...ids]),
+        isNull(credentials.archivedAt),
+      ),
+    );
+  return new Set(rows.map((row) => row.id));
 }
 
 async function authorNames(tx: Tx, userIds: string[]): Promise<Map<string, string>> {
