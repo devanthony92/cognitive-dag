@@ -1,4 +1,5 @@
 import { Context } from '@temporalio/activity';
+import { ERROR_CLASS_CODES } from '@cognitive-dag/dag-schema';
 import {
   ConnectorError,
   countsAsBreakerFailure,
@@ -209,7 +210,7 @@ export function createHttpActivities(options: HttpActivityOptions): HttpActiviti
             await markWaiting('rate_limited');
             throw new NodeFailure({
               errorClass: 'rate_limited',
-              code: 'RATE_LIMITED',
+              code: ERROR_CLASS_CODES.rate_limited,
               message: 'The node is waiting for its turn under the rate limit.',
               retryAfterMs: decision.retryAfterMs,
             });
