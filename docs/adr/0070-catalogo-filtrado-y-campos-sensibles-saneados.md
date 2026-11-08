@@ -35,3 +35,4 @@ El catálogo del compilador solo incluye tipos con `executableFrom` ≤ F5: `tri
 
 - [Research F6](../../specs/007-nl-compiler/research.md) (R10 y R12).
 - [ADR-0064](0064-defensas-contra-inyeccion-de-prompts.md).
+- Actualizado por [ADR-0083](0083-compilador-con-los-nodos-de-f7.md): el catálogo llega hasta F7 y `credentialId` es sensible.
