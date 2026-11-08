@@ -21,7 +21,7 @@ import { workflowQuery } from '../workflows/api';
 import { runsQuery } from './api';
 import { RunButton } from './RunButton';
 import { StatusBadge } from './StatusBadge';
-import { SYSTEM_ORIGIN, formatDateTime, formatDuration, isFinalRun, runDurationMs } from './status';
+import { formatDateTime, originOf, formatDuration, isFinalRun, runDurationMs } from './status';
 import { useNow } from './useRunLive';
 
 /** Runs of one workflow, newest first, paged with a cursor. */
@@ -118,11 +118,8 @@ export function RunsPage({
                         )}
                       </TableCell>
                       <TableCell>{run.versionNumber}</TableCell>
-                      <TableCell
-                        className="max-w-40 truncate"
-                        title={run.triggeredBy?.name ?? SYSTEM_ORIGIN}
-                      >
-                        {run.triggeredBy?.name ?? SYSTEM_ORIGIN}
+                      <TableCell className="max-w-40 truncate" title={originOf(run)}>
+                        {originOf(run)}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {formatDateTime(run.createdAt)}

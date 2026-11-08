@@ -7,7 +7,9 @@ import {
   isExecutionEnabled,
   isIdentityEnabled,
   isResilienceEnabled,
+  isTriggersEnabled,
 } from '../flags';
+import { ApprovalsBadge } from '../approvals/ApprovalsBadge';
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher';
 import { forgetSession, logout, sessionQuery } from './session';
 
@@ -68,6 +70,24 @@ export function AppHeader() {
             >
               Ejecuciones
             </Link>
+          )}
+        {identity &&
+          info &&
+          organizationId !== undefined &&
+          isTriggersEnabled(features.data) &&
+          info.organizations.some(
+            (organization) => organization.id === organizationId && organization.role !== 'viewer',
+          ) && (
+            <>
+              <ApprovalsBadge organizationId={organizationId} />
+              <Link
+                to="/orgs/$organizationId/connections"
+                params={{ organizationId }}
+                className="text-sm underline"
+              >
+                Conexiones
+              </Link>
+            </>
           )}
         {identity && info && organizationId !== undefined && (
           <Link

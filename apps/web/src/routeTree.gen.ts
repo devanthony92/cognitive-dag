@@ -19,6 +19,8 @@ import { Route as AccountPasswordRouteImport } from './routes/account.password'
 import { Route as InvitationsAcceptRouteImport } from './routes/invitations.accept'
 import { Route as OrgsOrganizationIdRouteImport } from './routes/orgs.$organizationId'
 import { Route as OrgsOrganizationIdIndexRouteImport } from './routes/orgs.$organizationId.index'
+import { Route as OrgsOrganizationIdApprovalsRouteImport } from './routes/orgs.$organizationId.approvals'
+import { Route as OrgsOrganizationIdConnectionsRouteImport } from './routes/orgs.$organizationId.connections'
 import { Route as OrgsOrganizationIdMembersRouteImport } from './routes/orgs.$organizationId.members'
 import { Route as OrgsOrganizationIdRunsIndexRouteImport } from './routes/orgs.$organizationId.runs.index'
 import { Route as OrgsOrganizationIdRunsRunIdRouteImport } from './routes/orgs.$organizationId.runs.$runId'
@@ -77,6 +79,18 @@ const OrgsOrganizationIdIndexRoute = OrgsOrganizationIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => OrgsOrganizationIdRoute,
 } as any)
+const OrgsOrganizationIdApprovalsRoute =
+  OrgsOrganizationIdApprovalsRouteImport.update({
+    id: '/approvals',
+    path: '/approvals',
+    getParentRoute: () => OrgsOrganizationIdRoute,
+  } as any)
+const OrgsOrganizationIdConnectionsRoute =
+  OrgsOrganizationIdConnectionsRouteImport.update({
+    id: '/connections',
+    path: '/connections',
+    getParentRoute: () => OrgsOrganizationIdRoute,
+  } as any)
 const OrgsOrganizationIdMembersRoute =
   OrgsOrganizationIdMembersRouteImport.update({
     id: '/members',
@@ -130,6 +144,8 @@ export interface FileRoutesByFullPath {
   '/account/password': typeof AccountPasswordRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/approvals': typeof OrgsOrganizationIdApprovalsRoute
+  '/orgs/$organizationId/connections': typeof OrgsOrganizationIdConnectionsRoute
   '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
@@ -148,6 +164,8 @@ export interface FileRoutesByTo {
   '/verify-email': typeof VerifyEmailRoute
   '/account/password': typeof AccountPasswordRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
+  '/orgs/$organizationId/approvals': typeof OrgsOrganizationIdApprovalsRoute
+  '/orgs/$organizationId/connections': typeof OrgsOrganizationIdConnectionsRoute
   '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
@@ -168,6 +186,8 @@ export interface FileRoutesById {
   '/account/password': typeof AccountPasswordRoute
   '/invitations/accept': typeof InvitationsAcceptRoute
   '/orgs/$organizationId': typeof OrgsOrganizationIdRouteWithChildren
+  '/orgs/$organizationId/approvals': typeof OrgsOrganizationIdApprovalsRoute
+  '/orgs/$organizationId/connections': typeof OrgsOrganizationIdConnectionsRoute
   '/orgs/$organizationId/members': typeof OrgsOrganizationIdMembersRoute
   '/orgs/$organizationId/': typeof OrgsOrganizationIdIndexRoute
   '/orgs/$organizationId/runs/$runId': typeof OrgsOrganizationIdRunsRunIdRoute
@@ -189,6 +209,8 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/invitations/accept'
     | '/orgs/$organizationId'
+    | '/orgs/$organizationId/approvals'
+    | '/orgs/$organizationId/connections'
     | '/orgs/$organizationId/members'
     | '/orgs/$organizationId/'
     | '/orgs/$organizationId/runs/$runId'
@@ -207,6 +229,8 @@ export interface FileRouteTypes {
     | '/verify-email'
     | '/account/password'
     | '/invitations/accept'
+    | '/orgs/$organizationId/approvals'
+    | '/orgs/$organizationId/connections'
     | '/orgs/$organizationId/members'
     | '/orgs/$organizationId'
     | '/orgs/$organizationId/runs/$runId'
@@ -226,6 +250,8 @@ export interface FileRouteTypes {
     | '/account/password'
     | '/invitations/accept'
     | '/orgs/$organizationId'
+    | '/orgs/$organizationId/approvals'
+    | '/orgs/$organizationId/connections'
     | '/orgs/$organizationId/members'
     | '/orgs/$organizationId/'
     | '/orgs/$organizationId/runs/$runId'
@@ -320,6 +346,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrgsOrganizationIdIndexRouteImport
       parentRoute: typeof OrgsOrganizationIdRoute
     }
+    '/orgs/$organizationId/approvals': {
+      id: '/orgs/$organizationId/approvals'
+      path: '/approvals'
+      fullPath: '/orgs/$organizationId/approvals'
+      preLoaderRoute: typeof OrgsOrganizationIdApprovalsRouteImport
+      parentRoute: typeof OrgsOrganizationIdRoute
+    }
+    '/orgs/$organizationId/connections': {
+      id: '/orgs/$organizationId/connections'
+      path: '/connections'
+      fullPath: '/orgs/$organizationId/connections'
+      preLoaderRoute: typeof OrgsOrganizationIdConnectionsRouteImport
+      parentRoute: typeof OrgsOrganizationIdRoute
+    }
     '/orgs/$organizationId/members': {
       id: '/orgs/$organizationId/members'
       path: '/members'
@@ -373,6 +413,8 @@ declare module '@tanstack/react-router' {
 }
 
 interface OrgsOrganizationIdRouteChildren {
+  OrgsOrganizationIdApprovalsRoute: typeof OrgsOrganizationIdApprovalsRoute
+  OrgsOrganizationIdConnectionsRoute: typeof OrgsOrganizationIdConnectionsRoute
   OrgsOrganizationIdMembersRoute: typeof OrgsOrganizationIdMembersRoute
   OrgsOrganizationIdIndexRoute: typeof OrgsOrganizationIdIndexRoute
   OrgsOrganizationIdRunsRunIdRoute: typeof OrgsOrganizationIdRunsRunIdRoute
@@ -384,6 +426,8 @@ interface OrgsOrganizationIdRouteChildren {
 }
 
 const OrgsOrganizationIdRouteChildren: OrgsOrganizationIdRouteChildren = {
+  OrgsOrganizationIdApprovalsRoute: OrgsOrganizationIdApprovalsRoute,
+  OrgsOrganizationIdConnectionsRoute: OrgsOrganizationIdConnectionsRoute,
   OrgsOrganizationIdMembersRoute: OrgsOrganizationIdMembersRoute,
   OrgsOrganizationIdIndexRoute: OrgsOrganizationIdIndexRoute,
   OrgsOrganizationIdRunsRunIdRoute: OrgsOrganizationIdRunsRunIdRoute,

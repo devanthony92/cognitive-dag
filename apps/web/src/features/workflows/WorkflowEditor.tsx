@@ -39,10 +39,13 @@ import { ProblemAlert } from '../auth/ProblemAlert';
 import {
   featuresQuery,
   isLlmNodesEnabled,
+  isTriggersEnabled,
   isNlCompilerEnabled,
   isResilienceEnabled,
 } from '../flags';
 import { RunButton } from '../runs/RunButton';
+import { ScheduleStatus } from '../schedules/ScheduleStatus';
+import { WebhookPanel } from '../webhooks/WebhookPanel';
 import { sessionQuery } from '../session/session';
 import {
   limitsQuery,
@@ -151,6 +154,7 @@ function EditorSession({
   const featureFlags = useQuery(featuresQuery).data;
   const resilience = isResilienceEnabled(featureFlags);
   const llm = isLlmNodesEnabled(featureFlags);
+  const triggers = isTriggersEnabled(featureFlags);
   const compiler = isNlCompilerEnabled(featureFlags);
   const flow = useReactFlow<FlowNode, Edge>();
   const canvas = useRef<HTMLDivElement>(null);
@@ -553,7 +557,7 @@ function EditorSession({
       )}
 
       <div className="flex min-h-0 flex-1">
-        {canWrite && <Palette onAdd={addFromPalette} llm={llm} />}
+        {canWrite && <Palette onAdd={addFromPalette} llm={llm} triggers={triggers} />}
 
         <div
           ref={canvas}
@@ -625,17 +629,29 @@ function EditorSession({
           <div role="tabpanel" className="p-4">
             {tab === 'node' ? (
               selectedNode ? (
-                <ConfigForm
-                  key={selectedNode.id}
-                  node={selectedNode}
-                  definition={definition}
-                  readOnly={readOnly}
-                  errors={errors}
-                  onChange={onNodeChange}
-                  onRename={renameSelected}
-                  resilience={resilience}
-                  llm={llm}
-                />
+                <>
+                  <ConfigForm
+                    key={selectedNode.id}
+                    node={selectedNode}
+                    definition={definition}
+                    readOnly={readOnly}
+                    errors={errors}
+                    onChange={onNodeChange}
+                    onRename={renameSelected}
+                    resilience={resilience}
+                    llm={llm}
+                  />
+                  {triggers && selectedNode.type === 'trigger.webhook' && (
+                    <WebhookPanel
+                      organizationId={organizationId}
+                      workflowId={workflowId}
+                      canWrite={canWrite}
+                    />
+                  )}
+                  {triggers && selectedNode.type === 'trigger.schedule' && (
+                    <ScheduleStatus organizationId={organizationId} workflowId={workflowId} />
+                  )}
+                </>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   Selecciona un nodo del lienzo para ver su configuración.

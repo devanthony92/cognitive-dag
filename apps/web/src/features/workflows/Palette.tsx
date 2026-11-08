@@ -20,10 +20,13 @@ const CATEGORIES: { id: NodeCategory; title: string }[] = [
 export function Palette({
   onAdd,
   llm = false,
+  triggers = false,
 }: {
   onAdd: (type: NodeType) => void;
   /** `llm-nodes-enabled`: the nodes of F5 can run. */
   llm?: boolean;
+  /** `triggers-enabled`: the nodes of F7 (webhook, schedule, approval, HTTP) can run. */
+  triggers?: boolean;
 }) {
   return (
     <aside
@@ -56,7 +59,8 @@ export function Palette({
                     <span className="block font-medium">{entry.label}</span>
                     <span className="block text-xs text-muted-foreground">{entry.description}</span>
                     <span className="mt-1 block text-[11px] font-medium text-primary">
-                      {llm && entry.executableFrom === 'F5'
+                      {(llm && entry.executableFrom === 'F5') ||
+                      (triggers && entry.executableFrom === 'F7')
                         ? 'Ejecutable'
                         : `Se ejecuta desde ${entry.executableFrom}`}
                     </span>

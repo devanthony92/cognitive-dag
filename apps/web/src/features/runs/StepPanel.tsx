@@ -12,7 +12,7 @@ import { stepIoQuery } from './api';
 import { StatusBadge } from './StatusBadge';
 import {
   ERROR_CLASS_LABELS,
-  WAITING_RATE_LIMIT_LABEL,
+  WAITING_REASON_LABELS,
   formatDateTime,
   formatDuration,
 } from './status';
@@ -170,7 +170,10 @@ export function StepPanel({
 
   const errorClass =
     (resilience || llm) && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
-  const waitingForLimit = resilience && step.waitingReason === 'rate_limited';
+  const waitingText =
+    step.waitingReason === 'approval' || (resilience && step.waitingReason !== null)
+      ? WAITING_REASON_LABELS[step.waitingReason]
+      : undefined;
 
   return (
     <div className="grid gap-4">
@@ -186,9 +189,9 @@ export function StepPanel({
         <dt className="text-muted-foreground">Estado</dt>
         <dd>
           <StatusBadge status={step.status} kind="step" />
-          {waitingForLimit && (
+          {waitingText && (
             <p role="status" className="mt-1 text-xs font-medium text-amber-900">
-              {WAITING_RATE_LIMIT_LABEL}
+              {waitingText}
             </p>
           )}
         </dd>

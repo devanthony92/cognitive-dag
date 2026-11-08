@@ -29,6 +29,7 @@ import {
   StringListEditor,
   type ListMessages,
 } from './ListEditors';
+import { CredentialSelect } from '../credentials/CredentialSelect';
 import { ConditionBuilder } from './ConditionBuilder';
 import { defaultCondition, looksLikeCondition } from './condition-model';
 import type { GroupedErrors } from './model';
@@ -248,6 +249,19 @@ export function ConfigForm({
                       scope={scope}
                       invalid={messages.length > 0}
                       describedBy={messages.length > 0 ? `${id}-message` : undefined}
+                      onChange={field.onChange}
+                      onBlur={field.onBlur}
+                    />
+                  </FieldRow>
+                );
+              }
+              if (node.type === 'http.request' && descriptor.key === 'credentialId') {
+                return (
+                  <FieldRow id={id} label="Credencial" messages={messages}>
+                    <CredentialSelect
+                      id={id}
+                      value={typeof field.value === 'string' ? field.value : ''}
+                      invalid={messages.length > 0}
                       onChange={field.onChange}
                       onBlur={field.onBlur}
                     />
