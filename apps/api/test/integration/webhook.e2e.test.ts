@@ -226,6 +226,19 @@ describe('POST /api/v1/hooks/{triggerId}/{token}', () => {
       maxConcurrentRuns: 1,
     });
     try {
+      // Runs of the earlier tests may still be going and would take the only place.
+      await waitFor(async () => {
+        const open = await Promise.all(
+          ['queued', 'running'].map((status) =>
+            api(env)
+              .get(`${orgPath(env)}/runs?status=${status}`)
+              .set(authHeaders(env.owner)),
+          ),
+        );
+        return open.every((r) => (r.body as { items: unknown[] }).items.length === 0)
+          ? true
+          : undefined;
+      });
       await postHook(env, hook.path).expect(202);
       const response = await postHook(env, hook.path).expect(429);
       expect(problemOf(response).code).toBe('RUN_LIMIT_REACHED');
