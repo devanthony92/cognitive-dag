@@ -1,0 +1,75 @@
+openapi: 3.1.0
+info:
+  title: CognitiveDAG API — F8 endurecimiento
+  version: 0.9.0
+  description: >
+    Extiende los contratos de F0–F7 (specs/008-triggers-human-control/contracts/api.openapi.yaml).
+    F8 no añade endpoints. Solo se listan los cambios de comportamiento: (1) iniciar, cancelar y
+    reejecutar una ejecución exigen rol owner o editor y devuelven 403 FORBIDDEN al viewer;
+    (2) desaparece el código FEATURE_NOT_AVAILABLE porque no quedan flags de producto, y con ello
+    todos los endpoints de F1-F7 responden siempre como antes respondían con el flag encendido;
+    (3) GET /api/v1/features devuelve un objeto vacío; (4) se retira la ruta F0 POST/GET
+    /api/v1/pings sin organización. Los errores usan application/problem+json (RFC 9457).
+servers:
+  - url: http://localhost:3000
+security:
+  - session: []
+paths:
+  /api/v1/organizations/{organizationId}/workflows/{workflowId}/runs:
+    post:
+      operationId: startRun
+      description: Inicia una ejecución. Solo owner y editor; el viewer recibe 403 FORBIDDEN.
+      responses:
+        '202': { description: Ejecución en cola (sin cambios respecto a F3). }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { description: Organización o workflow inexistentes o ajenos (sin cambios). }
+  /api/v1/organizations/{organizationId}/runs/{runId}/cancel:
+    post:
+      operationId: cancelRun
+      description: Cancela una ejecución. Solo owner y editor; el viewer recibe 403 FORBIDDEN.
+      responses:
+        '202': { description: Cancelación solicitada (sin cambios). }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/organizations/{organizationId}/runs/{runId}/rerun:
+    post:
+      operationId: rerunRun
+      description: >
+        Reejecuta, completa o desde un nodo (fromNodeId). Solo owner y editor; el viewer recibe 403.
+      responses:
+        '202': { description: Nueva ejecución en cola (sin cambios). }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/v1/features:
+    get:
+      operationId: getFeatures
+      description: Flags públicos. Tras F8 el catálogo está vacío y la respuesta es {}.
+      security: []
+      responses:
+        '200':
+          description: Objeto vacío.
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: { type: boolean }, maxProperties: 0 }
+components:
+  responses:
+    Forbidden:
+      description: El rol vigente de la persona no permite la operación.
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [status, title, detail, code, correlationId]
+      properties:
+        status: { type: integer, const: 403 }
+        title: { type: string, const: Forbidden }
+        detail: { type: string, description: En español. }
+        code: { type: string, const: FORBIDDEN }
+        correlationId: { type: string, format: uuid }
+    CompilerCatalogChange:
+      description: >
+        No es un endpoint. Documenta el cambio del catálogo del compilador: tras F8 ofrece
+        trigger.webhook, trigger.schedule, human.approval y http.request. En http.request el modelo
+        nunca rellena url, headers, body ni credentialId (sensitiveFields); el borrador los lista en
+        omittedSensitiveFields y la publicación queda bloqueada hasta que una persona los complete.
+      type: object
