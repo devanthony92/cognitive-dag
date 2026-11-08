@@ -60,14 +60,21 @@ describe('start a run (requires docker compose up and pnpm db:migrate)', () => {
     expect(done.definition).toMatchObject({ schemaVersion: 1 });
   });
 
-  it('any member can run, even a viewer', async () => {
+  it('owner and editor can run; a viewer gets 403 FORBIDDEN and nothing starts (ADR-0082)', async () => {
     const workflowId = await publishedWorkflow(env, amountDefinition());
-    for (const session of [env.viewer, env.editor]) {
+    for (const session of [env.owner, env.editor]) {
       const response = await startRun(env, session, workflowId).expect(202);
       const run = RunSchema.parse(response.body);
       expect(run.triggeredBy?.id).toBe(session.body.user.id);
       await waitForTerminal(env, env.owner, run.id);
     }
+    const denied = await startRun(env, env.viewer, workflowId).expect(403);
+    expect(ProblemDetailsSchema.parse(denied.body).code).toBe('FORBIDDEN');
+    const list = await api(env)
+      .get(runsPath(env.organization.id, workflowId))
+      .set('Cookie', env.viewer.cookie)
+      .expect(200);
+    expect(RunListSchema.parse(list.body).items).toHaveLength(2);
   });
 
   it('422 RUN_INPUT_INVALID when the input does not match the manual trigger', async () => {

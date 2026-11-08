@@ -81,7 +81,7 @@ describe('rerun from a node (requires docker compose up and pnpm db:migrate)', (
       201,
     );
 
-    const response = await rerunFrom(run.id, 'c', env.viewer).expect(202);
+    const response = await rerunFrom(run.id, 'c', env.editor).expect(202);
     const again = RunSchema.parse(response.body);
     expect(again).toMatchObject({
       rerunOf: run.id,
