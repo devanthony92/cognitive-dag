@@ -30,7 +30,21 @@ export const SECURITY_EVENTS = [
   'run.rerun',
 ] as const;
 
-export type SecurityEventType = (typeof SECURITY_EVENTS)[number];
+/** F7 events (research R15). Stable names; none carries a token, a secret, a message or a comment. */
+export const TRIGGER_SECURITY_EVENTS = [
+  'webhook.token.generated',
+  'webhook.accepted',
+  'webhook.rejected',
+  'approval.decided',
+  'credential.created',
+  'credential.rotated',
+  'credential.archived',
+  'http_host.added',
+  'http_host.removed',
+] as const;
+
+export type SecurityEventType =
+  (typeof SECURITY_EVENTS)[number] | (typeof TRIGGER_SECURITY_EVENTS)[number];
 
 export interface SecurityEvent {
   event: SecurityEventType;
@@ -40,6 +54,10 @@ export interface SecurityEvent {
   ip?: string;
   /** Node a rerun started from (`run.rerun`). */
   nodeId?: string;
+  /** Why a webhook was rejected (`webhook.rejected`): a fixed vocabulary, never the offending value. */
+  reason?: 'token' | 'timestamp' | 'event_id' | 'rate_limit' | 'not_active' | 'body';
+  /** Id of the thing the event is about (workflow, trigger, credential, approval): never a secret. */
+  resourceId?: string;
 }
 
 /**
@@ -63,6 +81,8 @@ export class SecurityEventLogger {
         organizationId: event.organizationId,
         ip: event.ip,
         nodeId: event.nodeId,
+        reason: event.reason,
+        resourceId: event.resourceId,
         correlationId: resolveCorrelationId(this.cls.getId()),
       },
       event.event,

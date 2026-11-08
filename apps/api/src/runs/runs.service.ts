@@ -2,34 +2,26 @@ import { Inject, Injectable } from '@nestjs/common';
 import { WorkflowNotFoundError } from '@temporalio/common';
 import { ClsService } from 'nestjs-cls';
 import {
-  SearchAttributeType,
-  TypedSearchAttributes,
-  defineSearchAttributeKey,
-} from '@temporalio/common';
-import {
   active,
   and,
   desc,
   eq,
   inArray,
   lt,
-  newId,
   sql,
-  archived,
+  startRun,
   named as withName,
-  workflowActiveVersions,
   workflowRunSteps,
   workflowRuns,
   workflowVersions,
   workflows,
   type DatabaseClient,
+  type StartRunRefusal,
   type Tx,
 } from '@cognitive-dag/db';
 import {
-  CORRELATION_ID_SEARCH_ATTRIBUTE,
-  EXECUTE_DAG_WORKFLOW_NAME,
+  DEFAULT_MAX_CONCURRENT_RUNS,
   FEATURE_FLAGS,
-  RUN_EXECUTION_TIMEOUT,
   resolveCorrelationId,
   temporalWorkflowIdFor,
   type ExecuteDagInput,
@@ -58,7 +50,7 @@ import { DATABASE } from '../database/database.module';
 import { FlagsService } from '../flags/flags.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 import { loadRunLlmUsage } from '../llm-usage/llm-usage.service';
-import { LimitsService } from '../workflows/limits.service';
+import { RunLauncher, type ExecutablePhases } from './run-launcher';
 import { RunTemporalService } from './run-history.service';
 import { memoizedOf, stepContentOf, toStepIo, triggerInputOf } from './run-content';
 import { isFinal, toRun, toStep, userNames } from './run-mappers';
@@ -69,11 +61,6 @@ export interface RunActor {
   organizationId: string;
   ip: string;
 }
-
-const CORRELATION_ID_KEY = defineSearchAttributeKey(
-  CORRELATION_ID_SEARCH_ATTRIBUTE,
-  SearchAttributeType.KEYWORD,
-);
 
 /** How long a client waits before asking again when the run limit is reached. */
 const LIMIT_RETRY_AFTER_SECONDS = 10;
@@ -93,7 +80,6 @@ const notRunnable = (
   });
 
 type RunRow = typeof workflowRuns.$inferSelect;
-type ExecutablePhases = NonNullable<ExecuteDagInput['executablePhases']>;
 
 /** What links a run to the one it repeats; with `versionId` it runs on that version (F4). */
 interface RerunSource {
@@ -109,7 +95,7 @@ export class RunsService {
     @Inject(DATABASE) private readonly database: DatabaseClient,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly temporal: RunTemporalService,
-    private readonly limits: LimitsService,
+    private readonly launcher: RunLauncher,
     private readonly events: SecurityEventLogger,
     private readonly flags: FlagsService,
     private readonly cls: ClsService,
@@ -131,72 +117,46 @@ export class RunsService {
     rerun?: RerunSource,
   ): Promise<Run> {
     const correlationId = resolveCorrelationId(this.cls.getId());
+    const phases = await this.launcher.executablePhases();
     const { row, names, workflowInput } = await this.database.withContext(
       this.context(actor),
       async (tx) => {
-        const prepared = await this.prepare(tx, actor, workflowId, triggerInput, rerun?.versionId);
+        const started = await startRun(tx, {
+          organizationId: actor.organizationId,
+          workflowId,
+          correlationId,
+          trigger: {
+            kind: 'manual',
+            userId: actor.userId,
+            ...(rerun ? { rerunOf: rerun.of } : {}),
+            ...(rerun?.fromNodeId ? { rerunFromNodeId: rerun.fromNodeId } : {}),
+          },
+          ...(rerun?.versionId ? { pinnedVersionId: rerun.versionId } : {}),
+          defaultMaxConcurrentRuns: DEFAULT_MAX_CONCURRENT_RUNS,
+          temporalWorkflowId: temporalWorkflowIdFor,
+        });
+        if (!started.ok) throw refusalOf(started);
 
-        // The lock is held until this transaction commits, so the count below sees every run
-        // inserted by a start that went first (SC-005).
-        await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${actor.organizationId}, 0))`,
-        );
-        const limits = await this.limits.effectiveIn(tx, actor.organizationId);
-        const [{ n } = { n: 0 }] = (
-          await tx.execute<{ n: number }>(
-            sql`SELECT count(*)::int AS n FROM workflow_runs
-                WHERE organization_id = ${actor.organizationId}
-                  AND status IN ('queued', 'running')`,
-          )
-        ).rows;
-        if (n >= limits.maxConcurrentRuns) {
-          throw new DomainException(
-            429,
-            'RUN_LIMIT_REACHED',
-            `La organización ya tiene ${n} ejecuciones en curso y el máximo es ${limits.maxConcurrentRuns}. Espera a que termine alguna.`,
-            { retryAfterSeconds: LIMIT_RETRY_AFTER_SECONDS },
-          );
-        }
-
-        const runId = await newId(tx);
-        const [inserted] = await tx
-          .insert(workflowRuns)
-          .values({
-            id: runId,
-            organizationId: actor.organizationId,
-            workflowId,
-            versionId: prepared.versionId,
-            versionNumber: prepared.versionNumber,
-            triggeredBy: actor.userId,
-            rerunOf: rerun?.of ?? null,
-            rerunFromNodeId: rerun?.fromNodeId ?? null,
-            correlationId,
-            temporalWorkflowId: temporalWorkflowIdFor(runId),
-          })
-          .returning();
-        if (!inserted) throw new Error('INSERT INTO workflow_runs returned no row');
+        // Anything thrown from here rolls the insert back: a run that cannot run leaves no row.
+        const definition = this.checkRunnable(started.version.definition, phases, triggerInput);
         const names = await userNames(tx, [actor.userId]);
         const workflowInput: ExecuteDagInput = {
           organizationId: actor.organizationId,
           workflowId,
-          versionId: prepared.versionId,
-          versionNumber: prepared.versionNumber,
-          runId,
+          versionId: started.version.id,
+          versionNumber: started.version.versionNumber,
+          runId: started.run.id,
           correlationId,
-          definition: prepared.definition,
+          definition: started.version.definition,
           triggerInput,
-          // Only with the flag on: without it the workflow keeps its F3-only default (R13).
-          ...(prepared.executablePhases.includes('F5')
-            ? { executablePhases: prepared.executablePhases }
-            : {}),
-          llmTaskQueue: this.config.TEMPORAL_LLM_TASK_QUEUE,
+          ...this.launcher.inputExtras(phases, definition),
           ...(rerun?.memoized ? { memoized: rerun.memoized } : {}),
         };
-        return { row: inserted, names, workflowInput };
+        return { row: started.run, names, workflowInput };
       },
     );
 
-    await this.launch(actor, row, workflowInput);
+    await this.launcher.launch(this.context(actor), row, workflowInput);
     this.events.emit({
       event: rerun === undefined ? 'run.started' : 'run.rerun',
       outcome: 'success',
@@ -208,52 +168,15 @@ export class RunsService {
     return toRun(row, names);
   }
 
-  /** Everything that can refuse a start before the limit is looked at. */
-  private async prepare(
-    tx: Tx,
-    actor: RunActor,
-    workflowId: string,
+  /** What can still refuse a manual start once the version is known: nodes and input. */
+  private checkRunnable(
+    raw: Record<string, unknown>,
+    phases: ExecutablePhases,
     triggerInput: Record<string, unknown>,
-    pinnedVersionId?: string,
   ) {
-    const [workflow] = await active.workflows(
-      tx,
-      and(eq(workflows.id, workflowId), eq(workflows.organizationId, actor.organizationId)),
-    );
-    if (!workflow) {
-      const [gone] = await archived.workflows(
-        tx,
-        and(eq(workflows.id, workflowId), eq(workflows.organizationId, actor.organizationId)),
-      );
-      if (gone) throw notRunnable('archived', 'El workflow está archivado y no se puede ejecutar.');
-      throw new ResourceNotFoundException();
-    }
-
-    // A rerun from a node stays on the version of the original: its outputs belong to it (R6).
-    const [bridge] = pinnedVersionId
-      ? [{ versionId: pinnedVersionId }]
-      : await tx
-          .select()
-          .from(workflowActiveVersions)
-          .where(eq(workflowActiveVersions.workflowId, workflowId));
-    const [version] = bridge?.versionId
-      ? await tx.select().from(workflowVersions).where(eq(workflowVersions.id, bridge.versionId))
-      : [];
-    if (!version) {
-      throw notRunnable(
-        'no_active_version',
-        'El workflow no tiene una versión activa. Publica y activa una versión primero.',
-      );
-    }
-
-    const parsed = DagDefinitionSchema.safeParse(version.definition);
+    const parsed = DagDefinitionSchema.safeParse(raw);
     if (!parsed.success) throw new Error('A published version does not match the DAG schema');
-    const executablePhases: ExecutablePhases = (await this.flags.isEnabled(
-      FEATURE_FLAGS.llmNodesEnabled,
-    ))
-      ? ['F3', 'F5']
-      : ['F3'];
-    const unsupported = findUnsupportedNodes(parsed.data, executablePhases);
+    const unsupported = findUnsupportedNodes(parsed.data, phases);
     if (unsupported.length > 0) {
       throw notRunnable(
         'unsupported_nodes',
@@ -261,7 +184,6 @@ export class RunsService {
         unsupported,
       );
     }
-
     const trigger = parsed.data.nodes.find((node) => node.type === 'trigger.manual');
     const fields =
       (trigger?.config as { inputSchema?: FieldSpec[] } | undefined)?.inputSchema ?? [];
@@ -274,48 +196,7 @@ export class RunsService {
         { errors: problems.map(({ field, message }) => ({ field: `input.${field}`, message })) },
       );
     }
-    return {
-      versionId: version.id,
-      versionNumber: version.versionNumber,
-      definition: version.definition as Record<string, unknown>,
-      executablePhases,
-    };
-  }
-
-  /** Asks Temporal to start; on failure the run ends `failed` and the caller gets 503. */
-  private async launch(actor: RunActor, row: RunRow, input: ExecuteDagInput): Promise<void> {
-    try {
-      await this.temporal.withDeadline(() =>
-        this.temporal.client.workflow.start(EXECUTE_DAG_WORKFLOW_NAME, {
-          taskQueue: this.config.TEMPORAL_TASK_QUEUE,
-          workflowId: row.temporalWorkflowId,
-          args: [input],
-          workflowExecutionTimeout: RUN_EXECUTION_TIMEOUT,
-          typedSearchAttributes: new TypedSearchAttributes([
-            { key: CORRELATION_ID_KEY, value: row.correlationId },
-          ]),
-        }),
-      );
-    } catch (error) {
-      await this.database.withContext(this.context(actor), (tx) =>
-        tx
-          .update(workflowRuns)
-          .set({
-            status: 'failed',
-            errorCode: 'SERVICE_UNAVAILABLE',
-            errorMessage: 'No se pudo iniciar la ejecución en el motor.',
-            finishedAt: new Date(),
-          })
-          .where(and(eq(workflowRuns.id, row.id), eq(workflowRuns.status, 'queued'))),
-      );
-      // The request may have reached Temporal before the deadline: do not leave a run nobody records.
-      await this.temporal
-        .withDeadline(() =>
-          this.temporal.client.workflow.getHandle(row.temporalWorkflowId).terminate('start failed'),
-        )
-        .catch(() => undefined);
-      throw this.temporal.translate(error);
-    }
+    return parsed.data;
   }
 
   async list(
@@ -660,6 +541,31 @@ const inputExpired = () =>
     'RUN_INPUT_EXPIRED',
     'Los datos de entrada de esta ejecución ya no están disponibles: el historial del motor venció.',
   );
+
+/** The API error for a start that `startRun` refused. */
+function refusalOf(refusal: StartRunRefusal): Error {
+  switch (refusal.reason) {
+    case 'workflow_not_found':
+      return new ResourceNotFoundException();
+    case 'workflow_archived':
+      return notRunnable('archived', 'El workflow está archivado y no se puede ejecutar.');
+    case 'no_active_version':
+      return notRunnable(
+        'no_active_version',
+        'El workflow no tiene una versión activa. Publica y activa una versión primero.',
+      );
+    case 'run_limit_reached':
+      return new DomainException(
+        429,
+        'RUN_LIMIT_REACHED',
+        `La organización ya tiene ${refusal.inProgress} ejecuciones en curso y el máximo es ${refusal.limit}. Espera a que termine alguna.`,
+        { retryAfterSeconds: LIMIT_RETRY_AFTER_SECONDS },
+      );
+    case 'duplicate_event':
+      // Only a webhook repeats an event id; a person never reaches this.
+      return new Error('A manual start cannot repeat a webhook event');
+  }
+}
 
 const encodeCursor = (id: string): string => Buffer.from(id, 'utf8').toString('base64url');
 

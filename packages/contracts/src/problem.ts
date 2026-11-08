@@ -7,6 +7,7 @@ export const PROBLEM_CONTENT_TYPE = 'application/problem+json';
 export const ProblemCodeSchema = z.enum([
   'VALIDATION_FAILED',
   'PAYLOAD_TOO_LARGE',
+  'UNSUPPORTED_MEDIA_TYPE',
   'ROUTE_NOT_FOUND',
   'PING_NOT_FOUND',
   'FEATURE_NOT_AVAILABLE',
