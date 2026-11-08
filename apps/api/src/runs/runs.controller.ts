@@ -22,6 +22,7 @@ import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
+import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
 import { ExecutionEnabledGuard } from './execution-enabled.guard';
 import { ResilienceEnabledGuard } from './resilience-enabled.guard';
@@ -44,9 +45,10 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): RunAct
 });
 
 /**
- * Runs of an organization (F3). Behind `execution-enabled`. Any member may run, cancel and rerun
- * (author decision, to be reviewed in F7); the organization guard answers 404 to non-members, so
- * a run of another organization never shows up, SSE included.
+ * Runs of an organization (F3). Behind `execution-enabled`. Only owner and editor start, cancel and
+ * rerun (F8, ADR-0082, which replaces ADR-0053); every member reads. The organization guard
+ * answers 404 to non-members, so a run of another organization never shows up, SSE included. A
+ * route that changes state must declare its roles: `runs-roles.test.ts` fails otherwise (FR-008).
  */
 @Controller('api/v1/organizations/:organizationId')
 @UseGuards(IdentityEnabledGuard, ExecutionEnabledGuard, OrganizationGuard)
@@ -57,6 +59,7 @@ export class RunsController {
   ) {}
 
   @Post('workflows/:workflowId/runs')
+  @RequiredRoles('owner', 'editor')
   @HttpCode(202)
   async start(
     @Param() params: WorkflowRunsParamsDto,
@@ -132,6 +135,7 @@ export class RunsController {
   }
 
   @Post('runs/:runId/cancel')
+  @RequiredRoles('owner', 'editor')
   @HttpCode(202)
   cancel(
     @Param() params: RunParamsDto,
@@ -143,6 +147,7 @@ export class RunsController {
   }
 
   @Post('runs/:runId/rerun')
+  @RequiredRoles('owner', 'editor')
   @HttpCode(202)
   async rerun(
     @Param() params: RunParamsDto,

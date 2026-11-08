@@ -72,7 +72,7 @@ describe('cancel and rerun (requires docker compose up and pnpm db:migrate)', ()
         : undefined;
     });
 
-    await cancel(run.id, env.viewer).expect(202);
+    await cancel(run.id, env.editor).expect(202);
     const done = await waitForTerminal(env, env.owner, run.id);
     expect(done.status).toBe('cancelled');
     expect(done.steps.find((step) => step.nodeId === 'work')?.status).toBe('cancelled');
@@ -87,12 +87,12 @@ describe('cancel and rerun (requires docker compose up and pnpm db:migrate)', ()
       );
       return rows.rows[0]?.cancelled_by ?? undefined;
     });
-    expect(cancelledBy).toBe(env.viewer.body.user.id);
+    expect(cancelledBy).toBe(env.editor.body.user.id);
     expect(emit).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'run.cancelled',
         outcome: 'success',
-        userId: env.viewer.body.user.id,
+        userId: env.editor.body.user.id,
         organizationId: env.organization.id,
       }),
     );
@@ -138,7 +138,7 @@ describe('cancel and rerun (requires docker compose up and pnpm db:migrate)', ()
       201,
     );
 
-    const response = await rerun(run.id, env.viewer).expect(202);
+    const response = await rerun(run.id, env.editor).expect(202);
     const again = RunSchema.parse(response.body);
     expect(again).toMatchObject({ rerunOf: run.id, versionNumber: 2, workflowId });
     expect(again.id).not.toBe(run.id);
