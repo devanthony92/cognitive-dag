@@ -91,28 +91,28 @@ anti-SSRF, US7 breaker y bulkhead, US8 credenciales, US9 allowlist, US10 flag y 
 
 ### Tests
 
-- [ ] T046 [P] `apps/api/test/webhook.e2e.test.ts` (US1, US2): `202` con `runId`; token alterado e inexistente → mismo `401`; token regenerado rechazado; marca de tiempo fuera de ±5 min y `X-Event-Id` ausente o inválido → `400`; duplicado → `200` con `duplicate: true` y una sola ejecución (también en carrera); `413`, `415`, `422`; `409 WEBHOOK_NOT_ACTIVE`; ejecuta la versión activa del momento; `429 WEBHOOK_RATE_LIMITED` por trigger y por IP con `Retry-After`; `RUN_LIMIT_REACHED`; Valkey caído → `503`; flag apagado → `404`
-- [ ] T047 [P] `apps/api/test/webhook-token.e2e.test.ts`: generar y regenerar (201, `Cache-Control: no-store`, token solo ahí); estado sin token; viewer `403` al regenerar y `200` al leer; otra organización `404`
-- [ ] T048 [P] `apps/api/test/webhook-redaction.test.ts` (SC-003): el token no aparece en logs, trazas, eventos de seguridad ni respuestas, con peticiones válidas e inválidas
-- [ ] T049 [P] `apps/api/test/schedules.e2e.test.ts`: activar, cambiar y desactivar la versión sincroniza el Schedule; archivar lo borra; fallo de Temporal deja `pending` y la activación sigue; `SCHEDULE_LIMIT_REACHED`; zona o cron inválidos bloquean la publicación; `GET .../schedule`
-- [ ] T050 [P] `apps/api/test/approvals.e2e.test.ts`: bandeja solo con lo decidible, contador, historial; decidir con y sin comentario; iniciador `403 APPROVAL_SELF_DECISION_FORBIDDEN`; viewer `403`; rol perdido `403`; doble decisión y tardía `409 APPROVAL_ALREADY_RESOLVED`; ejecución de webhook o schedule la decide cualquier owner o editor; detalle con mensaje desde Temporal y `410 APPROVAL_CONTENT_EXPIRED`; otra organización `404`
-- [ ] T051 [P] `apps/api/test/credentials.e2e.test.ts`: solo el owner crea, rota y archiva; editor lista metadatos; viewer `403`; el secreto nunca en respuestas ni logs; nombre repetido `409`; cabecera prohibida `422`; sin llave maestra `503 CREDENTIALS_NOT_CONFIGURED`; publicar con credencial inexistente, archivada o de otra organización `422 CREDENTIAL_NOT_FOUND`
-- [ ] T052 [P] `apps/api/test/http-hosts.e2e.test.ts`: solo el owner agrega y retira; entradas inválidas `422`; 101.ª `422`; duplicado `409`
-- [ ] T053 [P] `apps/api/test/triggers-flag.e2e.test.ts`: flag apagado → `404 FEATURE_NOT_AVAILABLE` en todo F7; una versión con nodos F7 falla `UNSUPPORTED_NODES`; `executablePhases` incluye `F7` solo con el flag encendido
-- [ ] T054 [P] Pruebas de componentes web: bandeja y contador (estados de carga, vacío y error), detalle y decisión con comentario, panel del webhook (token una sola vez, copiar, regenerar con confirmación), estado de la programación, administración de credenciales (el secreto no se vuelve a mostrar), lista de la allowlist, nodos F7 en el editor (con y sin flag), origen en la lista de ejecuciones
+- [X] T046 [P] `apps/api/test/webhook.e2e.test.ts` (US1, US2): `202` con `runId`; token alterado e inexistente → mismo `401`; token regenerado rechazado; marca de tiempo fuera de ±5 min y `X-Event-Id` ausente o inválido → `400`; duplicado → `200` con `duplicate: true` y una sola ejecución (también en carrera); `413`, `415`, `422`; `409 WEBHOOK_NOT_ACTIVE`; ejecuta la versión activa del momento; `429 WEBHOOK_RATE_LIMITED` por trigger y por IP con `Retry-After`; `RUN_LIMIT_REACHED`; Valkey caído → `503`; flag apagado → `404`
+- [X] T047 [P] `apps/api/test/webhook-token.e2e.test.ts`: generar y regenerar (201, `Cache-Control: no-store`, token solo ahí); estado sin token; viewer `403` al regenerar y `200` al leer; otra organización `404`
+- [X] T048 [P] `apps/api/test/webhook-redaction.test.ts` (SC-003): el token no aparece en logs, trazas, eventos de seguridad ni respuestas, con peticiones válidas e inválidas
+- [X] T049 [P] `apps/api/test/schedules.e2e.test.ts`: activar, cambiar y desactivar la versión sincroniza el Schedule; archivar lo borra; fallo de Temporal deja `pending` y la activación sigue; `SCHEDULE_LIMIT_REACHED`; zona o cron inválidos bloquean la publicación; `GET .../schedule`
+- [X] T050 [P] `apps/api/test/approvals.e2e.test.ts`: bandeja solo con lo decidible, contador, historial; decidir con y sin comentario; iniciador `403 APPROVAL_SELF_DECISION_FORBIDDEN`; viewer `403`; rol perdido `403`; doble decisión y tardía `409 APPROVAL_ALREADY_RESOLVED`; ejecución de webhook o schedule la decide cualquier owner o editor; detalle con mensaje desde Temporal y `410 APPROVAL_CONTENT_EXPIRED`; otra organización `404`
+- [X] T051 [P] `apps/api/test/credentials.e2e.test.ts`: solo el owner crea, rota y archiva; editor lista metadatos; viewer `403`; el secreto nunca en respuestas ni logs; nombre repetido `409`; cabecera prohibida `422`; sin llave maestra `503 CREDENTIALS_NOT_CONFIGURED`; publicar con credencial inexistente, archivada o de otra organización `422 CREDENTIAL_NOT_FOUND`
+- [X] T052 [P] `apps/api/test/http-hosts.e2e.test.ts`: solo el owner agrega y retira; entradas inválidas `422`; 101.ª `422`; duplicado `409`
+- [X] T053 [P] `apps/api/test/triggers-flag.e2e.test.ts`: flag apagado → `404 FEATURE_NOT_AVAILABLE` en todo F7; una versión con nodos F7 falla `UNSUPPORTED_NODES`; `executablePhases` incluye `F7` solo con el flag encendido
+- [X] T054 [P] Pruebas de componentes web: bandeja y contador (estados de carga, vacío y error), detalle y decisión con comentario, panel del webhook (token una sola vez, copiar, regenerar con confirmación), estado de la programación, administración de credenciales (el secreto no se vuelve a mostrar), lista de la allowlist, nodos F7 en el editor (con y sin flag), origen en la lista de ejecuciones
 
 ### Implementation
 
-- [ ] T055 `apps/api/src/webhooks/` (controlador público sin sesión ni CSRF, rate limits en Valkey, token con SHA-256 y `timingSafeEqual`, ventana, `X-Event-Id`, arranque idempotente con `WorkflowIdReusePolicy.REJECT_DUPLICATE`) y `apps/api/src/logging/redact-hook-path.ts`
-- [ ] T056 `apps/api/src/schedules/`: sincronización inicial al activar o desactivar versión (reutiliza el servicio de F2) y lectura del Schedule
-- [ ] T057 `apps/api/src/approvals/`: bandeja, contador, detalle (lectura del historial como `run-content`) y decisión por Update
-- [ ] T058 `apps/api/src/credentials/` y `apps/api/src/http-hosts/`; validación de referencias a credenciales en la publicación
-- [ ] T059 `apps/api/src/runs/`: `executablePhases` con `F7`, `httpTaskQueue`, `maxDurationMs` y `workflowExecutionTimeout` ampliados con los plazos de aprobación, núcleo `startRun` compartido; `triggeredBy` nulo y `trigger` en los mapeadores
-- [ ] T060 Eventos de seguridad con tipo estable (research R15) en los servicios nuevos
-- [ ] T061 [US1] [US2] [US3] `apps/web/src/features/{webhooks,schedules}/`: configuración de nodos, panel del webhook, estado de la programación
-- [ ] T062 [US4] `apps/web/src/features/approvals/` y ruta `orgs.$organizationId.approvals.tsx`: bandeja con contador en la barra superior (polling 30 s), detalle y decisión
-- [ ] T063 [US5] [US8] [US9] `apps/web/src/features/{credentials,http-hosts}/` y selector de credencial en el nodo `http.request`
-- [ ] T064 [US10] Nodos de F7 en la paleta del editor solo con `triggers-enabled`; origen "Webhook" o "Programación" en listas y detalle de ejecuciones
+- [X] T055 `apps/api/src/webhooks/` (controlador público sin sesión ni CSRF, rate limits en Valkey, token con SHA-256 y `timingSafeEqual`, ventana, `X-Event-Id`, arranque idempotente con `WorkflowIdReusePolicy.REJECT_DUPLICATE`) y `apps/api/src/logging/redact-hook-path.ts`
+- [X] T056 `apps/api/src/schedules/`: sincronización inicial al activar o desactivar versión (reutiliza el servicio de F2) y lectura del Schedule
+- [X] T057 `apps/api/src/approvals/`: bandeja, contador, detalle (lectura del historial como `run-content`) y decisión por Update
+- [X] T058 `apps/api/src/credentials/` y `apps/api/src/http-hosts/`; validación de referencias a credenciales en la publicación
+- [X] T059 `apps/api/src/runs/`: `executablePhases` con `F7`, `httpTaskQueue`, `maxDurationMs` y `workflowExecutionTimeout` ampliados con los plazos de aprobación, núcleo `startRun` compartido; `triggeredBy` nulo y `trigger` en los mapeadores
+- [X] T060 Eventos de seguridad con tipo estable (research R15) en los servicios nuevos
+- [X] T061 [US1] [US2] [US3] `apps/web/src/features/{webhooks,schedules}/`: configuración de nodos, panel del webhook, estado de la programación
+- [X] T062 [US4] `apps/web/src/features/approvals/` y ruta `orgs.$organizationId.approvals.tsx`: bandeja con contador en la barra superior (polling 30 s), detalle y decisión
+- [X] T063 [US5] [US8] [US9] `apps/web/src/features/{credentials,http-hosts}/` y selector de credencial en el nodo `http.request`
+- [X] T064 [US10] Nodos de F7 en la paleta del editor solo con `triggers-enabled`; origen "Webhook" o "Programación" en listas y detalle de ejecuciones
 
 ## Phase 5: Verificación y cierre (PR 4)
 
