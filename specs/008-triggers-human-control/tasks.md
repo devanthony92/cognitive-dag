@@ -116,13 +116,13 @@ anti-SSRF, US7 breaker y bulkhead, US8 credenciales, US9 allowlist, US10 flag y 
 
 ## Phase 5: Verificación y cierre (PR 4)
 
-- [ ] T065 [P] Baterías de seguridad de cierre: reunir SSRF, token y replay, secretos fuera de logs y filas, y decisor de aprobaciones en `pnpm test:security` o la suite equivalente; registrar los resultados de SC-001 a SC-007
-- [ ] T066 [P] ADRs 0072–0081 (research, "ADRs previstos") y actualización del ADR-0060 (circuit breaker, granularidad por servicio y bulkhead HTTP implementados)
-- [ ] T067 [P] `docs/threat-model.md` (SSRF, token en la URL, credenciales, aprobaciones, circuit breaker; revisar las filas que decían `planned:F7` y los riesgos de ADR-0053 con nodos de efecto externo), `docs/PLAN.md` (F7 completada, criterio de aceptación "token inválido o regenerado", §5.4, §4 y §6.2 A08), `README.md`
-- [ ] T068 Requisito para F9 anotado en `docs/PLAN.md` §9: Caddy debe redactar la ruta `/api/v1/hooks/*` en sus logs de acceso
-- [ ] T069 Issue para eliminar `triggers-enabled`
-- [ ] T070 Ejecutar los 31 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T071 Checklist de Security Considerations en la PR
+- [X] T065 [P] Baterías de seguridad de cierre: reunir SSRF, token y replay, secretos fuera de logs y filas, y decisor de aprobaciones en `pnpm test:security` o la suite equivalente; registrar los resultados de SC-001 a SC-007
+- [X] T066 [P] ADRs 0072–0081 (research, "ADRs previstos") y actualización del ADR-0060 (circuit breaker, granularidad por servicio y bulkhead HTTP implementados)
+- [X] T067 [P] `docs/threat-model.md` (SSRF, token en la URL, credenciales, aprobaciones, circuit breaker; revisar las filas que decían `planned:F7` y los riesgos de ADR-0053 con nodos de efecto externo), `docs/PLAN.md` (F7 completada, criterio de aceptación "token inválido o regenerado", §5.4, §4 y §6.2 A08), `README.md`
+- [X] T068 Requisito para F9 anotado en `docs/PLAN.md` §9: Caddy debe redactar la ruta `/api/v1/hooks/*` en sus logs de acceso
+- [X] T069 Issue para eliminar `triggers-enabled`
+- [X] T070 Ejecutar los 31 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T071 Checklist de Security Considerations en la PR
 
 ---
 
