@@ -7,7 +7,7 @@ import { createLogger, type Logger } from '@cognitive-dag/logger';
 import type { WithContext } from '@cognitive-dag/db';
 import { createMockServiceActivities } from './activities/mock-service';
 import { createPingActivities } from './activities/ping.activities';
-import { createRunEventActivities } from './activities/record-run-event';
+import { createRunEventActivities, type RunEventActivities } from './activities/record-run-event';
 import { createEffectStore, createMockDestination } from './resilience/effects';
 import type { RateLimits } from './resilience/rate-limit-config';
 import { createModelRateLimiter, createRateLimiter } from './resilience/rate-limiter';
@@ -18,6 +18,12 @@ import { createBudget, type BudgetLimits } from './llm/budget';
 import { createCompilerActivities } from './compiler/activities';
 import { createCompilerBudget } from './compiler/budget';
 import { createCompilationStore } from './compiler/store';
+import { createApprovalActivities } from './approvals/activities';
+import type { Mailer } from './approvals/mail';
+import { createHttpActivities, type HttpWaitingMark, type ResolveFn } from './http/activities';
+import { createValkeyCircuitBreaker } from './http/circuit-breaker';
+import { createCredentialResolver } from './http/credentials';
+import { createScheduleActivities } from './schedules/activities';
 
 /** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
 export function createWorkerId(): string {
@@ -34,6 +40,21 @@ export interface RunRecordingOptions {
   rateLimits?: RateLimits;
 }
 
+/** What the main worker needs for the triggers and the human control of F7. */
+export interface TriggersWorkerOptions {
+  /** `TRIGGERS_ENABLED`: the launcher skips every firing when false. */
+  triggersEnabled: boolean;
+  /** `LLM_ENABLED`: scheduled runs may include F5 nodes only if the LLM is on. */
+  llmEnabled: boolean;
+  llmTaskQueue: string;
+  httpTaskQueue: string;
+  mailer: Mailer;
+  /** `APPROVAL_EMAIL_MAX_RECIPIENTS` */
+  approvalMaxRecipients: number;
+  /** `APP_BASE_URL` */
+  appBaseUrl?: string;
+}
+
 export interface WorkerOptions {
   connection: NativeConnection;
   namespace: string;
@@ -47,6 +68,8 @@ export interface WorkerOptions {
   shutdownGraceTime?: Duration;
   /** Without it the worker still runs the ping and `mockService`, but cannot record runs. */
   runs?: RunRecordingOptions;
+  /** The launcher of schedules and the approval emails (F7); needs `runs` for the database. */
+  triggers?: TriggersWorkerOptions;
 }
 
 /** Builds the worker (ping and execution engine); shared by main.ts and the integration tests. */
@@ -96,6 +119,25 @@ export function createWorker(options: WorkerOptions): Promise<Worker> {
           : {}),
       }),
       ...(recorder ?? {}),
+      ...(options.runs && options.triggers
+        ? {
+            ...createScheduleActivities({
+              withContext: options.runs.withContext,
+              logger,
+              triggersEnabled: options.triggers.triggersEnabled,
+              llmEnabled: options.triggers.llmEnabled,
+              llmTaskQueue: options.triggers.llmTaskQueue,
+              httpTaskQueue: options.triggers.httpTaskQueue,
+            }),
+            ...createApprovalActivities({
+              withContext: options.runs.withContext,
+              logger,
+              mailer: options.triggers.mailer,
+              maxRecipients: options.triggers.approvalMaxRecipients,
+              appBaseUrl: options.triggers.appBaseUrl,
+            }),
+          }
+        : {}),
     },
     ...(options.shutdownGraceTime === undefined
       ? {}
@@ -195,6 +237,93 @@ export function createLlmWorker(options: LlmWorkerOptions): Promise<Worker> {
     namespace: options.namespace,
     taskQueue: options.taskQueue,
     activities: { ...activities, ...compiler },
+    maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
+    ...(options.shutdownGraceTime === undefined
+      ? {}
+      : { shutdownGraceTime: options.shutdownGraceTime }),
+  });
+}
+
+export interface HttpWorkerOptions {
+  connection: NativeConnection;
+  namespace: string;
+  /** `TEMPORAL_HTTP_TASK_QUEUE`: the bulkhead of the HTTP activities (F7, research R12). */
+  taskQueue: string;
+  logLevel?: string;
+  logger?: Logger;
+  shutdownGraceTime?: Duration;
+  withContext: WithContext;
+  valkey: Valkey;
+  /** Marks a step as waiting (rate limit, open circuit); the same recorder as the main worker. */
+  recorder?: RunEventActivities;
+  /** Token bucket by node type (`RATE_LIMIT_HTTP_REQUEST`). */
+  rateLimits?: RateLimits;
+  /** `HTTP_ENABLED` */
+  enabled: boolean;
+  /** `CREDENTIALS_MASTER_KEY` decoded. */
+  masterKey: Buffer | undefined;
+  breaker: {
+    failures: number;
+    windowSeconds: number;
+    cooldownSeconds: number;
+    maxWaitSeconds: number;
+  };
+  /** `HTTP_MAX_CONCURRENT_ACTIVITIES`: HTTP calls never take the slots of the other nodes. */
+  maxConcurrentActivities: number;
+  /** `HTTP_TEST_ALLOW_LOOPBACK` and the certificate of the local server; tests only. */
+  allowLoopback?: boolean;
+  tls?: { ca?: string | Buffer };
+  resolve?: ResolveFn;
+}
+
+/**
+ * Third worker of the process (F7, research R12): it only serves the HTTP activities, on their own
+ * task queue and with their own concurrency, so a slow or failing destination cannot starve the LLM
+ * nodes, the simulated service or the recording of runs.
+ */
+export function createHttpWorker(options: HttpWorkerOptions): Promise<Worker> {
+  const logger =
+    options.logger ?? createLogger({ component: 'worker-http', level: options.logLevel ?? 'warn' });
+  const { recorder } = options;
+  const activities = createHttpActivities({
+    logger,
+    enabled: options.enabled,
+    credentials: createCredentialResolver({
+      withContext: options.withContext,
+      masterKey: options.masterKey,
+    }),
+    breaker: createValkeyCircuitBreaker(options.valkey, {
+      failureThreshold: options.breaker.failures,
+      windowMs: options.breaker.windowSeconds * 1000,
+      cooldownMs: options.breaker.cooldownSeconds * 1000,
+    }),
+    breakerMaxWaitMs: options.breaker.maxWaitSeconds * 1000,
+    rateLimiter: createRateLimiter({ valkey: options.valkey, limits: options.rateLimits ?? {} }),
+    effects: createEffectStore(options.withContext),
+    ...(recorder
+      ? {
+          markWaiting: (mark: HttpWaitingMark) =>
+            recorder.recordRunEvent({
+              organizationId: mark.organizationId,
+              runId: mark.runId,
+              correlationId: mark.correlationId,
+              at: new Date().toISOString(),
+              transition: 'step.running',
+              nodeId: mark.nodeId,
+              nodeType: 'http.request',
+              ...(mark.waitingReason ? { waitingReason: mark.waitingReason } : {}),
+            }),
+        }
+      : {}),
+    ...(options.allowLoopback ? { allowLoopback: true } : {}),
+    ...(options.tls ? { tls: options.tls } : {}),
+    ...(options.resolve ? { resolve: options.resolve } : {}),
+  });
+  return Worker.create({
+    connection: options.connection,
+    namespace: options.namespace,
+    taskQueue: options.taskQueue,
+    activities,
     maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
     ...(options.shutdownGraceTime === undefined
       ? {}

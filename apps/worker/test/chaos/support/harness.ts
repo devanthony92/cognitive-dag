@@ -133,6 +133,7 @@ export async function startRun(
   h: Harness,
   taskQueue: string,
   dag: Record<string, unknown>,
+  overrides: Partial<ExecuteDagInput> = {},
 ): Promise<{ seeded: SeededRun; handle: RunHandle }> {
   const seeded = await seedRun(h.pool, dag);
   const input: ExecuteDagInput = {
@@ -144,6 +145,7 @@ export async function startRun(
     correlationId: randomUUID(),
     definition: dag,
     triggerInput: { amount: 150, tone: 'happy' },
+    ...overrides,
   };
   const handle = await h.client.workflow.start<(i: ExecuteDagInput) => Promise<ExecuteDagResult>>(
     EXECUTE_DAG_WORKFLOW_NAME,
@@ -191,6 +193,7 @@ export function spawnWorker(
   h: Harness,
   taskQueue: string,
   workerId: string,
+  extraEnv: Record<string, string> = {},
 ): { kill(): Promise<void> } {
   const child: ChildProcess = spawn(
     process.execPath,
@@ -204,6 +207,7 @@ export function spawnWorker(
         TEMPORAL_NAMESPACE: h.config.TEMPORAL_NAMESPACE,
         TASK_QUEUE: taskQueue,
         WORKER_ID: workerId,
+        ...extraEnv,
       },
     },
   );

@@ -1,6 +1,7 @@
 import { hostname } from 'node:os';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { NativeConnection, Runtime, type Worker } from '@temporalio/worker';
+import { Client, Connection } from '@temporalio/client';
 import Valkey from 'iovalkey';
 import { createDatabase } from '@cognitive-dag/db';
 import { InvalidConfigError, parseEnv, type WorkerConfig } from './config/env.schema';
@@ -8,7 +9,10 @@ import { loadLocalEnv } from './config/load-env';
 import { startHealthServer } from './health/server';
 import { createWorkerLogger, PinoTemporalLogger } from './logging/logger';
 import { createProvider } from './llm/provider';
-import { createLlmWorker, createWorker, createWorkerId } from './worker';
+import { createRunEventActivities } from './activities/record-run-event';
+import { createSmtpMailer } from './approvals/mail';
+import { createScheduleReconciler } from './schedules/reconciler';
+import { createHttpWorker, createLlmWorker, createWorker, createWorkerId } from './worker';
 
 const MAX_CONNECT_BACKOFF_MS = 10_000;
 
@@ -71,6 +75,15 @@ async function run(): Promise<void> {
   });
   valkey.on('error', () => undefined);
 
+  const mailer = createSmtpMailer({
+    host: config.SMTP_HOST,
+    port: config.SMTP_PORT,
+    from: config.MAIL_FROM,
+  });
+  // The reconciler uses the Schedule API of the client; the worker connection is a native one.
+  const clientConnection = await Connection.connect({ address: config.TEMPORAL_ADDRESS });
+  const reconcilerStop = new AbortController();
+
   try {
     worker = await createWorker({
       connection,
@@ -85,6 +98,15 @@ async function run(): Promise<void> {
         publish: (channel, message) => valkey.publish(channel, message),
         valkey,
         rateLimits: config.rateLimits,
+      },
+      triggers: {
+        triggersEnabled: config.TRIGGERS_ENABLED,
+        llmEnabled: config.LLM_ENABLED,
+        llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE,
+        httpTaskQueue: config.TEMPORAL_HTTP_TASK_QUEUE,
+        mailer,
+        approvalMaxRecipients: config.APPROVAL_EMAIL_MAX_RECIPIENTS,
+        ...(config.APP_BASE_URL ? { appBaseUrl: config.APP_BASE_URL } : {}),
       },
     });
     const llmWorker = await createLlmWorker({
@@ -111,12 +133,58 @@ async function run(): Promise<void> {
         maxTokensPerCompilation: config.LLM_MAX_TOKENS_PER_COMPILATION,
       },
     });
+    const httpWorker = await createHttpWorker({
+      connection,
+      namespace: config.TEMPORAL_NAMESPACE,
+      taskQueue: config.TEMPORAL_HTTP_TASK_QUEUE,
+      logLevel: config.LOG_LEVEL,
+      withContext: database.withContext,
+      valkey,
+      recorder: createRunEventActivities({
+        withContext: database.withContext,
+        publish: (channel, message) => valkey.publish(channel, message),
+        logger,
+      }),
+      rateLimits: config.rateLimits,
+      enabled: config.HTTP_ENABLED,
+      masterKey: config.credentialsMasterKey,
+      breaker: {
+        failures: config.HTTP_CB_FAILURES,
+        windowSeconds: config.HTTP_CB_WINDOW_SECONDS,
+        cooldownSeconds: config.HTTP_CB_COOLDOWN_SECONDS,
+        maxWaitSeconds: config.HTTP_CB_MAX_WAIT_SECONDS,
+      },
+      maxConcurrentActivities: config.HTTP_MAX_CONCURRENT_ACTIVITIES,
+      allowLoopback: config.HTTP_TEST_ALLOW_LOOPBACK,
+    });
+    const reconciler = createScheduleReconciler({
+      withContext: database.withContext,
+      client: new Client({ connection: clientConnection, namespace: config.TEMPORAL_NAMESPACE }),
+      taskQueue: config.TEMPORAL_TASK_QUEUE,
+      catchupWindowSeconds: config.SCHEDULE_CATCHUP_WINDOW_SECONDS,
+      triggersEnabled: config.TRIGGERS_ENABLED,
+      logger,
+    });
     logger.info(
-      { taskQueue: config.TEMPORAL_TASK_QUEUE, llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE },
+      {
+        taskQueue: config.TEMPORAL_TASK_QUEUE,
+        llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE,
+        httpTaskQueue: config.TEMPORAL_HTTP_TASK_QUEUE,
+        triggersEnabled: config.TRIGGERS_ENABLED,
+        httpEnabled: config.HTTP_ENABLED,
+      },
       'Worker started',
     );
-    await Promise.all([worker.run(), llmWorker.run()]);
+    await Promise.all([
+      worker.run(),
+      llmWorker.run(),
+      httpWorker.run(),
+      reconciler.run(reconcilerStop.signal),
+    ]);
   } finally {
+    reconcilerStop.abort();
+    mailer.close();
+    await clientConnection.close();
     valkey.disconnect();
     await database.end();
     await connection.close();

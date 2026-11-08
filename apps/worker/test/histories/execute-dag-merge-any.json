@@ -75,12 +75,7 @@
           "buildId": "@temporalio/worker@1.25.0+6cc2f07211324a71921e58d5e0b9ed4214767f6e475709055e5de5554a524d59"
         },
         "sdkMetadata": {
-          "coreUsedFlags": [
-            2,
-            4,
-            3,
-            1
-          ],
+          "coreUsedFlags": [2, 4, 3, 1],
           "sdkName": "temporal-typescript",
           "sdkVersion": "1.25.0"
         },
@@ -122,10 +117,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -257,10 +249,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -381,10 +370,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -424,10 +410,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -743,10 +726,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -867,10 +847,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -991,10 +968,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -1236,10 +1210,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -1442,10 +1413,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
@@ -1566,10 +1534,7 @@
           "backoffCoefficient": 2,
           "maximumInterval": "30s",
           "maximumAttempts": 10,
-          "nonRetryableErrorTypes": [
-            "RUN_NOT_FOUND",
-            "ZodError"
-          ]
+          "nonRetryableErrorTypes": ["RUN_NOT_FOUND", "ZodError"]
         },
         "useWorkflowBuildId": true
       }
