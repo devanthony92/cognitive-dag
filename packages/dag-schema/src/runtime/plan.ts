@@ -32,7 +32,7 @@ export type StepState = 'pending' | 'running' | 'succeeded' | 'failed' | 'skippe
 
 export interface RunState {
   statuses: ReadonlyMap<string, StepState>;
-  /** Handle taken by each `logic.condition` that ran (`true` or `false`). */
+  /** Handle taken by each branching node that ran: `true`/`false`, or the outcome of an approval. */
   selections: ReadonlyMap<string, string>;
 }
 
@@ -79,7 +79,9 @@ function edgeFate(
   const status = statuses.get(edge.source);
   if (status === 'skipped') return 'dead';
   if (status !== 'succeeded') return 'open';
-  if (graph.nodes.get(edge.source)?.type === 'logic.condition') {
+  // A node that chooses a branch (a condition, an approval since F7) leaves its choice in
+  // `selections`; any other node takes all of its outgoing edges.
+  if (selections.has(edge.source)) {
     return selections.get(edge.source) === edge.sourceHandle ? 'live' : 'dead';
   }
   return 'live';

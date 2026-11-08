@@ -9,6 +9,12 @@ export const EXECUTE_DAG_WORKFLOW_NAME = 'executeDag';
 export const DEFAULT_RUN_MAX_DURATION_MS = 30 * 60 * 1000;
 
 /**
+ * Largest `maxDurationMs` the input accepts: the base duration plus the longest approval wait of F7
+ * (30 days), with margin. A run waiting for a person is not stuck, so its bound grows with the wait.
+ */
+export const MAX_RUN_DURATION_MS = 2_700_000_000;
+
+/**
  * Hard backstop for `workflowExecutionTimeout` when starting a run: a little over the longest
  * duration the interpreter allows, so the interpreter records `timed_out` before Temporal stops it.
  */
@@ -46,7 +52,7 @@ export const ExecuteDagInputSchema = z.strictObject({
   correlationId: CorrelationIdSchema,
   definition: z.record(z.string(), z.unknown()),
   triggerInput: z.record(z.string(), z.unknown()),
-  maxDurationMs: z.int().min(1).max(86_400_000).optional(),
+  maxDurationMs: z.int().min(1).max(MAX_RUN_DURATION_MS).optional(),
   /**
    * Rerun from a node: outputs of the nodes of the original run that are not run again. Their
    * steps are recorded as `reused`, with no activity. Absent in a complete run.
