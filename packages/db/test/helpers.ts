@@ -6,6 +6,8 @@ export interface TestContext {
   organizationId?: string;
   lookupEmail?: string;
   lookupTokenHash?: string;
+  lookupWebhookTriggerId?: string;
+  reconciler?: string;
 }
 
 const KEYS: Record<keyof TestContext, string> = {
@@ -13,6 +15,8 @@ const KEYS: Record<keyof TestContext, string> = {
   organizationId: 'app.organization_id',
   lookupEmail: 'app.lookup_email',
   lookupTokenHash: 'app.lookup_token_hash',
+  lookupWebhookTriggerId: 'app.lookup_webhook_trigger_id',
+  reconciler: 'app.reconciler',
 };
 
 export function requireEnv(name: string): string {

@@ -58,7 +58,7 @@ export const workflowRunSteps = pgTable(
     ),
     check(
       'workflow_run_steps_waiting_reason_valid',
-      sql`${table.waitingReason} IN ('rate_limited')`,
+      sql`${table.waitingReason} IN ('rate_limited', 'approval', 'circuit_open')`,
     ),
     check(
       'workflow_run_steps_waiting_reason_running',
