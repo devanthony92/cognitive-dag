@@ -35,6 +35,7 @@ import {
   runDurationMs,
 } from './status';
 import { useNow } from './useRunLive';
+import { useRunPermission } from './permissions';
 
 /** Plural, because each option is a group of runs. */
 const STATUS_FILTER_LABELS: Record<RunStatus, string> = {
@@ -52,6 +53,9 @@ interface Props {
   onFiltersChange: (filters: OrganizationRunFilters) => void;
 }
 
+/** Id of the sentence that says why the rerun buttons are disabled. */
+const REASON_ID = 'org-runs-role-reason';
+
 /** What the person is rerunning right now, to mark only that row. */
 interface Target {
   runId: string;
@@ -63,6 +67,7 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const workflows = useQuery(workflowsQuery(organizationId));
+  const { canExecute, blockedReason } = useRunPermission(organizationId);
   const runs = useInfiniteQuery({
     ...organizationRunsQuery(organizationId, filters),
     // Runs in progress change under the list: look again while there is one.
@@ -185,6 +190,11 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
                 : 'La organización todavía no tiene ejecuciones. Lanza un workflow desde su editor.'}
             </p>
           )}
+          {items.length > 0 && blockedReason && (
+            <p id={REASON_ID} className="text-xs text-muted-foreground">
+              {blockedReason}
+            </p>
+          )}
           {items.length > 0 && (
             <div className="overflow-x-auto">
               <Table>
@@ -204,7 +214,8 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
                       run={run}
                       organizationId={organizationId}
                       now={now}
-                      busy={rerun.isPending}
+                      busy={rerun.isPending || !canExecute}
+                      {...(blockedReason ? { blockedBy: REASON_ID } : {})}
                       target={target?.runId === run.id ? target : undefined}
                       onRerun={(fromNodeId) =>
                         rerun.mutate({ runId: run.id, ...(fromNodeId ? { fromNodeId } : {}) })
@@ -237,6 +248,7 @@ function RunRow({
   organizationId,
   now,
   busy,
+  blockedBy,
   target,
   onRerun,
 }: {
@@ -244,6 +256,8 @@ function RunRow({
   organizationId: string;
   now: number;
   busy: boolean;
+  /** Id of the sentence that says the role does not allow rerunning (ADR-0082). */
+  blockedBy?: string;
   target: Target | undefined;
   onRerun: (fromNodeId?: string) => void;
 }) {
@@ -300,6 +314,7 @@ function RunRow({
               size="sm"
               className="h-auto py-1.5 text-left whitespace-normal"
               disabled={busy}
+              aria-describedby={blockedBy}
               onClick={() => onRerun()}
             >
               <RotateCw aria-hidden />
@@ -312,6 +327,7 @@ function RunRow({
               size="sm"
               className="h-auto py-1.5 text-left whitespace-normal"
               disabled={busy}
+              aria-describedby={blockedBy}
               onClick={() => onRerun(run.failedNodeId ?? undefined)}
             >
               <RotateCw aria-hidden />

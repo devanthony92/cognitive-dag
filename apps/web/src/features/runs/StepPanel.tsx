@@ -32,6 +32,8 @@ interface Props {
   /** Rerun from this node; only offered when the run has finished. */
   onRerunFrom?: () => void;
   rerunning?: boolean;
+  /** Id of the sentence that says the role does not allow it: disables the button (ADR-0082). */
+  rerunBlockedBy?: string;
 }
 
 function Json({ title, value }: { title: string; value: unknown }) {
@@ -148,6 +150,7 @@ export function StepPanel({
   rerunOf = null,
   onRerunFrom,
   rerunning = false,
+  rerunBlockedBy,
 }: Props) {
   const duration =
     step.durationMs ??
@@ -242,7 +245,13 @@ export function StepPanel({
       )}
       {onRerunFrom && (
         <div className="grid gap-1">
-          <Button variant="outline" size="sm" disabled={rerunning} onClick={onRerunFrom}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={rerunning || rerunBlockedBy !== undefined}
+            aria-describedby={rerunBlockedBy}
+            onClick={onRerunFrom}
+          >
             <RotateCw aria-hidden />
             {rerunning ? 'Reejecutando…' : 'Reejecutar desde aquí'}
           </Button>

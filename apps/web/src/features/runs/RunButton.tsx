@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { featuresQuery, isExecutionEnabled, isLlmNodesEnabled, isTriggersEnabled } from '../flags';
 import { versionQuery, versionsQuery } from '../workflows/api';
 import { RunDialog } from './RunDialog';
+import { useRunPermission } from './permissions';
 import { runBlockReason } from './runnable';
 import { triggerFieldsOf } from './run-input';
 
@@ -18,9 +19,9 @@ interface Props {
 }
 
 /**
- * Runs the active version. Any member can (author decision, FR-016). While the version cannot
- * run, the button is disabled and the reason stays on screen next to it. Renders nothing while
- * `execution-enabled` is off.
+ * Runs the active version. Only owner and editor can (F8, ADR-0082); for a viewer the button is
+ * disabled and says why. While the version cannot run, the button is disabled and the reason stays
+ * on screen next to it. Renders nothing while `execution-enabled` is off.
  */
 export function RunButton({ organizationId, workflowId, workflowName, showHistory }: Props) {
   const reasonId = useId();
@@ -33,6 +34,7 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
     enabled: enabled && active !== undefined,
   });
   const [open, setOpen] = useState(false);
+  const { canExecute, blockedReason } = useRunPermission(organizationId);
 
   const fields = useMemo(
     () => triggerFieldsOf(activeVersion.data?.definition),
@@ -42,17 +44,20 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
   if (!enabled) return null;
 
   const loading = versions.isPending || (active !== undefined && activeVersion.isPending);
-  const reason = loading
-    ? undefined
-    : versions.isError || activeVersion.isError
-      ? 'No se pudo cargar la versión activa.'
-      : runBlockReason(
-          activeVersion.data?.definition,
-          active !== undefined,
-          isLlmNodesEnabled(features.data),
-          isTriggersEnabled(features.data),
-        );
-  const blocked = loading || reason !== undefined || activeVersion.data === undefined;
+  const reason = blockedReason
+    ? blockedReason
+    : loading
+      ? undefined
+      : versions.isError || activeVersion.isError
+        ? 'No se pudo cargar la versión activa.'
+        : runBlockReason(
+            activeVersion.data?.definition,
+            active !== undefined,
+            isLlmNodesEnabled(features.data),
+            isTriggersEnabled(features.data),
+          );
+  const blocked =
+    !canExecute || loading || reason !== undefined || activeVersion.data === undefined;
 
   return (
     <>

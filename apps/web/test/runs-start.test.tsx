@@ -23,11 +23,20 @@ afterEach(() => {
 describe('Run button and form (US1, FR-020)', () => {
   it('shows no run controls while execution-enabled is off', async () => {
     const { fetchMock } = mount(EDITOR, { flags: { 'execution-enabled': false } });
-    await screen.findByRole('heading', { name: 'Soporte' });
+    // First mount of the file: the route chunks load here, so allow more than one second.
+    await screen.findByRole('heading', { name: 'Soporte' }, { timeout: 5000 });
 
     expect(screen.queryByRole('button', { name: 'Ejecutar' })).toBeNull();
     expect(screen.queryByRole('link', { name: 'Ejecuciones' })).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => /\/runs/.test(String(url)))).toBe(false);
+  });
+
+  it('disables the button for a viewer, says why and never calls the API (ADR-0082)', async () => {
+    const { fetchMock } = mount(EDITOR, { role: 'viewer' });
+
+    expect(await screen.findByText('Tu rol no permite ejecutar workflows.')).toBeDefined();
+    expect(runButton().disabled).toBe(true);
+    expect(fetchMock.mock.calls.some(([url]) => START_URL.test(String(url)))).toBe(false);
   });
 
   it('disables the button and says why when there is no active version', async () => {
