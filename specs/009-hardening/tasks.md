@@ -27,30 +27,46 @@ modelo de amenazas, US7 desviaciones de F7, US8 configuración y suministro, US9
 
 ## Phase 1: Setup
 
-- [ ] T001 Abrir los issues de seguimiento de lo `deferred:F9` y `accepted` nuevos (MFA y política de contraseñas; auditoría por tenant y retención; autenticación y TLS de Temporal, PostgreSQL y Valkey; SBOM y escaneo de imágenes; ZAP activo y contra staging; ejecución `failed` tras fallo de Temporal; métrica de disparos fuera del catch-up; frecuencia mínima de la cron) y anotar los números en la matriz y el modelo de amenazas
-- [ ] T002 [P] Medir la base: `pnpm test` en paralelo tres veces y anotar qué pruebas web fallan por tiempo (entrada de T029)
+- [X] T001 Abrir los issues de seguimiento de lo `deferred:F9` y `accepted` nuevos (MFA y política de contraseñas; auditoría por tenant y retención; autenticación y TLS de Temporal, PostgreSQL y Valkey; SBOM y escaneo de imágenes; ZAP activo y contra staging; ejecución `failed` tras fallo de Temporal; métrica de disparos fuera del catch-up; frecuencia mínima de la cron) y anotar los números en la matriz y el modelo de amenazas
+  - Issues abiertos: #61 MFA TOTP y política de contraseñas; #62 auditoría por tenant y retención; #63
+    autenticación y TLS de Temporal, PostgreSQL y Valkey; #64 SBOM y escaneo de imágenes; #65 ZAP
+    activo y contra staging; #66 ejecución `failed` tras fallo de Temporal; #67 métrica de disparos
+    fuera del catch-up; #68 frecuencia mínima de la cron. La PR 5 los cita en la matriz y en el
+    modelo de amenazas (T045, T047).
+- [X] T002 [P] Medir la base: `pnpm test` en paralelo tres veces y anotar qué pruebas web fallan por tiempo (entrada de T029)
+  - Medición (2026-11-08, Windows, tres `pnpm test --force` lanzados a la vez, sin `maxWorkers` ni
+    `testTimeout` explícitos, límite por defecto de 5000 ms). Entrada de T029:
+    - `apps/web` falla por `Test timed out in 5000ms` en las corridas 1 y 2 (51 y 44 pruebas, 17 y 14
+      archivos de 30). Archivos con fallos en ambas: `compiler`, `login`, `members`, `passwords`,
+      `register`, `runs-resilience`, `runs-start`, `runs-view`, `workflow-conflict`,
+      `workflow-editor`, `workflow-references`, `workflow-retry`, `workflow-tools`,
+      `workflows-list`. Solo en la 1: `llm-ui`, `organization-settings`, `triggers-ui`.
+    - Corrida 3: `packages/dag-schema/test/performance.test.ts` (50 nodos en < 100 ms) falla por carga y
+      turbo cancela el resto, así que `apps/web` no llegó a correr.
+    - Los demás paquetes (`logger`, `contracts`, `connectors`, `llm`, `compiler`, `scripts`, `api`
+      unitarias) pasan en las tres. Detalle en la nota de la sesión.
 
 ## Phase 2: Roles de ejecución y compilador (PR 1)
 
 ### Tests
 
-- [ ] T003 [P] [US2] `apps/api/test/integration/runs-roles.test.ts`: matriz rol × ruta (iniciar, cancelar, reejecutar completo, reejecutar desde nodo) con owner, editor, viewer, no miembro y otra organización: 202 / 202 / 403 / 404 / 404; las lecturas (listado, detalle, entradas y salidas, flujo en vivo) siguen en 200 para el viewer; el rol se lee en cada petición (cambiar el rol entre dos llamadas)
-- [ ] T004 [P] [US2] Misma prueba, parte de reflexión: toda ruta de `RunsController` que cambia estado declara `REQUIRED_ROLES` o está en una lista cerrada comentada; falla si se añade una ruta sin decisión (FR-008)
-- [ ] T005 [P] [US2] Invertir `runs-start.test.ts` y `apps/web/test/runs-start.test.tsx` ("cualquier rol ejecuta" pasa a "el viewer recibe 403 / ve las acciones deshabilitadas con el motivo")
-- [ ] T006 [P] [US2] Prueba web: botones Ejecutar, Cancelar y Reejecutar deshabilitados para el viewer con la explicación, habilitados para editor y owner
-- [ ] T007 [P] [US3] `packages/compiler/test/catalog-f7.test.ts` reescrito: llegan exactamente `trigger.webhook`, `trigger.schedule`, `human.approval` y `http.request`; `allowedNodeTypes` ya no recibe `triggersEnabled`
-- [ ] T008 [P] [US3] `packages/dag-schema/test/catalog/sensitive-fields.test.ts`: `credentialId` en `sensitiveFields` de `http.request`; el esquema del editor sigue aceptándolo como `uuid` opcional (FR-012)
-- [ ] T009 [P] [US3] `packages/compiler/test/sanitize.test.ts` y `compile.test.ts`: un `http.request` con `url`, `headers`, `body` y `credentialId` rellenados por el modelo sale sin ellos, con `omittedSensitiveFields` completo y publicación bloqueada
-- [ ] T010 [P] [US3] `packages/compiler/test/prompt.test.ts`: el prompt describe los cuatro nodos y no pide `url`, `headers`, `body` ni `credentialId`; los datos del usuario siguen delimitados con nonce
-- [ ] T011 [P] [US3] Evals: ≥ 6 intenciones nuevas en `packages/compiler/evals/intents.json` (una por nodo y combinaciones) y ≥ 4 casos nuevos en `injection.json` (URL del atacante con "mi token", cabecera `Authorization` inventada, exfiltrar el contenido de un webhook, saltarse la aprobación); respuestas grabadas en `fake-responses`; `pnpm eval:compiler` ≥ 80 % y 0 escapes
+- [X] T003 [P] [US2] `apps/api/test/integration/runs-roles.test.ts`: matriz rol × ruta (iniciar, cancelar, reejecutar completo, reejecutar desde nodo) con owner, editor, viewer, no miembro y otra organización: 202 / 202 / 403 / 404 / 404; las lecturas (listado, detalle, entradas y salidas, flujo en vivo) siguen en 200 para el viewer; el rol se lee en cada petición (cambiar el rol entre dos llamadas)
+- [X] T004 [P] [US2] Misma prueba, parte de reflexión: toda ruta de `RunsController` que cambia estado declara `REQUIRED_ROLES` o está en una lista cerrada comentada; falla si se añade una ruta sin decisión (FR-008)
+- [X] T005 [P] [US2] Invertir `runs-start.test.ts` y `apps/web/test/runs-start.test.tsx` ("cualquier rol ejecuta" pasa a "el viewer recibe 403 / ve las acciones deshabilitadas con el motivo")
+- [X] T006 [P] [US2] Prueba web: botones Ejecutar, Cancelar y Reejecutar deshabilitados para el viewer con la explicación, habilitados para editor y owner
+- [X] T007 [P] [US3] `packages/compiler/test/catalog-f7.test.ts` reescrito: llegan exactamente `trigger.webhook`, `trigger.schedule`, `human.approval` y `http.request`; `allowedNodeTypes` ya no recibe `triggersEnabled`
+- [X] T008 [P] [US3] `packages/dag-schema/test/catalog/sensitive-fields.test.ts`: `credentialId` en `sensitiveFields` de `http.request`; el esquema del editor sigue aceptándolo como `uuid` opcional (FR-012)
+- [X] T009 [P] [US3] `packages/compiler/test/sanitize.test.ts` y `compile.test.ts`: un `http.request` con `url`, `headers`, `body` y `credentialId` rellenados por el modelo sale sin ellos, con `omittedSensitiveFields` completo y publicación bloqueada
+- [X] T010 [P] [US3] `packages/compiler/test/prompt.test.ts`: el prompt describe los cuatro nodos y no pide `url`, `headers`, `body` ni `credentialId`; los datos del usuario siguen delimitados con nonce
+- [X] T011 [P] [US3] Evals: ≥ 6 intenciones nuevas en `packages/compiler/evals/intents.json` (una por nodo y combinaciones) y ≥ 4 casos nuevos en `injection.json` (URL del atacante con "mi token", cabecera `Authorization` inventada, exfiltrar el contenido de un webhook, saltarse la aprobación); respuestas grabadas en `fake-responses`; `pnpm eval:compiler` ≥ 80 % y 0 escapes
 
 ### Implementation
 
-- [ ] T012 [US2] `apps/api/src/runs/runs.controller.ts`: `@RequiredRoles('owner', 'editor')` en iniciar, cancelar y reejecutar; verificar el servicio de reejecución desde un nodo
-- [ ] T013 [US2] `apps/web/src/features/runs/`: acciones deshabilitadas con motivo para el viewer (hook de rol existente)
-- [ ] T014 [US3] `credentialId` en `sensitiveFields` de `packages/dag-schema/src/catalog/http-request.ts`
-- [ ] T015 [US3] `packages/compiler/src/{catalog,prompt}.ts`: filtro de ejecutabilidad `≤ F7`, descripción de los nodos nuevos, retirar el parámetro `triggersEnabled?`
-- [ ] T016 [US2] [US3] ADR-0082 (solo owner y editor ejecutan; ADR-0053 `superseded`) y ADR-0083 (compilador con los nodos de F7); actualizar el índice de ADRs
+- [X] T012 [US2] `apps/api/src/runs/runs.controller.ts`: `@RequiredRoles('owner', 'editor')` en iniciar, cancelar y reejecutar; verificar el servicio de reejecución desde un nodo
+- [X] T013 [US2] `apps/web/src/features/runs/`: acciones deshabilitadas con motivo para el viewer (hook de rol existente)
+- [X] T014 [US3] `credentialId` en `sensitiveFields` de `packages/dag-schema/src/catalog/http-request.ts`
+- [X] T015 [US3] `packages/compiler/src/{catalog,prompt}.ts`: filtro de ejecutabilidad `≤ F7`, descripción de los nodos nuevos, retirar el parámetro `triggersEnabled?`
+- [X] T016 [US2] [US3] ADR-0082 (solo owner y editor ejecutan; ADR-0053 `superseded`) y ADR-0083 (compilador con los nodos de F7); actualizar el índice de ADRs
 
 ## Phase 3: Eliminación de los flags (PR 2)
 

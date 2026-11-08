@@ -87,13 +87,13 @@ F6 adds:
 
 F7 adds:
 
-| Area          | What F7 delivers                                                                                                                                                                                                                                                  |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Triggers      | `trigger.webhook` (`POST /api/v1/hooks/{triggerId}/{token}`, token shown once, `202` with `runId`, duplicates answered with the original run) and `trigger.schedule` (one Temporal Schedule per workflow, overlaps skipped, 1-hour catch-up)                      |
-| Human control | `human.approval` pauses the run without holding a worker; an inbox with a counter; owners and editors decide, except the person who started the run; `approved`, `rejected` or `timeout` branches; email without the message                                      |
-| HTTP          | `http.request` over https only, with anti-SSRF (validated DNS, connection to the validated IP, revalidated redirects), 1 MiB limit, `Idempotency-Key`, circuit breaker per organization and host, and its own task queue                                          |
-| Credentials   | Connector credentials (bearer, API key header, basic) encrypted with AES-256-GCM envelope encryption; never returned after creation; optional per-organization allowlist of destinations                                                                          |
-| Documentation | 81 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md)); threat model v1.7 with the F7 rows; constitution 1.0.3 (TDD in `packages/connectors`) |
+| Area          | What F7 delivers                                                                                                                                                                                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Triggers      | `trigger.webhook` (`POST /api/v1/hooks/{triggerId}/{token}`, token shown once, `202` with `runId`, duplicates answered with the original run) and `trigger.schedule` (one Temporal Schedule per workflow, overlaps skipped, 1-hour catch-up)               |
+| Human control | `human.approval` pauses the run without holding a worker; an inbox with a counter; owners and editors decide, except the person who started the run; `approved`, `rejected` or `timeout` branches; email without the message                               |
+| HTTP          | `http.request` over https only, with anti-SSRF (validated DNS, connection to the validated IP, revalidated redirects), 1 MiB limit, `Idempotency-Key`, circuit breaker per organization and host, and its own task queue                                   |
+| Credentials   | Connector credentials (bearer, API key header, basic) encrypted with AES-256-GCM envelope encryption; never returned after creation; optional per-organization allowlist of destinations                                                                   |
+| Documentation | 83 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md)); threat model v1.7 with the F7 rows; constitution 1.0.3 (TDD in `packages/connectors`) |
 
 **Next: F8 — hardening.** Until F9 the system runs locally only and is not deployed
 publicly. Phases are listed in
@@ -242,8 +242,8 @@ With `execution-enabled` on (default in `.env.example`) the editor header shows 
 **Ejecuciones**. **Ejecutar** runs the active version and asks for the fields the manual trigger
 declares (a generated form, validated before it is sent); it is disabled, with the reason next to
 it, when the workflow has no active version or the version has nodes that are not executable yet
-(`http.request`, `human.approval`, webhook and schedule triggers; they run when `triggers-enabled` is on, and `llm.*` run when `llm-nodes-enabled` is on). Any member, viewers
-included, can run, cancel and rerun (author decision, [ADR-0053](docs/adr/0053-cualquier-miembro-puede-ejecutar.md)).
+(`http.request`, `human.approval`, webhook and schedule triggers; they run when `triggers-enabled` is on, and `llm.*` run when `llm-nodes-enabled` is on). Only owners and editors can run, cancel and rerun; for a viewer the buttons are disabled with the reason
+([ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md), which replaces ADR-0053).
 
 - **List:** the runs of a workflow, newest first, with state, version, who started it, start and duration.
 - **Detail:** the graph of the version that ran, read-only, with the state of every node updating live
@@ -362,7 +362,7 @@ production.
 pnpm credentials:gen-key
 ```
 
-The decisions are in [ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md).
+The decisions are in [ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md). F8 adds [ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md) and [ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md).
 
 ## Recovery demo
 

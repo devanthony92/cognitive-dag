@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0082
 date: 2026-10-31
 decision-makers: autor
 ---

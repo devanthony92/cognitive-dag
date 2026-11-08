@@ -34,7 +34,7 @@ destino). El flag no reemplaza a la autorización ni al anti-SSRF, que se aplica
 
 Compilador: el filtro `executableFrom ≤ F5` no cambia, así que los nodos de F7 no entran en el
 prompt. Una prueba fija que ningún tipo con `executableFrom: 'F7'` llega al prompt, aunque el flag
-esté encendido. Ofrecer los nodos en el compilador queda para F8.
+esté encendido. Ofrecer los nodos en el compilador queda para F8 (hecho en [ADR-0083](0083-compilador-con-los-nodos-de-f7.md)).
 
 Desviación: `allowedNodeTypes` acepta un parámetro `triggersEnabled?` que se ignora. Quedó de la
 tarea T017 (PR #56).
