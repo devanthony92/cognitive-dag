@@ -1,0 +1,45 @@
+[
+  {
+    "title": "Check stock",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "stock",
+        "type": "http.request",
+        "label": "Check stock",
+        "config": {
+          "method": "GET"
+        }
+      },
+      {
+        "id": "notify",
+        "type": "mock.service",
+        "label": "Notify warehouse",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "stock"
+      },
+      {
+        "from": "stock",
+        "fromHandle": "out",
+        "to": "notify"
+      }
+    ]
+  }
+]

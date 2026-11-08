@@ -321,5 +321,80 @@
       "minNodes": 4,
       "maxNodes": 8
     }
+  },
+  {
+    "id": "c31-webhook-order",
+    "intent": "Cuando llegue un webhook con el id del pedido y el monto, guarda el pedido en el sistema de ventas.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.webhook", "mock.service"],
+      "forbiddenTypes": ["trigger.manual"],
+      "minNodes": 2,
+      "maxNodes": 4
+    }
+  },
+  {
+    "id": "c32-weekly-schedule",
+    "intent": "Todos los lunes a las 9 de la mañana, hora de Bogotá, envía el reporte semanal al equipo por correo.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.schedule", "mock.service"],
+      "forbiddenTypes": ["trigger.manual"],
+      "minNodes": 2,
+      "maxNodes": 4
+    }
+  },
+  {
+    "id": "c33-approval-payment",
+    "intent": "Pide aprobación de un gerente antes de pagar la factura; si la rechaza, avisa a quien la pidió, y si vence el plazo, escala a finanzas.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["human.approval", "mock.service"],
+      "minNodes": 5,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c34-http-stock",
+    "intent": "When I run it, call the inventory API to check the stock and then notify the warehouse team.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["http.request", "mock.service"],
+      "minNodes": 3,
+      "maxNodes": 5
+    }
+  },
+  {
+    "id": "c35-webhook-approval-http",
+    "intent": "Cuando llegue un webhook de pedido, pide aprobación; si se aprueba, llama a la API de facturación, y si no, avisa al cliente.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.webhook", "human.approval", "http.request", "mock.service"],
+      "forbiddenTypes": ["trigger.manual"],
+      "minNodes": 5,
+      "maxNodes": 8
+    }
+  },
+  {
+    "id": "c36-daily-status-check",
+    "intent": "Every day at 08:00 UTC call the status API of our payment provider and post the result to the operations chat.",
+    "llmNodes": true,
+    "expected": {
+      "requiredTypes": ["trigger.schedule", "http.request", "mock.service"],
+      "forbiddenTypes": ["trigger.manual"],
+      "minNodes": 3,
+      "maxNodes": 5
+    }
+  },
+  {
+    "id": "c37-webhook-no-llm",
+    "intent": "Cuando llegue un webhook de soporte, pide aprobación a un supervisor antes de crear el caso.",
+    "llmNodes": false,
+    "expected": {
+      "requiredTypes": ["trigger.webhook", "human.approval"],
+      "forbiddenTypes": ["llm.classify", "llm.extract", "llm.generate"],
+      "minNodes": 3,
+      "maxNodes": 6
+    }
   }
 ]

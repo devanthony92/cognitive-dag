@@ -59,9 +59,10 @@ export const httpRequest = defineNode({
   acceptsInput: true,
   handles: ['out'],
   templatableFields: ['url', 'body'],
-  // `credentialId` is left out on purpose: the nodes of F7 do not reach the compiler until F8
-  // (decision 13C), and listing it would report a credential as missing on every call.
-  sensitiveFields: ['url', 'headers', 'body'],
+  // The compiler never fills these: they decide where a call goes and who it authenticates as.
+  // `credentialId` picks which secret of the organization is used (F8, decision 3A). The editor
+  // still accepts it as an optional uuid; only the compiler treats it as sensitive.
+  sensitiveFields: ['url', 'headers', 'body', 'credentialId'],
   fieldLabels: {
     method: 'Método',
     url: 'URL',

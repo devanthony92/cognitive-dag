@@ -1,0 +1,46 @@
+[
+  {
+    "title": "Daily status check",
+    "nodes": [
+      {
+        "id": "cron",
+        "type": "trigger.schedule",
+        "label": "Daily 08:00",
+        "config": {
+          "cron": "0 8 * * *",
+          "timezone": "UTC"
+        }
+      },
+      {
+        "id": "status",
+        "type": "http.request",
+        "label": "Call status API",
+        "config": {
+          "method": "GET"
+        }
+      },
+      {
+        "id": "post",
+        "type": "mock.service",
+        "label": "Post to chat",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "cron",
+        "fromHandle": "out",
+        "to": "status"
+      },
+      {
+        "from": "status",
+        "fromHandle": "out",
+        "to": "post"
+      }
+    ]
+  }
+]

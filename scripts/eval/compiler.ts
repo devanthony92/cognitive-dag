@@ -104,6 +104,20 @@ export class RecordingProvider implements LlmProvider {
   }
 }
 
+/**
+ * A DAG that leaves a sensitive field to the person (a required `url`, say) is invalid on purpose
+ * until they complete it (F8 US3). Those errors do not count against an intent; any other does.
+ */
+function withoutOmittedFieldErrors(outcome: Extract<CompileOutcome, { status: 'succeeded' }>) {
+  const omitted = new Set(
+    outcome.omittedSensitiveFields.map((item) => `${item.nodeId}:config.${item.field}`),
+  );
+  const errors = outcome.validation.errors.filter(
+    (error) => !omitted.has(`${error.location.node}:${error.location.field}`),
+  );
+  return { valid: errors.length === 0, errors };
+}
+
 /** Verdict of an intent case: a valid DAG with its expected properties. */
 export function judgeIntent(
   outcome: CompileOutcome,
@@ -113,7 +127,11 @@ export function judgeIntent(
   detail: string;
 } {
   if (outcome.status === 'failed') return { verdict: 'failed', detail: outcome.errorCode };
-  const failures = checkProperties(outcome.definition, outcome.validation, expected);
+  const failures = checkProperties(
+    outcome.definition,
+    withoutOmittedFieldErrors(outcome),
+    expected,
+  );
   return failures.length === 0
     ? { verdict: 'passed', detail: `${outcome.nodeCount} nodes, ${outcome.repairs} repairs` }
     : { verdict: 'failed', detail: failures.join('; ') };

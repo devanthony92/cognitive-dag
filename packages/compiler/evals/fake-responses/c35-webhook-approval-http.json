@@ -1,0 +1,81 @@
+[
+  {
+    "title": "Facturar pedido",
+    "nodes": [
+      {
+        "id": "hook",
+        "type": "trigger.webhook",
+        "label": "Webhook",
+        "config": {
+          "bodySchema": [
+            {
+              "name": "order_id",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "approve",
+        "type": "human.approval",
+        "label": "Aprobar pedido",
+        "config": {
+          "message": "Aprueba el pedido {{nodes.hook.output.order_id}}",
+          "timeoutSeconds": 86400
+        }
+      },
+      {
+        "id": "bill",
+        "type": "http.request",
+        "label": "Facturar",
+        "config": {
+          "method": "POST"
+        }
+      },
+      {
+        "id": "tell",
+        "type": "mock.service",
+        "label": "Avisar al cliente",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "expire",
+        "type": "mock.service",
+        "label": "Registrar vencimiento",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "hook",
+        "fromHandle": "out",
+        "to": "approve"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "approved",
+        "to": "bill"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "rejected",
+        "to": "tell"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "timeout",
+        "to": "expire"
+      }
+    ]
+  }
+]

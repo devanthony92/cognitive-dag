@@ -22,9 +22,11 @@ describe('node types by phase (research R10)', () => {
   });
 
   it('adds the LLM nodes only when llm-nodes-enabled is on', () => {
-    expect(allowedNodeTypes({ llmNodesEnabled: false })).toEqual(nodeTypesExecutableIn(['F3']));
+    expect(allowedNodeTypes({ llmNodesEnabled: false })).toEqual(
+      nodeTypesExecutableIn(['F3', 'F7']),
+    );
     expect(allowedNodeTypes({ llmNodesEnabled: true })).toEqual(
-      nodeTypesExecutableIn(['F3', 'F5']),
+      nodeTypesExecutableIn(['F3', 'F5', 'F7']),
     );
   });
 });
@@ -53,7 +55,7 @@ describe('compiler catalog', () => {
 
   it('carries the sensitive fields of the node catalog', () => {
     const [http] = compilerCatalog(['http.request']);
-    expect(http?.sensitiveFields).toEqual(['url', 'headers', 'body']);
+    expect(http?.sensitiveFields).toEqual(['url', 'headers', 'body', 'credentialId']);
   });
 
   it('refuses an unknown type', () => {

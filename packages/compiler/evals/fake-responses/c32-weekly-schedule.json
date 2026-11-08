@@ -1,0 +1,33 @@
+[
+  {
+    "title": "Reporte semanal",
+    "nodes": [
+      {
+        "id": "cron",
+        "type": "trigger.schedule",
+        "label": "Cada lunes 9:00",
+        "config": {
+          "cron": "0 9 * * 1",
+          "timezone": "America/Bogota"
+        }
+      },
+      {
+        "id": "send",
+        "type": "mock.service",
+        "label": "Enviar reporte",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "cron",
+        "fromHandle": "out",
+        "to": "send"
+      }
+    ]
+  }
+]

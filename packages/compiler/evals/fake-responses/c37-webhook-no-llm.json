@@ -1,0 +1,73 @@
+[
+  {
+    "title": "Caso de soporte",
+    "nodes": [
+      {
+        "id": "hook",
+        "type": "trigger.webhook",
+        "label": "Webhook",
+        "config": {
+          "bodySchema": [
+            {
+              "name": "subject",
+              "type": {
+                "kind": "string"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "approve",
+        "type": "human.approval",
+        "label": "Aprobación del supervisor",
+        "config": {
+          "message": "Aprueba crear el caso: {{nodes.hook.output.subject}}",
+          "timeoutSeconds": 86400
+        }
+      },
+      {
+        "id": "create",
+        "type": "mock.service",
+        "label": "Crear caso",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      },
+      {
+        "id": "drop",
+        "type": "mock.service",
+        "label": "Descartar",
+        "config": {
+          "latencyMs": 100,
+          "failureRate": 0,
+          "failureKind": "transient"
+        }
+      }
+    ],
+    "edges": [
+      {
+        "from": "hook",
+        "fromHandle": "out",
+        "to": "approve"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "approved",
+        "to": "create"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "rejected",
+        "to": "drop"
+      },
+      {
+        "from": "approve",
+        "fromHandle": "timeout",
+        "to": "drop"
+      }
+    ]
+  }
+]

@@ -73,10 +73,26 @@ const GUIDES: Readonly<Partial<Record<NodeType, string>>> = {
     `"<two-letter code>","maxLength":1-10000}. ${REFERENCE_SYNTAX} Output: {"text":string}. ` +
     'Example config: {"instruction":"Write a short reply to: {{nodes.start.output.email_body}}",' +
     '"language":"es","maxLength":500}',
+  'trigger.webhook':
+    'Starts the workflow when an HTTP request arrives. config: {"bodySchema":[{"name":"<field>",' +
+    '"type":<type>}]} declares the fields the request body is expected to have (snake_case names; ' +
+    'an empty list is allowed); later nodes read them as nodes.<trigger_id>.output.<field>. ' +
+    `${TYPE_SYNTAX} Example config: {"bodySchema":[{"name":"order_id","type":{"kind":"string"}}]}`,
+  'trigger.schedule':
+    'Starts the workflow on a schedule. config: {"cron":"<5 fields: minute hour day month ' +
+    'weekday>","timezone":"<IANA zone>"}. Use "UTC" unless the request names a place. Output: ' +
+    '{"firedAt":datetime}. Example config: {"cron":"0 9 * * 1","timezone":"UTC"}',
+  'human.approval':
+    'Pauses the workflow until a person approves or rejects, or the time runs out. Connect the ' +
+    'next nodes from the handles "approved", "rejected" and "timeout"; every handle needs a ' +
+    'destination unless the flow ends there. config: {"message":"<text shown to the person>",' +
+    `"timeoutSeconds":60-2592000}. ${REFERENCE_SYNTAX} Output: {"decision":"approved|rejected|` +
+    'timeout","approvedBy":string}. Example config: {"message":"Approve the refund of ' +
+    '{{nodes.start.output.amount}}","timeoutSeconds":86400}',
   'http.request':
     'Calls an external https API. config: {"method":"GET|POST|PUT|PATCH|DELETE"}. The url, ' +
-    'headers and body are sensitive: leave them out, the person fills them in. Output: ' +
-    '{"status":number,"body":string}. Example config: {"method":"GET"}',
+    'headers, body and credentialId are sensitive: leave them out, the person fills them in. ' +
+    'Output: {"status":number,"body":string}. Example config: {"method":"GET"}',
 };
 
 /** Node types executable in the given phases, in catalog order (research R10). */
@@ -85,15 +101,12 @@ export function nodeTypesExecutableIn(phases: readonly ExecutableFrom[]): NodeTy
 }
 
 /**
- * Types the compiler may offer to an organization: F3, plus F5 with `llm-nodes-enabled`. The nodes of
- * F7 are not offered even with `triggers-enabled` on (F7 decision 13C: they reach the compiler in
- * F8), so that flag is accepted and ignored.
+ * Types the compiler may offer to an organization: F3 and F7, plus F5 with `llm-nodes-enabled`
+ * (F8 decision 3A; the nodes of F7 no longer depend on any flag). Destinations, headers, bodies and
+ * credentials of `http.request` stay out of the model's hands through `sensitiveFields`.
  */
-export function allowedNodeTypes(flags: {
-  llmNodesEnabled: boolean;
-  triggersEnabled?: boolean;
-}): NodeType[] {
-  return nodeTypesExecutableIn(flags.llmNodesEnabled ? ['F3', 'F5'] : ['F3']);
+export function allowedNodeTypes(flags: { llmNodesEnabled: boolean }): NodeType[] {
+  return nodeTypesExecutableIn(flags.llmNodesEnabled ? ['F3', 'F5', 'F7'] : ['F3', 'F7']);
 }
 
 /** The catalog the prompt shows. Unknown types or types without a guide are a programming error. */

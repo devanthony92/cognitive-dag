@@ -1,9 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { NODE_CATALOG, NODE_TYPES } from '../../src/index.js';
 
+const CREDENTIAL_ID = ['00000000', '0000', '4000', '8000', '000000000001'].join('-');
+
 describe('sensitive fields of the catalog (F6, research R12)', () => {
-  it('marks the destination, headers and body of http.request', () => {
-    expect(NODE_CATALOG['http.request'].sensitiveFields).toEqual(['url', 'headers', 'body']);
+  it('marks the destination, headers, body and credential of http.request', () => {
+    expect(NODE_CATALOG['http.request'].sensitiveFields).toEqual([
+      'url',
+      'headers',
+      'body',
+      'credentialId',
+    ]);
+  });
+
+  it('keeps credentialId an optional uuid for the editor (F8 FR-012)', () => {
+    const schema = NODE_CATALOG['http.request'].configSchema;
+    const base = { method: 'GET', url: 'https://example.com', headers: {}, body: '' };
+    expect(schema.safeParse(base).success).toBe(true);
+    expect(schema.safeParse({ ...base, credentialId: CREDENTIAL_ID }).success).toBe(true);
+    expect(schema.safeParse({ ...base, credentialId: 'not-a-uuid' }).success).toBe(false);
   });
 
   it('leaves every other node type without sensitive fields', () => {
