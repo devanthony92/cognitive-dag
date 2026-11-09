@@ -7,9 +7,8 @@ info:
     endpoints de negocio. Solo se listan los cambios de comportamiento observables detrás de Caddy:
     (1) en producción la API se sirve bajo el mismo origen que la web, en /api/*, por TLS;
     (2) la IP del cliente sale de X-Forwarded-For solo cuando el salto viene del proxy de confianza;
-    (3) GET /api/v1/metrics, si D9 lo exige, es interno y no se publica por Caddy;
-    (4) condicional a D21A, crear o actualizar una programación con una cron más frecuente que el
-    mínimo devuelve 422 CRON_TOO_FREQUENT. Los errores usan application/problem+json (RFC 9457).
+    (3) con D23A, Caddy responde 404 a POST /api/v1/auth/register (demo cerrada). No hay endpoint de
+    métricas (D9C) ni cron mínima (D21B). Los errores usan application/problem+json (RFC 9457).
 servers:
   - url: https://{domain}
     variables:
@@ -41,39 +40,20 @@ paths:
         - { name: token, in: path, required: true, schema: { type: string } }
       responses:
         '202': { description: Ejecución en cola (sin cambios de F7). }
-  /api/v1/organizations/{organizationId}/workflows/{workflowId}/schedules:
+  /api/v1/auth/register:
     post:
-      operationId: createSchedule
+      operationId: register
       description: >
-        Condicional a D21A. Sin cambios salvo el nuevo 422 cuando la cron dispararía con una frecuencia
-        menor que SCHEDULE_MIN_INTERVAL_SECONDS (por defecto 300). La misma validación se aplica al
-        actualizar y en el reconciliador.
-      parameters:
-        - { name: organizationId, in: path, required: true, schema: { type: string, format: uuid } }
-        - { name: workflowId, in: path, required: true, schema: { type: string, format: uuid } }
+        Sin cambios en la API. Con D23A (demo cerrada) Caddy responde 404 antes de llegar a la API y el
+        autor crea las cuentas con un script en la VM. Con D23B, la API responde 404 mientras
+        REGISTRATION_ENABLED sea falso.
+      security: []
       responses:
-        '201': { description: Programación creada (sin cambios). }
-        '422':
-          description: Cron demasiado frecuente (solo si D21A).
-          content:
-            application/problem+json:
-              schema: { $ref: '#/components/schemas/CronTooFrequent' }
+        '202': { description: Registro aceptado (sin cambios; no disponible con la demo cerrada). }
+        '404': { description: Registro cerrado por el despliegue (D23). }
 components:
   securitySchemes:
     session:
       type: apiKey
       in: cookie
       name: __Host-session
-  schemas:
-    CronTooFrequent:
-      type: object
-      required: [status, title, detail, code, correlationId]
-      properties:
-        status: { type: integer, const: 422 }
-        title: { type: string, const: Unprocessable Content }
-        detail: { type: string, description: En español; indica el intervalo mínimo. }
-        code: { type: string, const: CRON_TOO_FREQUENT }
-        correlationId: { type: string, format: uuid }
-        errors:
-          type: array
-          items: { type: object }

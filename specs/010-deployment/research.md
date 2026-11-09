@@ -2,9 +2,10 @@
 
 **Fecha**: 2026-11-09 · **Spec**: [spec.md](./spec.md)
 
-Decisiones del autor: **pendientes**. Cada R es una pregunta numerada (D1 a D22) con opciones A/B/C,
-ventajas, riesgos y una recomendación. Ninguna está tomada; el plan y las tareas asumen la recomendación
-solo como borrador y se rehacen cuando lleguen las respuestas ("1A 2A 3A…").
+Decisiones del autor (2026-11-09): `1B 2C 3C 4B 5 sin backup, 6A 7A 8A 9C 10A 11C 12A 13C 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`.
+Cada R conserva su análisis original (la comparación sigue siendo útil para revisar) y empieza con una
+línea **Respuesta del autor** y su efecto. Donde la respuesta se apartó de la recomendación, el análisis
+dice cuál era y qué riesgo se acepta. Queda una pregunta abierta, **D23** (R23).
 
 Las comprobaciones del estado actual se hicieron leyendo el repositorio en `main` (`e424bb5`). Las cifras
 de planes gratuitos de terceros (Oracle, GitHub, Grafana, Backblaze y similares) **cambian sin aviso**
@@ -32,7 +33,7 @@ se confirma contra la fuente oficial el día de contratar, antes de depender de 
 
 `docs/PLAN.md` §9 estima 2–3 GB para producción. Se fija un límite por contenedor; la columna "esperado"
 es la estimación del PLAN y los límites son mi propuesta (**propuesto**, se ajustan con la medición de la
-tarea T056). Cabe producción más staging bajo demanda.
+tarea T049).
 
 | Servicio                 | Esperado (PLAN) | Límite producción | Límite staging |
 | ------------------------ | --------------- | ----------------- | -------------- |
@@ -46,13 +47,16 @@ tarea T056). Cabe producción más staging bajo demanda.
 | Agente de observabilidad | —               | 192 MB (D9A)      | —              |
 | **Suma**                 |                 | **≈ 3,4 GB**      | **≈ 1,8 GB**   |
 
-Con 12 GB en total quedan ≈ 6,8 GB de margen para el sistema, el caché de disco de PostgreSQL y los picos.
+**Con D2C y D9C no hay staging ni agente de observabilidad:** la suma de producción es ≈ 3,2 GB (se
+retiran las columnas de staging y la fila del agente al medir en T052). Con 12 GB en total quedan ≈ 6,8 GB de margen para el sistema, el caché de disco de PostgreSQL y los picos.
 Si D9B (todo en la VM) se elige, la suma sube ≈ 1,5 GB (Loki, Prometheus, Grafana) y el margen sigue
 positivo, pero se acerca al límite de 8 GB que fija SC-010 con staging encendido.
 
 ---
 
 ## R1 / D1. Registro de imágenes
+
+> **Respuesta del autor: **B (OCIR).** Se apartó de la recomendación (A, GHCR). Riesgo aceptado: CI guarda un token de Oracle de larga vida y registro, VM, secretos y correo dependen de la misma cuenta.**
 
 **Pregunta:** ¿Dónde se publican las imágenes `api`, `worker`, `migrator` y web?
 
@@ -68,6 +72,8 @@ de solo lectura en la VM (prerrequisito P9). Las imágenes se referencian siempr
 
 ## R2 / D2. Staging
 
+> **Respuesta del autor: **C (sin staging).** Se apartó de la recomendación (A). Efecto: #65 (ZAP activo y con sesión) no se hace; las cabeceras se verifican contra la imagen de borde en local y con `curl` tras cada despliegue.**
+
 **Pregunta:** ¿Hay un staging separado donde probar y donde corra ZAP?
 
 | Opción                                                    | Ventajas                                                                                                                            | Riesgos                                                                                                                                                                       |
@@ -82,6 +88,8 @@ secretos propios, dominio `staging.<dominio>` (prerrequisito P2), sin clave de G
 
 ## R3 / D3. Modo de despliegue
 
+> **Respuesta del autor: **C (todo automático).** Se apartó de la recomendación (A). Sin staging, cada publicación correcta llega a producción: las defensas son CI, el escaneo de la publicación, `migrator`, la salud y la **reversa automática**.**
+
 **Pregunta:** ¿Se despliega automáticamente al hacer merge, o a mano?
 
 | Opción                                                              | Ventajas                                                                                                                                                | Riesgos                                                                                                                                                      |
@@ -95,6 +103,8 @@ publica y registra el digest "listo"; un temporizador `systemd` en la VM extrae 
 dar a CI un acceso SSH. El autor elige entre push por SSH restringido o pull al ver el plan.
 
 ## R4 / D4. Gestor de secretos
+
+> **Respuesta del autor: **B (OCI Vault).** Se apartó de la recomendación (A). La VM lee los secretos con la identidad de la instancia y los deja en `tmpfs`; lo que no pueda regenerarse necesita una copia del autor fuera de Oracle (P8).**
 
 **Pregunta:** ¿Dónde viven los secretos de producción?
 
@@ -111,6 +121,8 @@ el aprovisionamiento. `docker inspect` solo muestra rutas de archivos, no valore
 `*_FILE`).
 
 ## R5 / D5. Destino de los backups
+
+> **Respuesta del autor: **Sin backup.** Se apartó de las opciones: ninguna era «sin copias». Riesgo aceptado: pérdida total de datos (incluido el historial de Temporal) y de `CREDENTIALS_MASTER_KEY` si la VM o la cuenta desaparecen. Se retiran FR-019 a FR-021 y SC-004; el PLAN §10 y el modelo de amenazas se corrigen.**
 
 **Pregunta:** ¿Adónde van las copias fuera de la VM?
 
@@ -129,6 +141,8 @@ A es válida **solo** si acepta ese riesgo correlado por escrito.
 
 ## R6 / D6. Origen de la web y la API
 
+> **Respuesta del autor: **A (mismo origen).** Coincide con la recomendación.**
+
 **Pregunta:** ¿La web y la API comparten origen?
 
 | Opción                                                    | Ventajas                                                                                                                                                                | Riesgos                                                                                                                                                                                   |
@@ -142,6 +156,8 @@ que el cliente concatena `VITE_API_URL` + `/api/v1/...` y que con valor vacío f
 mínimo con prueba).
 
 ## R7 / D7. Cómo se sirve la web estática
+
+> **Respuesta del autor: **A (imagen de borde única).** Coincide con la recomendación.**
 
 **Pregunta:** ¿Qué imagen entrega los archivos de la SPA?
 
@@ -157,6 +173,8 @@ oficial de Caddy fijada por digest.
 
 ## R8 / D8. PKI interna
 
+> **Respuesta del autor: **A (CA con `openssl`).** Coincide con la recomendación; la clave de la CA va al Vault.**
+
 **Pregunta:** ¿Cómo se emiten los certificados de Temporal, PostgreSQL y Valkey?
 
 | Opción                                                          | Ventajas                                                                                                                                 | Riesgos                                                                                                                                      |
@@ -171,6 +189,8 @@ necesitan una CA pública. mTLS de Temporal: certificados distintos para API, wo
 
 ## R9 / D9. Observabilidad y alertas
 
+> **Respuesta del autor: **C (logs + script).** Se apartó de la recomendación (A). Sin agente ni métricas ni tercero: registros del motor y un temporizador que avisa por correo. FR-029 queda retirado y el PLAN §7 se corrige.**
+
 **Pregunta:** ¿Dónde van los registros y métricas y quién envía las alertas?
 
 | Opción                                                                       | Ventajas                                                                                                                                                              | Riesgos                                                                                                                                                                             |
@@ -180,12 +200,14 @@ necesitan una CA pública. mTLS de Temporal: certificados distintos para API, wo
 | C. Solo registros del motor + un script que cuenta eventos y alerta por correo | Mínimo; sin dependencias ni terceros                                                                                                                                  | Sin métricas ni paneles; búsquedas rudimentarias; las alertas dependen del correo y de que la VM esté viva; no cubre #67 ni las métricas de PLAN §7                                 |
 
 **Recomendación: A**, con la regla de que **ningún dato de usuario sale**: los registros ya se emiten con
-redacción y la tarea T052 añade una prueba de canario sobre el canal de salida. Dependencia nueva probable
+redacción y la tarea T042 añade una prueba de canario sobre los registros. Dependencia nueva probable
 (`prom-client` u OpenTelemetry) → ADR (principio VII). Si el autor prefiere no enviar registros a un
 tercero, B es la alternativa, y el presupuesto de memoria sigue cumpliéndose. Si prefiere un mínimo, C
 cubre solo FR-028 y deja FR-029 `accepted`.
 
 ## R10 / D10. Retención de eventos de seguridad y #62
+
+> **Respuesta del autor: **A (solo logs).** Coincide, con un cambio: **90 días en la VM y sin archivo de 12 meses**, porque no hay destino externo (D5). #62 se cierra con retención y alertas, sin tabla.**
 
 **Pregunta:** ¿Cuánto se conservan los eventos de seguridad y hace falta una tabla de auditoría?
 
@@ -200,6 +222,8 @@ demanda real de auditoría por tenant. Valores propuestos: 90 días en el backen
 Los registros de acceso de Caddy: 30 días (contienen IP).
 
 ## R11 / D11. SBOM y escaneo de imágenes (#64)
+
+> **Respuesta del autor: **C (solo al publicar).** Se apartó de la recomendación (A). Un hallazgo bloquea la publicación y por tanto el despliegue, pero no un PR; el job `images` no cambia.**
 
 **Pregunta:** ¿Dónde se generan el SBOM y el escaneo, y bloquean el merge?
 
@@ -216,6 +240,8 @@ actualiza con Renovate (ya existe).
 
 ## R12 / D12. ZAP contra staging (#65)
 
+> **Respuesta del autor: **A, modificada por D2C.** Sin staging, ZAP sigue pasivo, local y a loopback, contra la imagen de borde levantada en local. #65 queda `accepted`.**
+
 **Pregunta:** ¿Cómo y cuándo se ejecuta ZAP con sesión y activo?
 
 | Opción                                                                         | Ventajas                                                                                                                                                         | Riesgos                                                                                                                                                                      |
@@ -230,6 +256,8 @@ condiciones de la historia 7 (LLM apagado, correo capturado, límites de tasa in
 
 ## R13 / D13. Gemini de pago
 
+> **Respuesta del autor: **C (demo cerrada, capa gratuita).** Se apartó de la recomendación (A). LLM02 sigue `accepted`; la demo no es pública (ver D23).**
+
 **Pregunta:** ¿Cómo se trata la capa gratuita de Gemini en la demo pública (LLM02)?
 
 | Opción                                                      | Ventajas                                                                                                                                | Riesgos                                                                                                                                                                |
@@ -241,6 +269,8 @@ condiciones de la historia 7 (LLM apagado, correo capturado, límites de tasa in
 **Recomendación: A** (prerrequisito P4). Producción usa su propia clave; staging, ninguna.
 
 ## R14 / D14. Proveedor de correo
+
+> **Respuesta del autor: **A (OCI Email Delivery).** Coincide con la recomendación.**
 
 **Pregunta:** ¿Quién envía los correos del sistema con SPF, DKIM y DMARC?
 
@@ -256,6 +286,8 @@ y se evalúa `reject` después.
 
 ## R15 / D15. Acceso del operador
 
+> **Respuesta del autor: **A (SSH + `fail2ban` + `ssh -L`).** Coincide con la recomendación.**
+
 **Pregunta:** ¿Cómo entra el operador a la VM y a la interfaz de Temporal?
 
 | Opción                                                        | Ventajas                                                                                                    | Riesgos                                                                                                                                              |
@@ -267,6 +299,8 @@ y se evalúa `reject` después.
 **Recomendación: A.** Es lo que el PLAN y el modelo de amenazas prevén ("túnel SSH") y lo más portable.
 
 ## R16 / D16. Aprovisionamiento
+
+> **Respuesta del autor: **A (scripts y cloud-init).** Coincide con la recomendación.**
 
 **Pregunta:** ¿Con qué se automatiza la VM?
 
@@ -281,6 +315,8 @@ sin añadir un check. Los pasos de OCI (crear instancia, red, reglas) se documen
 
 ## R17 / D17. Rollback
 
+> **Respuesta del autor: **A (digests anteriores + volcado previo).** Coincide; el volcado previo vive solo en la VM (últimos 3) porque no hay backups.**
+
 **Pregunta:** ¿Cómo se vuelve atrás?
 
 | Opción                                                               | Ventajas                                                                                                                                       | Riesgos                                                                                                                                                         |
@@ -294,6 +330,8 @@ sin añadir un check. Los pasos de OCI (crear instancia, red, reglas) se documen
 
 ## R18 / D18. #61 MFA y política de contraseñas
 
+> **Respuesta del autor: **A (fuera de F9).** Coincide con la recomendación.**
+
 | Opción                                                      | Ventajas                                                                                  | Riesgos                                                                                                                                                 |
 | ----------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A. Fuera de F9; revisión posterior, como dice ADR-0088** (recomendada) | F9 ya está cargada; la decisión 4A se respeta; el rate limit progresivo y Argon2id siguen   | La demo pública acepta contraseñas de 8 a 25 y sin segundo factor (riesgo aceptado ya documentado)                                                      |
@@ -303,6 +341,8 @@ sin añadir un check. Los pasos de OCI (crear instancia, red, reglas) se documen
 **Recomendación: A.**
 
 ## R19 / D19. #66 ejecución `failed` tras fallo de Temporal (webhook)
+
+> **Respuesta del autor: **A (fuera de F9).** Coincide con la recomendación.**
 
 | Opción                                               | Ventajas                                                  | Riesgos                                                                                                                                                      |
 | ---------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -314,6 +354,8 @@ datos.
 
 ## R20 / D20. #67 disparos fuera del catch-up
 
+> **Respuesta del autor: **Sin métricas.** Se apartó de la recomendación (A). #67 queda `accepted`.**
+
 | Opción                                                         | Ventajas                                                                                                       | Riesgos                                                                                                                                       |
 | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | **A. Métrica y alerta con las métricas del servidor de Temporal** (recomendada) | ADR-0088 pide revisarlo en F9; el servidor de producción expone métricas Prometheus; barato con D9A o D9B       | Depende de D9 (con D9C no hay métricas); hay que verificar qué métrica expone la versión fijada                                                |
@@ -322,6 +364,8 @@ datos.
 **Recomendación: A.**
 
 ## R21 / D21. #68 frecuencia mínima de la cron
+
+> **Respuesta del autor: **B (dejar `accepted`).** Se apartó de la recomendación (A). Sin frecuencia mínima; acotada por el tope de 10 programaciones, `overlap = SKIP` y `max_concurrent_runs`.**
 
 | Opción                                                              | Ventajas                                                                                                                             | Riesgos                                                                                                                                |
 | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
@@ -332,6 +376,8 @@ datos.
 
 ## R22 / D22. Qué entra en F9 y qué se difiere
 
+> **Respuesta del autor: **A (F9 completa).** Coincide; con las respuestas anteriores son 5 PR (la PR 6 de staging y ZAP activo desaparece).**
+
 | Opción                                                                                       | Ventajas                                                                                                    | Riesgos                                                                                                                          |
 | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **A. F9 completa en 6 PR**: todo el alcance mínimo, #62, #64, #65, #67 y #68 (según D10, D11, D12, D20, D21); #61 y #66 fuera | Cumple el criterio del PLAN ("demo pública con TLS; restauración probada") y las filas `deferred:F9` de ADR-0088 | Fase larga y dependiente de cuentas del autor; el riesgo es que las PR 5 y 6 se retrasen por prerrequisitos                       |
@@ -341,6 +387,18 @@ datos.
 **Recomendación: A**, pero con el hito intermedio de PR 4 ("producción segura"): a partir de ahí se puede
 desplegar staging y producción; las PR 5 y 6 cierran observabilidad, correo, ZAP y documentos. Si el
 autor se apura, B es el corte natural. **Lo no recomendable es C.**
+
+## R23 / D23. Cierre del registro de la demo (pregunta abierta)
+
+**Pregunta:** D13C dice «demo cerrada», pero `POST /api/v1/auth/register` está abierto a cualquiera.
+
+| Opción | Ventajas | Riesgos |
+| --- | --- | --- |
+| **A. Caddy responde 404 a `register`; el autor crea las cuentas con un script en la VM** (recomendada) | Sin cambio de código; reversible quitando una línea; cierra la superficie de registro masivo | Las invitaciones a nuevos usuarios pueden pasar por `register` (a confirmar en el código al implementar); el script de alta es un procedimiento manual |
+| B. Variable de operación `REGISTRATION_ENABLED` en la API | Cierre por configuración, probado por TDD, sin depender del proxy | Cambio de código en el camino de autenticación; es un kill switch de operación, no un flag de producto |
+| C. Dejar el registro abierto | Cero trabajo | Contradice D13C: la capa gratuita de Gemini puede usar el contenido de usuarios desconocidos, y cualquiera consumiría la cuota |
+
+**Recomendación: A.** Pendiente de respuesta.
 
 ---
 
@@ -396,17 +454,49 @@ autor se apura, B es el corte natural. **Lo no recomendable es C.**
   SHA; salida con el digest; no se ejecuta en PR de forks.
 - Provenance y SBOM de BuildKit son una opción; el SBOM exigido es CycloneDX.
 
-### T5. Backups
+### T5. Backups (retirado por D5)
 
-- `restic` contra el destino de D5 con contraseña de repositorio de la VM (para escribir) y copia en el
-  gestor del autor; `pg_dump` en formato personalizado de las bases `cognitive_dag` y `temporal`, más
-  `pg_dumpall --globals-only` para los roles; comprobación semanal `restic check` y restauración
-  completa periódica (mensual propuesto) en un contenedor limpio con la prueba de humo.
-- La copia **no** incluye secretos de la VM; esos viajan por la copia cifrada del gestor del autor (D4).
+No hay backups externos. Lo único que se guarda es un volcado lógico (`pg_dump` en formato personalizado de
+`cognitive_dag`) en la VM justo antes de cada migración, con los últimos 3 (rollback de D17A). No cubre la
+pérdida de la VM. El modelo de amenazas registra el riesgo como `accepted` (dueño: autor, revisión antes
+de admitir datos reales). La fila «Pérdida o fuga de datos por falta de copias» de la sección 3.7 pasa de
+`deferred:F9` a `accepted`.
 
-### T6. Métricas mínimas (PLAN §7)
+### T6. Métricas (retirado por D9C y D20)
 
-Peticiones por ruta normalizada y estado; ejecuciones por estado; fallos de inicio por webhook (D19);
-tokens y costo (por organización con un tope de cardinalidad, y global); circuit breakers abiertos;
-latencia de actividades LLM; salud de dependencias. Sin etiquetas con identificadores de usuario ni
-contenido.
+Sin `prom-client` ni OpenTelemetry. `docs/PLAN.md` §7 se corrige: en F9 la observabilidad son registros
+estructurados y alertas por script. Quedan `accepted` #67 (disparos descartados) y las métricas de
+duración por nodo, reintentos y costo de §7, con revisión al admitir datos reales.
+
+### T7. Secretos con OCI Vault (D4B)
+
+- El operador carga los secretos en el Vault desde su máquina; la instancia tiene una política de **solo
+  lectura** sobre ellos y los obtiene con su identidad de instancia (sin llave de API en la VM).
+- Un servicio `systemd` los vuelca a un `tmpfs` (`/run/cognitive-dag/secrets`, `0600`) antes de arrancar
+  Compose; los contenedores los leen como `secrets` de archivo (`*_FILE`). Si el Vault no responde en el
+  arranque, el despliegue falla cerrado y no arranca con valores viejos.
+- El cupo gratuito del Vault y de las claves de software es **(verificar)**. Sin backups, cualquier secreto que
+  el Vault pierda y no pueda regenerarse (clave de Gemini, credenciales SMTP) lo repone el autor (P8).
+- `CREDENTIALS_MASTER_KEY` se genera una vez y se guarda en el Vault y en una copia del autor fuera de Oracle;
+  sin la base de datos esa copia sirve de poco, pero evita cifrar de nuevo con una llave distinta por error.
+
+### T8. Alertas por script (D9C)
+
+- Un temporizador `systemd` (cada 5 minutos) cuenta en los registros, con una ventana deslizante,
+  `auth.login_failed` y `auth.rate_limited`; comprueba la salud (`/api/v1/health/ready`, salud del worker y
+  de Temporal), la caducidad de los certificados internos (≥ 30 días) y el disco; y envía un correo con el
+  mismo SMTP de la aplicación.
+- Límite conocido: si el proveedor de correo o la VM caen, la alerta no sale. Es el precio de no tener un
+  servicio externo.
+- La retención de 90 días se obtiene con la rotación del motor (`max-size`, `max-file`) y compresión;
+  se dimensiona con el volumen de registros medido en la prueba de humo.
+
+### T9. Despliegue automático con reversa (D3C, D17A)
+
+- `deploy.yml` se dispara con la publicación correcta (`workflow_run` o el propio `release.yml` como etapa
+  final), entra por SSH con una llave restringida a un comando (`command=` en `authorized_keys`) o la VM
+  extrae el digest aprobado con un temporizador (se decide en la tarea correspondiente, ver tasks.md).
+- Pasos: guardar `previous`, volcado previo, `migrator`, arrancar, esperar la salud y la comprobación de
+  cabeceras por `curl`; ante cualquier fallo, volver a `previous` y marcar el workflow como fallido.
+- Riesgo: una migración expand/contract mal revisada rompe a la versión anterior y la reversa no basta; sin
+  backup no hay salida más allá del volcado previo local.

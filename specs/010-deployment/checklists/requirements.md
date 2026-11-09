@@ -33,9 +33,9 @@
 
 - Como en F8, la spec nombra elementos concretos (Caddy, Temporal, PostgreSQL, Valkey, ZAP) porque son el
   objeto de la fase y vienen de `docs/PLAN.md` §9 y de ADR-0088.
-- Las decisiones no resueltas por las fuentes (D1 a D22) están en la sección "Decisiones del autor" de la
-  spec y en `research.md`, no como marcadores `[NEEDS CLARIFICATION]`; se cierran en `clarify`. Hasta
-  entonces, `plan.md` y `tasks.md` son borradores sobre las recomendaciones.
-- Los prerrequisitos P1 a P9 dependen del autor (cuenta, dominio, Gemini de pago, destino de backups,
-  correo, observabilidad, entornos de GitHub, gestor de contraseñas, registro). Esta fase no los crea.
+- Las decisiones D1 a D22 las respondió el autor el 2026-11-09 y constan en la sección «Decisiones del autor»
+  de la spec y en `research.md`. Queda abierta **D23** (cierre del registro de la demo); T018 y T051 la
+  esperan y están escritas sobre la recomendación.
+- Los prerrequisitos P1, P2 y P5 a P10 dependen del autor (cuenta de Oracle, dominio, correo, alertas,
+  entorno de GitHub, Vault, registro y D23); P3 y P4 se retiraron por D5 y D13C. Esta fase no los crea.
 - Las cifras de planes gratuitos de terceros están marcadas **(verificar)** y la tarea T002 las confirma.
