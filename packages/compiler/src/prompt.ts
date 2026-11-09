@@ -29,6 +29,12 @@ export function buildCompilerPrompt(
 ): Prompt {
   const tag = `data-${tokens.nonce}`;
   const sensitive = catalog.some((entry) => entry.sensitiveFields.length > 0);
+  const types = new Set(catalog.map((entry) => entry.type));
+  // With several triggers on offer the model must not guess one: manual is the default.
+  const defaultTrigger =
+    types.has('trigger.manual') &&
+    types.size > 0 &&
+    catalog.filter((entry) => !entry.acceptsInput).length > 1;
   const system = [
     'You compile an automation request written in natural language into a workflow DAG.',
     'Answer with a JSON object {"title", "nodes", "edges"}:',
@@ -42,6 +48,15 @@ export function buildCompilerPrompt(
     'Rules:',
     '- Use only the node types listed below. Never invent types or config fields.',
     '- Use exactly one trigger node, and make every other node reachable from it.',
+    ...(defaultTrigger
+      ? [
+          '- The trigger is "trigger.manual" unless the request explicitly says that a webhook or ' +
+            'HTTP request starts it (use "trigger.webhook") or that it runs on a schedule or at ' +
+            'given times (use "trigger.schedule"). Phrases like "when an email arrives" or ' +
+            '"when a ticket is created" do not name a webhook: use "trigger.manual" and declare ' +
+            'the data as its input fields.',
+        ]
+      : []),
     '- No cycles: a connection never goes back to an earlier node.',
     `- At most ${limits.maxNodes} nodes and ${limits.maxEdges} edges; prefer the simplest DAG ` +
       'that does what was asked.',

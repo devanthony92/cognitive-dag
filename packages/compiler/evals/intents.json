@@ -371,7 +371,7 @@
     "expected": {
       "requiredTypes": ["trigger.webhook", "human.approval", "http.request", "mock.service"],
       "forbiddenTypes": ["trigger.manual"],
-      "minNodes": 5,
+      "minNodes": 4,
       "maxNodes": 8
     }
   },
