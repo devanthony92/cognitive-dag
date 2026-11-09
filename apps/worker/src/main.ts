@@ -6,6 +6,7 @@ import Valkey from 'iovalkey';
 import { createDatabase } from '@cognitive-dag/db';
 import { InvalidConfigError, parseEnv, type WorkerConfig } from './config/env.schema';
 import { loadLocalEnv } from './config/load-env';
+import { valkeyOptions } from './config/valkey-options';
 import { startHealthServer } from './health/server';
 import { createWorkerLogger, PinoTemporalLogger } from './logging/logger';
 import { createProvider } from './llm/provider';
@@ -58,7 +59,10 @@ async function run(): Promise<void> {
   let connection: NativeConnection | undefined;
   for (let attempt = 1, backoff = 500; !connection; attempt++) {
     try {
-      connection = await NativeConnection.connect({ address: config.TEMPORAL_ADDRESS });
+      connection = await NativeConnection.connect({
+        address: config.TEMPORAL_ADDRESS,
+        ...(config.temporalTls ? { tls: config.temporalTls } : {}),
+      });
     } catch (error) {
       logger.warn({ err: error, attempt }, 'Temporal unavailable, retrying');
       await sleep(backoff);
@@ -69,6 +73,7 @@ async function run(): Promise<void> {
   // Run records are written as app_runtime, never as the migrator; live events go to Valkey.
   const database = createDatabase({ connectionString: config.DATABASE_URL, max: 5 });
   const valkey = new Valkey(config.VALKEY_URL, {
+    ...valkeyOptions(config.valkeyAuth),
     connectTimeout: 2_000,
     commandTimeout: 2_000,
     maxRetriesPerRequest: 1,
@@ -79,9 +84,15 @@ async function run(): Promise<void> {
     host: config.SMTP_HOST,
     port: config.SMTP_PORT,
     from: config.MAIL_FROM,
+    secure: config.SMTP_SECURE,
+    auth: config.smtpAuth,
+    production: config.NODE_ENV === 'production',
   });
   // The reconciler uses the Schedule API of the client; the worker connection is a native one.
-  const clientConnection = await Connection.connect({ address: config.TEMPORAL_ADDRESS });
+  const clientConnection = await Connection.connect({
+    address: config.TEMPORAL_ADDRESS,
+    ...(config.temporalTls ? { tls: config.temporalTls } : {}),
+  });
   const reconcilerStop = new AbortController();
 
   try {

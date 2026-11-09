@@ -59,15 +59,14 @@ describe('worker variables of F7 (triggers and HTTP)', () => {
   });
 
   it('requires the master key in production, naming only the variable', () => {
-    expect(variablesOf({ ...VALID_ENV, NODE_ENV: 'production' })).toEqual([
+    // The rest of the production rules (TLS, files, origins) is covered by env.production.test.ts.
+    expect(variablesOf({ ...VALID_ENV, NODE_ENV: 'production' })).toContain(
       'CREDENTIALS_MASTER_KEY',
-    ]);
-    const config = parseEnv({
-      ...VALID_ENV,
-      NODE_ENV: 'production',
-      CREDENTIALS_MASTER_KEY: masterKey,
-    });
-    expect(config.NODE_ENV).toBe('production');
+    );
+    // In production the direct variable is refused as well: only the file is accepted.
+    expect(
+      variablesOf({ ...VALID_ENV, NODE_ENV: 'production', CREDENTIALS_MASTER_KEY: masterKey }),
+    ).toContain('CREDENTIALS_MASTER_KEY');
   });
 
   it.each([
@@ -104,18 +103,16 @@ describe('worker variables of F7 (triggers and HTTP)', () => {
           CREDENTIALS_MASTER_KEY: masterKey,
           HTTP_TEST_ALLOW_LOOPBACK: value,
         }),
-      ).toEqual(['HTTP_TEST_ALLOW_LOOPBACK']);
+      ).toContain('HTTP_TEST_ALLOW_LOOPBACK');
     },
   );
 
   it('treats an empty HTTP_TEST_ALLOW_LOOPBACK as not defined', () => {
-    const config = parseEnv({
-      ...VALID_ENV,
-      NODE_ENV: 'production',
-      CREDENTIALS_MASTER_KEY: masterKey,
-      HTTP_TEST_ALLOW_LOOPBACK: '',
-    });
+    const config = parseEnv({ ...VALID_ENV, HTTP_TEST_ALLOW_LOOPBACK: '' });
     expect(config.HTTP_TEST_ALLOW_LOOPBACK).toBe(false);
+    expect(
+      variablesOf({ ...VALID_ENV, NODE_ENV: 'production', HTTP_TEST_ALLOW_LOOPBACK: '' }),
+    ).not.toContain('HTTP_TEST_ALLOW_LOOPBACK');
   });
 
   it.each([

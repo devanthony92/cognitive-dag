@@ -59,15 +59,14 @@ describe('API variables of F7 (webhook and credentials)', () => {
 
   it('does not need the master key outside production, but requires it in production', () => {
     expect(parseEnv({ ...VALID_ENV, NODE_ENV: 'test' }).credentialsMasterKey).toBeUndefined();
-    expect(variablesOf({ ...VALID_ENV, NODE_ENV: 'production' })).toEqual([
+    // The rest of the production rules (TLS, files, origins) is covered by env.production.test.ts.
+    expect(variablesOf({ ...VALID_ENV, NODE_ENV: 'production' })).toContain(
       'CREDENTIALS_MASTER_KEY',
-    ]);
-    const config = parseEnv({
-      ...VALID_ENV,
-      NODE_ENV: 'production',
-      CREDENTIALS_MASTER_KEY: masterKey,
-    });
-    expect(config.NODE_ENV).toBe('production');
+    );
+    // In production the direct variable is refused as well: only the file is accepted.
+    expect(
+      variablesOf({ ...VALID_ENV, NODE_ENV: 'production', CREDENTIALS_MASTER_KEY: masterKey }),
+    ).toContain('CREDENTIALS_MASTER_KEY');
   });
 
   it.each([

@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { Outlet, createRootRouteWithContext, useMatches } from '@tanstack/react-router';
+import { DemoNotice } from '../features/demo/DemoNotice';
 import { AppHeader } from '../features/session/AppHeader';
 
 declare module '@tanstack/react-router' {
@@ -23,6 +24,7 @@ function RootLayout() {
   });
   return (
     <div className="min-h-screen">
+      <DemoNotice />
       <AppHeader />
       {fullWidth ? (
         <main>

@@ -6,8 +6,7 @@ import {
   type ProblemDetails,
 } from '@cognitive-dag/contracts';
 import type { z } from 'zod';
-
-const API_URL = import.meta.env.VITE_API_URL as string;
+import { apiUrl } from './base-url';
 
 /** Error carrying an RFC 9457 problem returned by the API. */
 export class ApiProblemError extends Error {
@@ -64,7 +63,7 @@ export async function request<T>(
   }
 
   // The session lives in an HttpOnly cookie that has to travel with every call.
-  const response = await fetch(`${API_URL}${path}`, { ...init, headers, credentials: 'include' });
+  const response = await fetch(apiUrl(path), { ...init, headers, credentials: 'include' });
   const correlationId = response.headers.get(CORRELATION_ID_HEADER);
   // 204 answers carry no body.
   const body: unknown = response.status === 204 ? undefined : await response.json();

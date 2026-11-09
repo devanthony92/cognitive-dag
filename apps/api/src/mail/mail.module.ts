@@ -12,7 +12,14 @@ import { SmtpMailer } from './smtp.mailer';
       provide: MAILER,
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig) =>
-        new SmtpMailer({ host: config.SMTP_HOST, port: config.SMTP_PORT, from: config.MAIL_FROM }),
+        new SmtpMailer({
+          host: config.SMTP_HOST,
+          port: config.SMTP_PORT,
+          from: config.MAIL_FROM,
+          secure: config.SMTP_SECURE,
+          auth: config.smtpAuth,
+          production: config.NODE_ENV === 'production',
+        }),
     },
     MailService,
   ],

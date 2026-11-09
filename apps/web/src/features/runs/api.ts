@@ -8,6 +8,7 @@ import {
   type Run,
   type RunStatus,
 } from '@cognitive-dag/contracts';
+import { apiUrl } from '../../api/base-url';
 import { request } from '../../api/client';
 
 const base = (organizationId: string) => `/api/v1/organizations/${organizationId}`;
@@ -98,7 +99,7 @@ export const stepIoQuery = (
   });
 
 export const runEventsUrl = (organizationId: string, runId: string): string =>
-  `${import.meta.env.VITE_API_URL as string}${base(organizationId)}/runs/${runId}/events`;
+  apiUrl(`${base(organizationId)}/runs/${runId}/events`);
 
 export async function startRun(
   organizationId: string,

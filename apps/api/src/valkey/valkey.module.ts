@@ -2,6 +2,7 @@ import { Global, Inject, Module, OnApplicationShutdown } from '@nestjs/common';
 import Valkey from 'iovalkey';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
+import { valkeyOptions } from './valkey-options';
 
 export const VALKEY = Symbol('VALKEY');
 
@@ -14,6 +15,7 @@ export const VALKEY = Symbol('VALKEY');
       inject: [APP_CONFIG],
       useFactory: (config: AppConfig): Valkey => {
         const client = new Valkey(config.VALKEY_URL, {
+          ...valkeyOptions(config.valkeyAuth),
           connectTimeout: 2_000,
           commandTimeout: 2_000,
           maxRetriesPerRequest: 1,
