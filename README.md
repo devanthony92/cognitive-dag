@@ -13,7 +13,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 
 ## Status
 
-**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler and F7 — triggers and human control: complete.** F8 (hardening) removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
+**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler, F7 — triggers and human control and F8 — hardening: complete.** F8 removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -94,8 +94,19 @@ F7 adds:
 | Credentials   | Connector credentials (bearer, API key header, basic) encrypted with AES-256-GCM envelope encryption; never returned after creation; optional per-organization allowlist of destinations                                                                   |
 | Documentation | 83 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md)); threat model v1.7 with the F7 rows; constitution 1.0.3 (TDD in `packages/connectors`) |
 
-**Next: F8 — hardening.** Until F9 the system runs locally only and is not deployed
-publicly. Phases are listed in
+F8 adds:
+
+| Area          | What F8 delivers                                                                                                                                                                                                                                                                     |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Evidence      | OWASP Top 10:2025 and LLM 2025 matrix, one row per risk with control, location, evidence and state ([owasp-evidence.md](docs/security/owasp-evidence.md)); `pnpm security:evidence` checks its paths and states                                                                      |
+| Authorization | Only owners and editors start, cancel and rerun runs; viewers keep reading ([ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md))                                                                                                                                               |
+| Compiler      | Offers the four F7 node types; the model never writes `url`, `headers`, `body` or `credentialId` of `http.request` ([ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md))                                                                                                     |
+| ZAP           | Passive baseline run by hand against loopback; no medium or high alerts in the API, two medium web alerts accepted until F9 ([ADR-0086](docs/adr/0086-zap-baseline-pasivo-como-script-manual.md))                                                                                    |
+| Documentation | 88 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md)); threat model v2.0; accepted and F9 risks in [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md) |
+
+**Next: F9 — deployment.** Until F9 the system runs locally only and is not deployed
+publicly. F9 brings the Oracle Cloud VM, the production Compose file, Caddy (TLS and the web's
+security headers), backups and observability. Phases are listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
 ## Architecture
@@ -357,7 +368,7 @@ production.
 pnpm credentials:gen-key
 ```
 
-The decisions are in [ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md). F8 adds [ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md), [ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md) and [ADR-0085](docs/adr/0085-tope-del-reconciliador-y-eventos-de-seguridad-nuevos.md) and [ADR-0086](docs/adr/0086-zap-baseline-pasivo-como-script-manual.md).
+The decisions are in [ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0081](docs/adr/0081-dataset-y-baterias-de-seguridad-de-f7.md). F8 adds [ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md), [ADR-0083](docs/adr/0083-compilador-con-los-nodos-de-f7.md), [ADR-0085](docs/adr/0085-tope-del-reconciliador-y-eventos-de-seguridad-nuevos.md), [ADR-0086](docs/adr/0086-zap-baseline-pasivo-como-script-manual.md), [ADR-0087](docs/adr/0087-matriz-de-evidencia-owasp-comprobador-y-estados.md) and [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md).
 
 ## Recovery demo
 
@@ -376,6 +387,7 @@ pnpm format:check
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm security:evidence  # OWASP evidence matrix: paths and states (also runs inside `pnpm test`)
 pnpm test:integration   # requires `docker compose up -d --wait`
 pnpm test:chaos         # chaos battery: stops the worker, Temporal, Valkey and PostgreSQL; slow, run apart from `pnpm test`
 pnpm build
@@ -395,4 +407,6 @@ scanning), the F1 controls (sessions, CSRF, rate limiting, tenant isolation with
 security events), the accepted deviation from NIST 800-63B-4 in the password length, the F7 controls
 (webhook token and replay checks, anti-SSRF, encrypted credentials, approval rules) and the risks
 deferred to later phases are catalogued in the
-[threat model](docs/threat-model.md).
+[threat model](docs/threat-model.md). The OWASP evidence matrix is in
+[owasp-evidence.md](docs/security/owasp-evidence.md), and the risks accepted or deferred to F9 are
+listed in [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md).
