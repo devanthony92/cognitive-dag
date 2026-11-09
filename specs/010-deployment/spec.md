@@ -4,16 +4,16 @@
 
 **Created**: 2026-11-09
 
-**Status**: Draft. Las decisiones D1 a D22 esperan la respuesta del autor (formato "1A 2B 3A…").
+**Status**: Decisiones D1 a D22 respondidas el 2026-11-09 (ver «Decisiones del autor»). Queda abierta la pregunta D23 (cierre del registro).
 
 **Input**: User description: "Fase F9 de docs/PLAN.md: VM Oracle Always Free (ARM), Compose de
 producción, Caddy, backups, observabilidad y todo lo que F7 y F8 difirieron al despliegue
 ([ADR-0088](../../docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md)): autenticación y TLS de
 Temporal, PostgreSQL y Valkey (#63), cabeceras de la SPA (ZAP 10038, 10020, 10021, 10063 y 90004),
 redacción de `/api/v1/hooks/*`, SBOM y escaneo de imágenes (#64), ZAP activo y con sesión contra
-staging (#65), retención y alertas de eventos de seguridad y de costo (#62), SPF, DKIM y DMARC, y
-Gemini de pago antes de la demo pública. Terminado cuando: demo pública con TLS y restauración de
-backup probada."
+(#65), retención y alertas de eventos de seguridad (#62), SPF, DKIM y DMARC, y
+demo cerrada con TLS. Terminado cuando (ajustado por D5 y D13): demo por invitación con TLS, cabeceras
+verificadas y despliegue con reversa; el PLAN se corrige donde exigía backup y restauración."
 
 > **Esta tarea solo especifica.** No se despliega nada, no se crean cuentas, no se registran dominios y
 > no se toca ningún servicio externo. Lo que depende del autor está en
@@ -41,7 +41,7 @@ Hechos que condicionan el diseño y que la spec no puede dar por supuestos:
 
 ## User Scenarios & Testing *(mandatory)*
 
-Actores: el autor y operador de la plataforma (despliega, rota secretos, restaura), el visitante de la
+Actores: el autor y operador de la plataforma (despliega y rota secretos), el visitante de la
 demo pública, el usuario registrado (owner, editor o viewer), el emisor de un webhook, un atacante en
 internet que sondea Caddy, la API, Temporal, PostgreSQL y Valkey, un atacante con acceso a la red
 interna de contenedores, y quien revisa la seguridad (ZAP, escáner de imágenes).
@@ -56,7 +56,7 @@ Caddy.
 **Why this priority**: es el criterio de terminado ("demo pública con TLS") y cierra cinco alertas de ZAP
 y dos amenazas `deferred:F9` del modelo de amenazas.
 
-**Independent Test**: contra staging, `curl -sI` a `/`, a una ruta de la SPA y a `/api/v1/health`; ZAP
+**Independent Test**: contra el dominio real, `curl -sI` a `/`, a una ruta de la SPA y a `/api/v1/health`; ZAP
 baseline sin las alertas 10038, 10020, 10021, 10063 y 90004; una petición a
 `/api/v1/hooks/<id>/<token-de-prueba>` y búsqueda del token en los registros de Caddy.
 
@@ -156,36 +156,29 @@ secreto y comprobar que el servicio vuelve sano.
 
 ---
 
-### User Story 4 - Backups externos con restauración probada (Priority: P1)
+### User Story 4 - Pérdida de datos aceptada, acotada y documentada (Priority: P2)
 
-Cada día se copia la base de datos de la aplicación y la de Temporal fuera de la VM, cifradas. El
-operador restaura una copia en un entorno limpio y comprueba que la aplicación funciona y que RLS sigue
-forzada.
+**Retirada la historia original de backups externos por la decisión D5** («sin backup»). El autor acepta que
+la pérdida de la VM es la pérdida de los datos. La fase hace explícito ese riesgo, evita que una migración
+fallida lo agrave y deja la reconstrucción del servicio medida.
 
-**Why this priority**: es el segundo criterio de terminado ("restauración de backup probada") y el riesgo
-nº 1 de Oracle Always Free (puede reclamar o cambiar la instancia).
+**Why this priority**: el criterio de terminado del PLAN §10 («restauración de backup probada») deja de
+aplicar por decisión del autor; hay que corregir el PLAN y registrar el riesgo con dueño y revisión.
 
-**Independent Test**: ejecutar el script de restauración sobre una VM o Compose vacíos con la última
-copia; ejecutar la prueba de humo y la comprobación de RLS.
+**Independent Test**: reconstruir el servicio desde cero en una VM limpia con el script de aprovisionamiento
+y las imágenes del registro, con una base vacía, y pasar la prueba de humo.
 
 **Acceptance Scenarios**:
 
-1. **Given** el trabajo de backup, **When** corre, **Then** produce una copia cifrada de PostgreSQL
-   (aplicación y Temporal) y la sube al destino externo; si falla, genera una alerta; la clave de cifrado
-   no vive solo en la VM.
-2. **Given** la copia más reciente, **When** se restaura en un entorno limpio con el script documentado,
-   **Then** las migraciones quedan al día, los roles `app_migrator` y `app_runtime` existen con sus
-   privilegios (sin `DELETE`, sin `BYPASSRLS`), la RLS sigue forzada y la prueba de humo de la aplicación
-   pasa; se mide y se registra el tiempo de restauración (RTO) y la antigüedad de la copia (RPO).
-3. **Given** el destino de backups, **When** se revisa la retención, **Then** hay una política escrita
-   (diaria, semanal y mensual) y un borrado automático, y el acceso de escritura de la VM no puede borrar
-   copias antiguas.
-4. **Given** la restauración, **When** termina, **Then** se repite cada cierto tiempo (frecuencia en el
-   plan) y su fecha y resultado quedan registrados como evidencia.
-5. **Given** que el contenido de entradas y salidas vive en el historial de Temporal (ADR-0050), **When**
-   se define qué se respalda, **Then** el almacén de Temporal está incluido y la copia hereda el mismo
-   cifrado y retención.
-
+1. **Given** el modelo de amenazas, **When** se cierra la fase, **Then** la fila «pérdida o fuga de datos por
+   falta de copias» pasa de `deferred:F9` a `accepted`, con dueño: autor, la razón (D5) y revisión «antes
+   de admitir datos reales»; el PLAN §9 y §10 dejan de prometer backups externos y restauración.
+2. **Given** una migración, **When** se despliega, **Then** antes de aplicarla se guarda un volcado lógico en
+   la VM (últimos 3) para el rollback de FR-025; no se presenta como backup.
+3. **Given** una VM nueva, **When** se ejecutan el aprovisionamiento y el despliegue, **Then** el servicio
+   queda operativo con una base vacía y el tiempo se mide y se registra.
+4. **Given** la pantalla de la demo, **When** se entra a la aplicación, **Then** consta que los datos no
+   tienen copia de seguridad y que la demo es solo con datos de prueba.
 ---
 
 ### User Story 5 - Se publican imágenes verificadas y se despliega con migraciones y reversa (Priority: P1)
@@ -197,7 +190,7 @@ de arrancar la versión nueva y, si algo falla, vuelve a la versión anterior co
 **Why this priority**: hoy CI no publica nada; sin esto no hay despliegue repetible. Cubre #64.
 
 **Independent Test**: tras un merge de prueba, comprobar que el registro tiene el manifiesto multi-arch
-con las imágenes de `api`, `worker`, `migrator` y la web; desplegar a staging; forzar un fallo y revertir.
+con las imágenes de `api`, `worker`, `migrator` y la web; desplegar; forzar un fallo y comprobar la reversa automática.
 
 **Acceptance Scenarios**:
 
@@ -223,88 +216,77 @@ con las imágenes de `api`, `worker`, `migrator` y la web; desplegar a staging; 
 
 ---
 
-### User Story 6 - Eventos de seguridad con retención y alertas de autenticación y de costo (Priority: P2)
+### User Story 6 - Eventos de seguridad con retención y alertas por correo (Priority: P2)
 
-El operador recibe una alerta cuando hay un pico de fallos de autenticación o de gasto de Gemini, y los
-eventos de seguridad se conservan un tiempo definido para investigar. Las métricas necesarias para #67
-existen.
+El operador recibe un correo cuando hay un pico de fallos de autenticación, un servicio deja de estar
+sano, un certificado está por caducar o el disco se llena, y los eventos de seguridad se conservan 90 días
+para investigar. No hay métricas ni agente externo (D9C, D20).
 
-**Why this priority**: cierra A09 (#62) y la lectura de los riesgos aceptados de F8.
+**Why this priority**: cierra A09 (#62) con lo mínimo que el autor aceptó.
 
-**Independent Test**: provocar 20 logins fallidos y comprobar que llega la alerta de prueba; superar un
-umbral de costo de prueba y comprobar la alerta; buscar un evento de hace N días dentro de la retención.
+**Independent Test**: provocar 20 logins fallidos y comprobar que llega la alerta de prueba; buscar un evento
+dentro de la retención.
 
 **Acceptance Scenarios**:
 
-1. **Given** los eventos de seguridad de ADR-0038 (`auth.login_failed`, `auth.rate_limited`,
-   `approval.*`, `circuit.*`, `schedule.*`), **When** se despliega, **Then** llegan a un almacén con la
-   retención definida en D10, consultable por `event`, `organizationId` y `correlationId`, sin contenido
-   de usuario (la redacción de logs se verifica con una búsqueda de un canario).
+1. **Given** los eventos de seguridad de ADR-0038, **When** se despliega, **Then** quedan en los registros de
+   la VM con rotación y compresión, 90 días, consultables por `event`, `organizationId` y `correlationId`
+   sin contenido de usuario (canario).
 2. **Given** más de un umbral configurado de `auth.login_failed` o `auth.rate_limited` en una ventana,
-   **When** se supera, **Then** se envía una alerta al operador por el canal elegido.
-3. **Given** el gasto de Gemini (tokens y costo por organización y global), **When** supera el umbral
-   diario, **Then** se envía una alerta; existe además un tope de gasto en el proveedor (prerrequisito
-   del autor).
-4. **Given** un fallo de la base, del worker o de Temporal, **When** el estado de salud cambia, **Then**
-   se alerta; las alertas de prueba se ejecutan con un procedimiento y llegan.
-5. **Given** la elección de D20, **When** se cierra la fase, **Then** existe la métrica de disparos
-   descartados fuera de la ventana de catch-up o queda `accepted` con la nueva fecha de revisión.
-
+   **When** se supera, **Then** el temporizador envía un correo al operador.
+3. **Given** un servicio no sano, un certificado a menos de 30 días de caducar o el disco por encima del
+   umbral, **When** el temporizador corre, **Then** envía el correo correspondiente; la prueba de cada una
+   está escrita.
+4. **Given** la decisión D20 (sin métricas), **When** se cierra la fase, **Then** #67 y la ausencia de métrica
+   de disparos fuera del catch-up quedan `accepted` con dueño y revisión.
+5. **Given** que el correo de alertas sale por el mismo proveedor que el de la aplicación, **When** el
+   proveedor cae, **Then** la alerta no llega: consta como límite conocido.
 ---
 
-### User Story 7 - Staging, ZAP activo y con sesión (Priority: P2)
+### User Story 7 - Cabeceras verificadas sin staging (Priority: P2)
 
-Existe un entorno de staging con TLS donde ZAP corre con sesión iniciada y análisis activo sin tocar
-datos reales ni a terceros, y se repite el baseline pasivo que debe mostrar las cinco alertas de la web
-ya resueltas.
+Sin staging (D2C) y sin ZAP activo ni con sesión (D12), el autor verifica las cabeceras de Caddy con el
+baseline pasivo contra la imagen de borde levantada en local y con una comprobación por `curl` en cada
+despliegue.
 
-**Why this priority**: es la prueba de aceptación de las cabeceras de Caddy y cierra #65.
+**Why this priority**: es la prueba de aceptación de las cabeceras que ZAP pidió en F8. #65 queda `accepted`.
 
-**Independent Test**: ejecutar el script ampliado contra staging y comparar el informe con
-`docs/security/zap.md`.
+**Independent Test**: levantar la imagen de borde y la API en local y ejecutar `scripts/security/zap-baseline.sh`.
 
 **Acceptance Scenarios**:
 
-1. **Given** staging, **When** corre el baseline pasivo, **Then** 10038, 10020, 10021, 10063 y 90004
-   desaparecen y no aparece ninguna alerta nueva media o alta sin decisión.
-2. **Given** el script de ZAP, **When** se amplía para staging, **Then** solo acepta los hosts de una
-   lista cerrada y versionada (loopback y los hosts de staging), con una prueba que falla si se añade el
-   dominio de producción o un host de terceros; el análisis activo nunca apunta a producción.
-3. **Given** el análisis con sesión, **When** se ejecuta, **Then** usa un usuario de prueba creado en
-   staging, con los tres roles, y el informe no contiene cookies, tokens ni valores de secretos (la
-   comprobación del script de F8 se mantiene).
-4. **Given** el análisis activo, **When** corre, **Then** staging tiene `LLM_ENABLED=false`, el correo
-   desviado a un buzón de captura y límites de tasa de producción intactos, y ningún destino HTTP
-   saliente permitido más allá del propio staging.
-5. **Given** cada alerta nueva de nivel medio o alto, **When** termina, **Then** se corrige con prueba de
-   regresión, se marca falso positivo o se acepta con razón, dueño y fecha, como en F8.
-
+1. **Given** la imagen de borde en local, **When** corre el baseline pasivo, **Then** 10038, 10020, 10021,
+   10063 y 90004 desaparecen y no aparece ninguna alerta nueva media o alta sin decisión.
+2. **Given** el script de ZAP, **When** se revisa, **Then** sigue limitado a loopback, con la prueba de F8
+   intacta.
+3. **Given** cada despliegue, **When** termina, **Then** una comprobación por `curl` contra el dominio real
+   verifica HSTS, CSP, `X-Frame-Options`, `nosniff`, `Permissions-Policy`, COEP, COOP y CORP y la
+   redirección HTTP→HTTPS; si falta alguna, el despliegue se revierte.
+4. **Given** #65, **When** se cierra la fase, **Then** queda `accepted`: sin análisis activo ni con sesión
+   iniciada y sin ZAP contra TLS real; dueño: autor, revisión: antes de admitir datos reales.
 ---
 
-### User Story 8 - Correo que no se puede falsificar y Gemini de pago antes de la demo (Priority: P2)
+### User Story 8 - Correo que no se puede falsificar y demo cerrada con Gemini gratuito (Priority: P2)
 
-Los correos del sistema (verificación, restablecimiento, invitaciones, aprobaciones) salen de un
-proveedor real con SPF, DKIM y DMARC válidos. La demo pública usa la capa de pago de Gemini.
+Los correos del sistema salen de OCI Email Delivery con SPF, DKIM y DMARC válidos. La demo es solo por
+invitación y sigue en la capa gratuita de Gemini con datos de prueba (D13C).
 
-**Why this priority**: A07, E10 y LLM02; son condiciones de la demo pública.
+**Why this priority**: A07 y E10; LLM02 sigue `accepted`.
 
-**Independent Test**: enviar un correo de prueba a un buzón que muestre las cabeceras de autenticación
-(SPF, DKIM y DMARC en `pass`); comprobar que la configuración de producción usa la clave de pago.
+**Independent Test**: enviar un correo de prueba a un buzón que muestre las cabeceras de autenticación;
+comprobar que el registro de cuentas está cerrado.
 
 **Acceptance Scenarios**:
 
-1. **Given** el dominio del sistema, **When** se envía un correo de prueba, **Then** SPF, DKIM y DMARC
-   pasan y la política DMARC arranca en `p=none` con informes y sube a `quarantine` tras una ventana de
-   observación escrita.
-2. **Given** el cliente SMTP de la API, **When** se configura para producción, **Then** admite STARTTLS o
-   TLS implícito y autenticación, y falla cerrado en producción si el servidor no ofrece TLS.
-3. **Given** la clave de pago de Gemini, **When** se carga, **Then** vive solo en el almacén de secretos
-   de la VM, el worker de producción la usa, y staging y desarrollo siguen con la capa gratuita o sin
-   LLM; la tabla de precios `LLM_PRICES` coincide con la facturación real.
-4. **Given** que el aviso de la capa gratuita se muestra en los paneles LLM y en el compilador, **When**
-   producción usa la capa de pago, **Then** el aviso refleja la política de datos real o se retira, con
-   la fecha de verificación en el modelo de amenazas.
-
+1. **Given** el dominio del sistema, **When** se envía un correo de prueba, **Then** SPF, DKIM y DMARC pasan
+   y la política DMARC arranca en `p=none` con informes y sube a `quarantine` tras una ventana escrita.
+2. **Given** el cliente SMTP de la API, **When** se configura para producción, **Then** admite STARTTLS o TLS
+   implícito y autenticación, y falla cerrado en producción si el servidor no ofrece TLS.
+3. **Given** la demo cerrada, **When** alguien externo intenta registrarse, **Then** no puede (D23) y el
+   autor crea las cuentas autorizadas.
+4. **Given** la capa gratuita de Gemini, **When** se revisa el modelo de amenazas, **Then** LLM02 sigue
+   `accepted` con la razón «demo cerrada y datos de prueba» y la condición para reabrirlo: migrar a la capa
+   de pago antes de admitir datos reales.
 ---
 
 ### User Story 9 - Cierre: modelo de amenazas, matriz y deuda de F8 (Priority: P2)
@@ -322,7 +304,7 @@ desenlace (cerrado con la PR, o abierto con su fase de revisión).
 **Acceptance Scenarios**:
 
 1. **Given** el modelo de amenazas v2.0 y la matriz, **When** se cierra F9, **Then** el modelo pasa a
-   v3.0 sin filas `deferred:F9`, con Caddy, backups, observabilidad, registro y staging incorporados
+   v3.0 sin filas `deferred:F9`, con Caddy, observabilidad por registros y el registro de imágenes incorporados
    al diagrama como elementos reales.
 2. **Given** los issues #61 a #68, **When** se cierra F9, **Then** cada uno queda cerrado por una tarea
    de F9 o abierto con la fase de revisión que decidió el autor en D18 a D21.
@@ -344,19 +326,19 @@ desenlace (cerrado con la PR, o abierto con su fase de revisión).
 - La migración nueva tarda o bloquea: el despliegue tiene un plazo y deja la versión anterior servida;
   se prohíben migraciones que rompan a la versión anterior (expand/contract).
 - Oracle reclama la VM por inactividad: se vigila el uso mínimo exigido por la política vigente (fecha
-  de consulta anotada) y la restauración en otro host cubre ese caso.
+  de consulta anotada) y la pérdida de la VM significa reconstruir con una base vacía (D5, riesgo aceptado).
 - La VM se queda sin memoria: cada servicio tiene límite y reinicio; el orden de OOM prefiere sacrificar
   la interfaz de Temporal y el agente de observabilidad antes que la base de datos.
-- Staging y producción en la misma VM compiten por recursos: staging se levanta bajo demanda y tiene
-  límites menores (D2).
+- Sin staging, un cambio defectuoso llega a producción: la reversa automática y la salud son la defensa;
+  no se desactiva sin una razón escrita.
 - Un secreto se sospecha filtrado: existe una lista de qué rotar y en qué orden, y gitleaks sigue
   escaneando todo el historial.
 - Los registros de Caddy tienen otros datos personales (IP, user agent): se documenta la retención de los
   registros de acceso y no se registran cuerpos ni cabeceras `Cookie` ni `Authorization`.
 - El navegador de un usuario guarda en caché una SPA antigua tras un despliegue: los archivos con hash se
   sirven con caché larga e inmutable y `index.html` con `no-cache`.
-- La restauración encuentra una copia corrupta: se verifica la integridad al subir y al restaurar, y se
-  conserva más de una generación.
+- El volcado previo a una migración está corrupto o falta: el despliegue se detiene antes de migrar y se
+  conserva el último volcado válido.
 
 ## Requirements *(mandatory)*
 
@@ -368,13 +350,13 @@ haya respuesta, el requisito rige en la forma recomendada.
 **Borde, TLS y cabeceras (Caddy)**
 
 - **FR-001**: Caddy MUST terminar TLS para el dominio público con certificados automáticos, redirigir HTTP
-  a HTTPS y enviar HSTS (`max-age` ≥ 1 año en producción; corto en staging mientras no se verifique).
+  a HTTPS y enviar HSTS (`max-age` ≥ 1 año en producción).
 - **FR-002**: La web estática MUST servirse con `Content-Security-Policy` (`default-src 'self'`, sin
   `unsafe-inline` en `script-src`, `frame-ancestors 'none'`, `object-src 'none'`, `base-uri 'self'`,
   `form-action 'self'`), `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
   `Permissions-Policy` restrictiva, `Cross-Origin-Embedder-Policy`, `Cross-Origin-Opener-Policy` y
   `Cross-Origin-Resource-Policy` [D6, D7]. Una prueba MUST fijar el conjunto sobre la configuración
-  real, y repetir ZAP contra staging MUST no mostrar 10038, 10020, 10021, 10063 ni 90004.
+  real, y el baseline de ZAP contra la imagen de borde en local MUST no mostrar 10038, 10020, 10021, 10063 ni 90004.
 - **FR-003**: El registro de acceso de Caddy MUST redactar el token de `/api/v1/hooks/*`, no registrar
   cuerpos ni las cabeceras `Cookie`, `Authorization` y `X-CSRF-Token`, y una prueba MUST demostrar que un
   token de prueba no aparece en ninguna línea.
@@ -412,84 +394,85 @@ haya respuesta, el requisito rige en la forma recomendada.
   Valkey no usa TLS, si falta la configuración TLS de Temporal, si una contraseña coincide con las de
   desarrollo conocidas o si falta `CREDENTIALS_MASTER_KEY`; el mensaje nombra variables, nunca valores
   (principios I y IV; `env.schema.test.ts` se extiende).
-- **FR-013**: Una prueba de despliegue MUST demostrar, contra staging, que cada servicio rechaza una
+- **FR-013**: Una prueba de despliegue MUST demostrar, en CI con certificados efímeros y tras el despliegue, que cada servicio rechaza una
   conexión sin credenciales y sin TLS (las "pruebas previstas" de las filas `deferred:F9`).
 
-**Secretos y aprovisionamiento**
+**Secretos y aprovisionamiento (D4B, D16A)**
 
 - **FR-014**: El repositorio MUST contener únicamente plantillas sin valores de los archivos de entorno de
-  producción (nombres de variables y su origen), y el comprobador de gitleaks MUST seguir pasando sobre
-  todo el historial; ningún valor con forma de secreto, ni de ejemplo, entra al repositorio.
-- **FR-015**: El almacén de secretos de la VM MUST ser el de D4, con permisos mínimos, generación local de
-  los secretos que pueda producir la propia VM, una copia cifrada fuera de la VM y un procedimiento de
-  rotación probado por secreto [D4].
+  producción (nombres de variables y su origen), y gitleaks MUST seguir pasando sobre todo el historial;
+  ningún valor con forma de secreto, ni de ejemplo, entra al repositorio.
+- **FR-015**: Los secretos de producción MUST vivir en **OCI Vault**; la VM los lee con la identidad de la
+  instancia (política de solo lectura sobre sus propios secretos) y los deja en un sistema de archivos en
+  memoria (`tmpfs`) con permisos `0600`, nunca en disco ni en variables visibles con `docker inspect`. Los
+  secretos que el autor entrega (SMTP, clave de Gemini) y los que genera el aprovisionamiento (contraseñas,
+  CA) se cargan en el Vault desde la máquina del operador; la VM no tiene permiso de escritura. Cada
+  secreto tiene procedimiento de rotación probado [D4].
 - **FR-016**: Un script idempotente MUST aprovisionar una VM Linux limpia (x64 o arm64) hasta dejar Docker,
-  el cortafuegos del anfitrión, SSH endurecido (solo llaves, sin contraseña ni acceso de `root`), usuario
-  de despliegue, directorios de datos, PKI, secretos y el Compose de producción listo para arrancar
-  [D16]. La infraestructura de Oracle (instancia, red, reglas de entrada 22, 80 y 443) se documenta paso a
-  paso con sus valores, sin automatizar la creación de la cuenta.
-- **FR-017**: El Compose de producción MUST fijar por servicio un límite de memoria (`mem_limit`), CPU
-  compartida razonable, política de reinicio, comprobación de salud, usuario no root, sistema de archivos
-  de solo lectura donde sea posible y rotación de los registros del motor (`max-size`, `max-file`). Los
-  límites y el consumo real medido se tabulan en el plan (la suma queda por debajo del 60 % de los 12 GB).
+  el cortafuegos del anfitrión, SSH endurecido (solo llaves, sin contraseña ni `root`), `fail2ban`, usuario
+  de despliegue, directorios de datos, lectura del Vault y el Compose de producción listo para arrancar
+  [D16]. La infraestructura de Oracle (instancia, red, reglas de entrada 22, 80 y 443, Vault y su política)
+  se documenta paso a paso, sin automatizar la creación de la cuenta.
+- **FR-017**: El Compose de producción MUST fijar por servicio un límite de memoria (`mem_limit`), política
+  de reinicio, comprobación de salud, usuario no root, sistema de archivos de solo lectura donde sea posible
+  y rotación de los registros del motor (`max-size`, `max-file`). Los límites y el consumo real medido se
+  tabulan en el plan (la suma queda por debajo del 50 % de los 12 GB).
 - **FR-018**: Las imágenes del Compose de producción MUST fijarse por digest (como en desarrollo) y las
   imágenes propias MUST referenciarse por digest en el despliegue, nunca por una etiqueta móvil.
 
-**Backups y restauración**
+**Backups (retirado por D5)**
 
-- **FR-019**: Un trabajo programado MUST respaldar PostgreSQL (aplicación y almacén de Temporal) con
-  cifrado del lado del cliente, subirlo al destino de D5 y alertar si falla o si la última copia supera
-  el RPO acordado (24 h) [D5].
-- **FR-020**: Un script de restauración MUST dejar un entorno limpio operativo desde una copia, y una
-  prueba de humo MUST comprobar roles, RLS forzada y un flujo de extremo a extremo; el resultado, el RTO y
-  el RPO medidos MUST registrarse en un documento de evidencia versionado (sin datos).
-- **FR-021**: La política de retención de las copias MUST estar escrita y automatizada, y las credenciales
-  de la VM sobre el destino MUST permitir escribir pero no borrar copias ajenas a la rotación [D5].
+- **FR-019 a FR-021**: _(retirados: el autor decidió no tener backups externos)_. Consecuencias en
+  [Decisiones del autor](#decisiones-del-autor-respondidas-2026-11-09) y en el modelo de amenazas
+  (`accepted`). No se escribe ningún script de backup ni de restauración; el volcado previo a la migración
+  de FR-025 es solo un seguro de despliegue.
 
-**Publicación, despliegue y reversa**
+**Publicación, despliegue y reversa (D1B, D3C, D11C, D17A)**
 
 - **FR-022**: Un workflow de publicación MUST construir y publicar las imágenes `api`, `worker`,
-  `migrator` y web para `linux/amd64` y `linux/arm64` en el registro de D1, con permisos de escritura solo
-  en ese workflow, acciones fijadas por SHA y salida por digest [D1].
-- **FR-023**: Cada imagen publicada MUST escanearse (falla ante altas y críticas con corrección
-  disponible) y llevar un SBOM CycloneDX; el escaneo y el SBOM MUST ejecutarse sin añadir checks
-  requeridos a la rama (siguen siendo 6) [D11].
-- **FR-024**: Existe un workflow o script de despliegue que MUST: resolver los digests de una versión,
-  ejecutar `migrator`, arrancar los servicios nuevos, esperar las comprobaciones de salud y fallar con la
-  versión anterior intacta [D3].
+  `migrator` y de borde para `linux/amd64` y `linux/arm64` en OCIR, con permisos de escritura solo en ese
+  workflow, acciones fijadas por SHA y salida por digest [D1].
+- **FR-023**: En ese mismo workflow, cada imagen MUST escanearse (la publicación falla ante altas y
+  críticas con corrección disponible, con excepciones versionadas con razón, dueño y fecha) y llevar un SBOM
+  CycloneDX adjunto. El job `images` de `ci.yml` y los 6 checks no cambian [D11].
+- **FR-024**: Cuando la publicación termine bien, un workflow de despliegue MUST resolver los digests,
+  ejecutar `migrator`, arrancar los servicios nuevos, esperar las comprobaciones de salud y la de cabeceras
+  (FR-034) y, si fallan, **revertir solo** a la versión anterior y marcar el workflow como fallido [D3].
 - **FR-025**: El rollback MUST consistir en volver a los digests anteriores (registrados en la VM tras cada
-  despliegue correcto) con un comando, más una copia lógica previa a la migración; las migraciones siguen
-  siendo expand/contract y no hay migraciones inversas [D17].
+  despliegue correcto) con un comando o automáticamente, más un volcado lógico previo a la migración que se
+  conserva **en la VM** (últimos 3). Las migraciones siguen siendo expand/contract y no hay migraciones
+  inversas [D17].
 - **FR-026**: Un `migrator` MUST ejecutar las migraciones con `app_migrator` desde una imagen propia, sin
   herramientas de desarrollo en la imagen de la API.
 
-**Observabilidad, eventos y costo (#62)**
+**Observabilidad, eventos y alertas (#62; D9C, D10A)**
 
-- **FR-027**: Los registros estructurados de API, worker y Caddy MUST llegar a un almacén con la
-  retención de D10 y consultable por `event`, `organizationId` y `correlationId`; el envío MUST reutilizar
-  la redacción existente y una prueba MUST demostrar que un canario de contenido de usuario no llega
-  [D9, D10].
-- **FR-028**: MUST existir alertas con procedimiento de prueba para: fallos de autenticación por encima de
-  umbral, gasto de Gemini por encima de umbral diario, servicio no sano, última copia vieja, certificado
-  próximo a caducar y espacio en disco bajo [D9].
-- **FR-029**: La API y el worker MUST exponer las métricas mínimas de `docs/PLAN.md` §7 que F9 necesita
-  (peticiones por estado, ejecuciones por estado, tokens y costo por organización y global, estado de los
-  circuit breakers) sin etiquetas de alta cardinalidad ni contenido; el endpoint de métricas no es público
-  [D9].
-- **FR-030**: SPF, DKIM y DMARC MUST publicarse para el dominio de envío con el proveedor de D14, y el
+- **FR-027**: Los registros estructurados de API, worker y Caddy MUST conservarse en la VM con rotación y
+  compresión, **90 días** como máximo, consultables por `event`, `organizationId` y `correlationId` con
+  un comando documentado; una prueba MUST demostrar que un canario de contenido de usuario no llega a los
+  registros. No hay archivo externo (D5) ni envío a terceros (D9C).
+- **FR-028**: Un temporizador `systemd` MUST contar eventos de los registros y enviar un correo al operador
+  cuando: los fallos de autenticación (`auth.login_failed`, `auth.rate_limited`) superen un umbral en una
+  ventana, un servicio deje de estar sano, un certificado interno esté a menos de 30 días de caducar o el
+  disco supere un umbral. El procedimiento de prueba de cada alerta MUST estar escrito. **No hay alerta de
+  costo por métrica**: con la capa gratuita de Gemini (D13C) el gasto es cero y la defensa es la cuota; el
+  worker ya falla con códigos de presupuesto y de límite de tasa que quedan en los registros.
+- **FR-029**: _(retirado por D9C y D20: sin métricas ni OpenTelemetry; PLAN §7 se corrige para decir que la
+  observabilidad de F9 son registros y alertas por script)_.
+- **FR-030**: SPF, DKIM y DMARC MUST publicarse para el dominio de envío con OCI Email Delivery, y el
   cliente SMTP MUST admitir autenticación y TLS con fallo cerrado en producción [D14].
-- **FR-031**: La configuración de producción MUST usar la clave de pago de Gemini con un tope de gasto en
-  el proveedor y el umbral de alerta de FR-028; staging y desarrollo MUST NOT usarla [D13].
+- **FR-031**: Producción MUST usar la clave de la capa gratuita de Gemini con sus cuotas, sin datos reales:
+  el registro está cerrado (D23) y el aviso de los paneles LLM se mantiene. LLM02 sigue `accepted`.
 
-**Staging y ZAP (#65)**
+**Verificación de cabeceras sin staging (#65; D2C, D12)**
 
-- **FR-032**: MUST existir un staging con TLS, datos sintéticos, secretos propios, `LLM_ENABLED=false`
-  y correo capturado, aislado de producción [D2].
-- **FR-033**: El script de ZAP MUST ampliar su lista cerrada de destinos con los hosts de staging (variable
-  explícita y versionada) sin permitir el dominio de producción ni terceros, con una prueba que lo fije;
-  MUST admitir análisis con sesión (usuario de prueba) y activo solo contra staging [D12].
-- **FR-034**: El informe de ZAP contra staging MUST versionarse en `docs/security/zap/` con la decisión por
-  alerta media o alta, y la comprobación de secretos del informe MUST mantenerse.
+- **FR-032**: _(retirado por D2C: no hay staging)_.
+- **FR-033**: El script de ZAP MUST mantener su lista cerrada a loopback. No se amplía el script: el baseline
+  pasivo se ejecuta contra la imagen de borde y la API levantadas en local, y `zap-script.test.ts` sigue
+  rechazando cualquier otro host.
+- **FR-034**: El informe del baseline contra la imagen de borde MUST versionarse en `docs/security/zap/`
+  mostrando 10038, 10020, 10021, 10063 y 90004 resueltas; una comprobación por `curl` de las mismas
+  cabeceras contra el dominio real MUST ejecutarse en cada despliegue (si faltan, el despliegue se revierte).
 
 **Issues diferidos de F8 (#61, #66, #67, #68)**
 
@@ -504,7 +487,7 @@ haya respuesta, el requisito rige en la forma recomendada.
 - **FR-037**: Los ADR de F9 MUST registrar cada decisión D1 a D22 con su opción elegida; `docs/PLAN.md` §9
   MUST describir lo desplegado y el README MUST enlazar la guía de operación.
 - **FR-038**: Una guía de operación en `docs/operations/` MUST cubrir: aprovisionamiento, despliegue,
-  rollback, rotación de secretos, restauración, acceso a la interfaz de Temporal, respuesta a una alerta y
+  rollback, rotación de secretos, reconstrucción desde cero, acceso a la interfaz de Temporal, respuesta a una alerta y
   baja de la VM; cada procedimiento con su comando de verificación.
 
 ### Key Entities
@@ -515,34 +498,34 @@ haya respuesta, el requisito rige en la forma recomendada.
 - **Secreto de producción**: nombre, origen (generado en la VM, entregado por el autor, de la plataforma),
   permisos, procedimiento de rotación y copia fuera de la VM. Sin valor en el repositorio.
 - **Certificado interno**: sujeto, vigencia, emisor y fecha de caducidad vigilada.
-- **Copia de seguridad**: fecha, base, tamaño, hash, cifrado, destino y resultado de la última restauración.
 - **Regla de alerta**: condición, umbral, canal y procedimiento de prueba.
-- **Entorno**: producción o staging, con dominio, secretos, límites y reglas de ZAP propias.
+- **Entorno**: producción, con dominio, secretos en el Vault y límites.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: La demo pública responde en `https://` con certificado válido, HSTS y CSP; `http://`
-  redirige; ZAP baseline contra staging muestra 0 alertas de 10038, 10020, 10021, 10063 y 90004.
+- **SC-001**: La demo responde en `https://` con certificado válido, HSTS y CSP; `http://` redirige; la
+  imagen de borde levantada en local muestra 0 alertas de ZAP 10038, 10020, 10021, 10063 y 90004, y una
+  comprobación por `curl` tras el despliegue confirma las cabeceras en el dominio real.
 - **SC-002**: En producción, 0 servicios de datos (PostgreSQL, Valkey, Temporal) aceptan una conexión sin
   credencial o sin TLS, y 0 puertos distintos de 80, 443 y 22 son alcanzables desde internet, comprobado
   con un escaneo de puertos desde fuera.
-- **SC-003**: 0 coincidencias del token de un webhook de prueba en los registros de Caddy, de la API y del
-  almacén de registros.
-- **SC-004**: Restauración en un entorno limpio con RTO medido ≤ 60 minutos y RPO ≤ 24 horas; la prueba de
-  humo y la comprobación de RLS pasan.
-- **SC-005**: El tiempo desde un merge en `main` hasta la versión en staging es ≤ 30 minutos, y el rollback
-  de producción tarda ≤ 10 minutos.
-- **SC-006**: 0 vulnerabilidades altas o críticas con corrección disponible sin decisión en las 4
-  imágenes; 4 de 4 imágenes con SBOM CycloneDX.
+- **SC-003**: 0 coincidencias del token de un webhook de prueba en los registros de Caddy y de la API.
+- **SC-004**: _(retirado por D5: sin backups)_. En su lugar, el riesgo de pérdida total consta como
+  `accepted` en el modelo de amenazas con dueño y revisión, y el servicio se reconstruye desde cero en una
+  VM limpia en un tiempo medido.
+- **SC-005**: El tiempo desde un merge en `main` hasta la versión en producción es ≤ 30 minutos, y la
+  reversa automática ante una salud fallida tarda ≤ 10 minutos.
+- **SC-006**: 0 vulnerabilidades altas o críticas con corrección disponible sin decisión en las 4 imágenes
+  publicadas; 4 de 4 imágenes con SBOM CycloneDX adjunto a la publicación.
 - **SC-007**: 0 secretos en el repositorio (gitleaks sobre el historial completo) y en las capas de las
   imágenes; 0 secretos en los registros de CI y del despliegue.
-- **SC-008**: Las alertas de autenticación, costo, salud, copia vieja y caducidad de certificados llegan al
-  operador en ≤ 5 minutos en su prueba; la última copia nunca supera 24 h.
+- **SC-008**: Las alertas de fallos de autenticación, servicio no sano, certificado próximo a caducar y
+  disco bajo llegan al operador en ≤ 10 minutos en su prueba (temporizador de 5 minutos).
 - **SC-009**: SPF, DKIM y DMARC en `pass` en un correo de prueba recibido.
-- **SC-010**: La suma de límites de memoria de producción más staging no pasa de 8 GB y el consumo medido
-  bajo la prueba de humo queda por debajo del 60 % de los límites.
+- **SC-010**: La suma de límites de memoria de producción no pasa de 6 GB y el consumo medido bajo la
+  prueba de humo queda por debajo del 60 % de los límites.
 - **SC-011**: Los 6 checks de CI siguen pasando en cada PR de la fase; 0 filas `deferred:F9` en el modelo
   de amenazas y en la matriz al cerrar.
 
@@ -551,10 +534,10 @@ haya respuesta, el requisito rige en la forma recomendada.
 - Oracle Cloud Always Free (Ampere A1, 2 OCPU y 12 GB) sigue siendo el destino (`docs/PLAN.md` §9), con el
   Compose portable a cualquier host Linux con Docker. Ninguna decisión de esta fase ata la aplicación a
   Oracle; lo único específico de Oracle son sus pasos de red y de cuenta, documentados aparte.
-- Una sola VM aloja producción y, bajo demanda, staging. No hay alta disponibilidad ni balanceo; la
-  recuperación ante un fallo es la restauración desde backup en otro host (RTO de horas, no segundos).
+- Una sola VM aloja producción; no hay staging (D2C). No hay alta disponibilidad, balanceo ni backups
+  (D5): la recuperación ante la pérdida de la VM es reconstruir el servicio con una base vacía.
 - Las imágenes siguen sobre Debian `bookworm-slim` (nunca Alpine) y fijadas por digest; no se añade ninguna
-  dependencia de aplicación nueva salvo las que exijan D9 (métricas) y el cliente TLS (decisión en el plan).
+  dependencia de aplicación nueva salvo, si hace falta, un helper de TLS para los clientes (decisión en el plan); sin métricas (D9C).
   Las herramientas de operación (Caddy, restic, escáner) corren como contenedores o binarios fuera de pnpm.
 - La web ya es estática y no depende de la arquitectura; solo se publica una vez por commit.
 - Los controles de F0 a F8 se reutilizan sin cambios; esta fase no cambia reglas de autorización ni el
@@ -573,49 +556,76 @@ Nada de esto lo hace la fase de especificación ni un agente: sin ellos las tare
 (PR 3 en adelante, parcialmente) no pueden cerrarse. Las PR de código y de scripts se pueden desarrollar y
 probar en local sin ellos.
 
-| #   | Prerrequisito                                                                                                                   | Bloquea                     | Depende de |
-| --- | ------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | ---------- |
-| P1  | Cuenta de Oracle Cloud (Always Free), región con capacidad A1 y la instancia Ampere creada con la llave SSH del autor           | Aprovisionamiento, despliegue | D16      |
-| P2  | Dominio registrado y acceso a su DNS (registros A/AAAA, TXT de SPF, DKIM y DMARC, y un subdominio de staging)                   | TLS, correo, staging        | D2, D6     |
-| P3  | Cuenta del destino de backups, credenciales de un usuario con solo escritura y una clave de cifrado guardada fuera de la VM     | Backups, restauración       | D5         |
-| P4  | Facturación de Gemini habilitada, clave de producción y tope de gasto en el proveedor                                           | Demo pública                | D13        |
-| P5  | Proveedor de correo (SMTP) con el dominio verificado                                                                            | Correo, DMARC               | D14        |
-| P6  | Cuenta o espacio del destino de observabilidad (si D9 lo usa) y un canal de alertas (correo o mensajería) que el autor lea      | Alertas                     | D9         |
-| P7  | Entornos de GitHub (`staging`, `production`) con revisores requeridos y los secretos que D3 exija, creados por el autor          | Workflow de despliegue      | D3         |
-| P8  | Gestor de contraseñas o equivalente con la copia cifrada de los secretos y de la clave de backups                               | Secretos                    | D4         |
-| P9  | Permiso para publicar paquetes en el registro (GHCR o el elegido) y visibilidad (pública o privada) de las imágenes             | Publicación                 | D1         |
+| #   | Prerrequisito                                                                                                                                           | Bloquea                       | Depende de |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------- |
+| P1  | Cuenta de Oracle Cloud (Always Free), región con capacidad A1 y la instancia Ampere creada con la llave SSH del autor                                   | Aprovisionamiento, despliegue | D16        |
+| P2  | Dominio registrado y acceso a su DNS (A/AAAA, SPF, DKIM y DMARC)                                                                                        | TLS, correo                   | D6, D14    |
+| P3  | _(retirado por D5: no hay destino de backups)_                                                                                                          | —                             | D5         |
+| P4  | _(retirado por D13C: sin Gemini de pago)_ La clave de la capa gratuita de Gemini solo en el Vault de producción                                         | —                             | D13        |
+| P5  | Dominio verificado en OCI Email Delivery y credenciales SMTP generadas en Oracle                                                                        | Correo, DMARC                 | D14        |
+| P6  | Un buzón de correo que el autor lea para las alertas                                                                                                    | Alertas                       | D9         |
+| P7  | Entorno `production` de GitHub (sin revisores, D3C) y los secretos de CI que D1 y D3 exijan: token de OCIR y llave de despliegue                         | Publicación y despliegue      | D1, D3     |
+| P8  | Vault de OCI con una política que permita a la instancia leer solo sus secretos; una copia fuera de Oracle de lo que no pueda regenerarse (sin backups)   | Secretos                      | D4         |
+| P9  | Repositorio en OCIR (espacio de nombres y visibilidad) y un token de autenticación de Oracle para CI                                                    | Publicación                   | D1         |
+| P10 | Responder D23 (cierre del registro)                                                                                                                     | Demo                          | D13        |
 
-## Decisiones del autor (D1 a D22)
+## Decisiones del autor (respondidas 2026-11-09)
 
-> **Ninguna está tomada.** Cada una tiene opciones, ventajas, riesgos y una recomendación en
-> [research.md](./research.md) (R1 a R22, mismo número). Responde con el formato de F8, por ejemplo
-> `1A 2A 3A …`. `tasks.md` queda como borrador hasta que lleguen las respuestas. El texto de las
-> opciones es una síntesis; la comparación completa está en `research.md`.
+Respuesta del autor: `1B 2C 3C 4B 5 sin backup, 6A 7A 8A 9C 10A 11C 12A 13C 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`.
+Tres respuestas chocaban con requisitos de la spec y el autor las resolvió así: **D5** sin backup, riesgo
+aceptado; **D2/D3/D12** sin staging, ZAP solo pasivo y local; **D13** demo cerrada, LLM02 sigue `accepted`.
+Comparación completa de opciones en [research.md](./research.md) (R1 a R22).
 
-| #   | Decisión                                              | Opciones                                                                                                                | Recomendación |
-| --- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------- |
-| D1  | Registro de imágenes                                  | A GHCR · B OCIR (Oracle) · C Docker Hub o construir en la VM                                                            | **A**         |
-| D2  | Staging                                               | A segundo proyecto Compose en la misma VM, bajo demanda · B segunda VM · C sin staging                                  | **A**         |
-| D3  | Modo de despliegue                                    | A staging automático y producción manual con aprobación · B todo manual por script desde el portátil · C todo automático | **A**         |
-| D4  | Gestor de secretos                                    | A archivos en la VM con copia cifrada externa · B OCI Vault · C secretos de GitHub Environments                         | **A**         |
-| D5  | Destino de los backups                                | A OCI Object Storage · B otro proveedor (S3 compatible) · C ambos                                                       | **B**         |
-| D6  | Origen de la web y la API                             | A mismo origen (`/api` detrás de Caddy) · B subdominios `app.` y `api.` · C dominios distintos                           | **A**         |
-| D7  | Cómo se sirve la web estática                         | A imagen de borde única (Caddy + `dist`) · B imagen web separada detrás de Caddy · C hosting estático externo           | **A**         |
-| D8  | PKI interna (TLS y mTLS entre servicios)              | A CA propia con `openssl` en el aprovisionamiento · B `step-ca` · C certificados por servicio sin CA común              | **A**         |
-| D9  | Observabilidad y alertas                              | A Grafana Cloud (nivel gratuito) con agente · B todo en la VM (Loki, Prometheus, Grafana) · C solo registros + alertas por script | **A** |
-| D10 | Retención de eventos de seguridad y #62               | A solo logs, 90 días consultables y 12 meses archivados · B tabla `audit_events` por organización · C A y B               | **A**         |
-| D11 | SBOM y escaneo de imágenes (#64)                      | A escáner + SBOM dentro del job `images` y del de publicación · B check requerido nuevo · C solo al publicar            | **A**         |
-| D12 | ZAP contra staging (#65)                              | A script manual ampliado, con sesión y activo solo en staging · B workflow manual en CI · C programado                  | **A**         |
-| D13 | Gemini de pago                                        | A capa de pago antes de la demo, con tope · B demo con `LLM_ENABLED=false` · C demo cerrada con datos de prueba         | **A**         |
-| D14 | Proveedor de correo                                   | A OCI Email Delivery · B proveedor transaccional externo · C SMTP del dominio en la VM                                   | **A**         |
-| D15 | Acceso del operador (SSH y túnel a la UI de Temporal) | A SSH con llaves, puerto 22 y fail2ban · B OCI Bastion · C VPN mallada (WireGuard/Tailscale)                            | **A**         |
-| D16 | Aprovisionamiento                                     | A scripts shell y cloud-init · B Terraform/OpenTofu + scripts · C Ansible                                               | **A**         |
-| D17 | Rollback                                              | A digests anteriores + copia lógica previa · B instantánea de volumen · C blue/green                                    | **A**         |
-| D18 | #61 MFA y política de contraseñas                     | A fuera de F9, revisión posterior · B TOTP en F9 · C solo revisar la política de contraseñas                            | **A**         |
-| D19 | #66 ejecución `failed` tras fallo de Temporal         | A fuera de F9 · B corregir en F9                                                                                        | **A**         |
-| D20 | #67 disparos fuera del catch-up                       | A métrica en F9 con las métricas de Temporal · B dejar `accepted`                                                       | **A**         |
-| D21 | #68 frecuencia mínima de la cron                      | A mínimo configurable (por defecto 5 min) en F9 · B dejar `accepted`                                                    | **A**         |
-| D22 | Qué entra en F9 y qué se difiere                      | A F9 completa con las 6 PR · B partir en F9 (despliegue seguro) y F9.1 (observabilidad, ZAP activo) · C mínimo viable   | **A**         |
+| #   | Decisión                   | Respuesta                         | Efecto sobre la fase                                                                                                                                              |
+| --- | -------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Registro de imágenes       | **B** OCIR                        | Imágenes en el registro de Oracle; CI necesita un token de OCI en un secreto de GitHub (P9); ligado a la cuenta de Oracle                                         |
+| D2  | Staging                    | **C** sin staging                 | No hay entorno de pruebas aparte: cada cambio llega a producción; ZAP activo y con sesión (#65) no se hace                                                        |
+| D3  | Modo de despliegue         | **C** todo automático             | Cada publicación correcta se despliega sola; los frenos son CI, el escaneo de la publicación, la salud y la reversa automática                                    |
+| D4  | Gestor de secretos         | **B** OCI Vault                   | Los secretos viven en el Vault de Oracle y la VM los lee con la identidad de la instancia                                                                         |
+| D5  | Backups                    | **Sin backup**                    | Riesgo aceptado: pérdida total si la VM desaparece. Se retiran FR-019 a FR-021, SC-004 y la restauración probada; el PLAN §10 se corrige                           |
+| D6  | Origen de la web y la API  | **A** mismo origen                | `/api/*` detrás de Caddy; URL de API relativa                                                                                                                     |
+| D7  | Web estática               | **A** imagen de borde única       | Caddy + `dist` + Caddyfile en una imagen                                                                                                                          |
+| D8  | PKI interna                | **A** CA con `openssl`            | Generada por el aprovisionamiento; su clave va al Vault                                                                                                           |
+| D9  | Observabilidad             | **C** logs + script de alertas    | Sin agente, sin métricas, sin tercero: registros del motor con rotación y un temporizador que cuenta eventos y avisa por correo                                   |
+| D10 | Retención de eventos (#62) | **A** solo logs                   | 90 días en la VM, comprimidos; **sin archivo de 12 meses** (no hay destino externo, D5); #62 se cierra con la retención y las alertas, sin tabla                  |
+| D11 | SBOM y escaneo (#64)       | **C** solo al publicar            | En `release.yml`: el escaneo falla la publicación y por tanto el despliegue; el SBOM CycloneDX se adjunta; el job `images` de CI no cambia                        |
+| D12 | ZAP (#65)                  | **A** modificada                  | Sin staging: ZAP sigue **pasivo, local, loopback**, contra la imagen de borde levantada en local; #65 queda `accepted` (sin activo ni sesión)                     |
+| D13 | Gemini                     | **C** demo cerrada                | Capa gratuita, solo datos de prueba; LLM02 sigue `accepted`; demo por invitación (ver D23)                                                                        |
+| D14 | Correo                     | **A** OCI Email Delivery          | SPF, DKIM y DMARC con el dominio del autor                                                                                                                        |
+| D15 | Acceso del operador        | **A** SSH + `fail2ban` + `ssh -L` | UI de Temporal solo por túnel                                                                                                                                     |
+| D16 | Aprovisionamiento          | **A** scripts y cloud-init        | `shellcheck` en `quality`                                                                                                                                         |
+| D17 | Rollback                   | **A** digests + volcado previo    | El volcado previo a cada migración queda **en la VM** (últimos 3); no protege contra la pérdida de la VM                                                          |
+| D18 | #61 MFA                    | **A** fuera de F9                 | Sin cambio; revisión posterior                                                                                                                                    |
+| D19 | #66                        | **A** fuera de F9                 | Sin cambio; revisión posterior                                                                                                                                    |
+| D20 | #67                        | **Sin métricas**                  | #67 queda `accepted`; no hay métrica de disparos descartados                                                                                                      |
+| D21 | #68                        | **B**                             | Sin frecuencia mínima de la cron; `accepted` (acotada por el tope de 10 programaciones, `overlap = SKIP` y `max_concurrent_runs`)                                |
+| D22 | Alcance                    | **A**                             | F9 en 5 PR (ver plan); #61, #65, #66, #67 y #68 fuera                                                                                                             |
+
+### Consecuencias que el autor debe conocer
+
+- **Sin backup y sin staging, todo depende de una sola VM de Oracle y de la cuenta del autor.** Si Oracle
+  reclama la instancia o la cuenta, se pierden las bases (incluido el historial de Temporal con las entradas
+  y salidas de las ejecuciones), los secretos del Vault, el registro de imágenes y el correo a la vez. El
+  repositorio conserva código y ADR, y las imágenes se reconstruyen desde `main` en otro registro, pero
+  **los datos y `CREDENTIALS_MASTER_KEY` (credenciales cifradas de los conectores) no se recuperan**. El
+  modelo de amenazas lo registra como `accepted`, dueño: autor, revisión: antes de admitir datos reales.
+- **Despliegue automático sin staging:** un cambio con una migración defectuosa o una configuración rota
+  llega a la demo. Las defensas son CI en verde, el escaneo de la publicación, `migrator` antes de arrancar,
+  la comprobación de salud con **reversa automática** y el volcado previo local.
+- **D1B + D4B + D14A concentran tres servicios en Oracle:** una suspensión de la cuenta tumba imágenes,
+  secretos y correo. Es coherente con la capa gratuita, pero resta portabilidad operativa al PLAN §9 (el
+  Compose sigue siendo portable; los accesos no).
+- **D12 sin staging:** las cinco alertas de ZAP de la web se verifican contra la imagen de borde en local y,
+  tras cada despliegue, con una comprobación de cabeceras por `curl` contra el dominio real. Eso **no**
+  sustituye a un ZAP contra TLS real: queda dicho en el modelo de amenazas.
+- **D13C:** LLM02 sigue `accepted`; ADR-0088 y PLAN §9 piden la capa de pago «antes de la demo pública»,
+  así que la demo **no es pública**: solo con cuentas que el autor autoriza.
+
+### Pregunta abierta
+
+| #   | Pregunta                                                                                          | Opciones                                                                                                                                                                                   | Recomendación |
+| --- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| D23 | ¿Cómo se cierra la demo? Hoy `POST /api/v1/auth/register` está abierto a cualquiera con un correo | A) Caddy responde 404 a `register` y el autor crea cuentas con un script en la VM · B) variable de operación `REGISTRATION_ENABLED` en la API (cambio de código; kill switch, no flag de producto) · C) dejar el registro abierto | **A**         |
 
 ## Fuentes y trazabilidad
 

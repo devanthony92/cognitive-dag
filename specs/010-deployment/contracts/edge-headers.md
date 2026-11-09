@@ -14,7 +14,7 @@ los ajustes que exija el build real (por ejemplo `style-src-attr`) se registran 
 | `/api/*`                          | API (`reverse_proxy`) | Solo HSTS y `Strict-Transport-Security`; **no** pisa las cabeceras de Helmet de la API                                       | `X-Forwarded-For` y `X-Forwarded-Proto` los fija Caddy; el cliente no puede falsearlos                       |
 | `/api/v1/organizations/*/runs/*/events` (SSE) | API       | Igual que `/api/*`                                                                                                           | `flush_interval -1`, sin compresión de `text/event-stream`, plazo de lectura mayor que el latido (`SSE_HEARTBEAT_MS`) |
 | `/api/v1/hooks/*`                 | API                  | Igual que `/api/*`                                                                                                           | **Token redactado** en el registro de acceso de Caddy                                                       |
-| `/api/v1/metrics` y UI de Temporal | —                   | —                                                                                                                           | **No** se publican; `404` desde el borde                                                                     |
+| UI de Temporal (y `/api/v1/metrics` si algún día existe) | —                   | —                                                                                                                           | **No** se publican; `404` desde el borde                                                                     |
 
 ## Cabeceras de la web estática
 
@@ -27,7 +27,7 @@ los ajustes que exija el build real (por ejemplo `style-src-attr`) se registran 
 | `Cross-Origin-Embedder-Policy`     | `require-corp`                                                                                                                                                                      | 90004      |
 | `Cross-Origin-Opener-Policy`       | `same-origin`                                                                                                                                                                       | 90004      |
 | `Cross-Origin-Resource-Policy`     | `same-origin`                                                                                                                                                                       | 90004      |
-| `Strict-Transport-Security`        | `max-age=31536000; includeSubDomains` (producción); `max-age=300` (staging hasta verificar)                                                                                         | A02, A05   |
+| `Strict-Transport-Security`        | `max-age=31536000; includeSubDomains`; sin `preload` hasta verificar subdominios                                                                                         | A02, A05   |
 | `Referrer-Policy`                  | `strict-origin-when-cross-origin`                                                                                                                                                   | —          |
 | `Server`                           | eliminada                                                                                                                                                                           | A02        |
 
@@ -37,12 +37,12 @@ usa `style-src-attr 'unsafe-inline'` (solo atributos) y se registra. Si COEP rom
 
 ## Registro de acceso
 
-- Formato JSON a la salida estándar del contenedor, hacia el agente de observabilidad (D9).
+- Formato JSON a la salida estándar del contenedor, y rotado por el motor (D9C).
 - Se elimina o enmascara: segmento `{token}` de `/api/v1/hooks/{triggerId}/{token}`, y las cabeceras
   `Cookie`, `Set-Cookie`, `Authorization` y `X-CSRF-Token`. Nunca se registran cuerpos.
 - Prueba: enviar un webhook con un token de prueba generado en la propia prueba y buscar ese valor en la
   salida completa de Caddy; debe aparecer 0 veces.
-- Retención: 30 días (contiene IP). Se reutiliza la rotación de Docker (`max-size`, `max-file`).
+- Retención: 90 días como máximo en la VM (D10A); contiene IP. Rotación y compresión del motor (`max-size`, `max-file`).
 
 ## Límites
 
