@@ -7,3 +7,6 @@ pnpm-lock.yaml
 apps/worker/test/histories/
 specs/
 apps/web/src/routeTree.gen.ts
+
+# Generated ZAP evidence, kept as ZAP wrote it
+docs/security/zap/
