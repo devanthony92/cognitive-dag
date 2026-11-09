@@ -143,7 +143,7 @@ correo y demo cerrada, US9 cierre.
 - [ ] T058 [US9] `docs/security/owasp-evidence.md` regenerado: A02 (TLS y cabeceras), A03 (SBOM y escaneo al publicar), A04 (TLS interno), A05 y A09 (retención y alertas) pasan a `verified`; LLM02 sigue `accepted`; `pnpm security:evidence` en verde (FR-036)
 - [ ] T059 [US9] Tratamiento de issues: #62, #63 y #64 se cierran con la PR (`Closes`); #61, #65, #66, #67 y #68 quedan abiertos con su fase de revisión y razón vigente según D18, D19, D20, D21 y D12 (FR-035)
 - [ ] T060 [P] [US9] `docs/PLAN.md` §7 (observabilidad = registros y alertas), §9 (topología real, tabla de memoria medida, sin backups) y §10 (F9 completada con su criterio ajustado: «demo cerrada con TLS, cabeceras verificadas y despliegue con reversa»); README (estado y enlace a la guía de operación) e índice de ADR
-- [ ] T061 [US9] ADR-0097 (verificación de cabeceras sin staging; #65 `accepted`) y ADR-0098 (cierre de F9: D1 a D23, riesgos aceptados y su revisión); ADR-0088 marcado cumplido o reabierto fila por fila
+- [ ] T061 [US9] ADR-0097 (verificación de cabeceras sin staging; #65 `accepted`) y ADR-0098 (cierre de F9: D1 a D23, riesgos aceptados y su revisión, y la enmienda 1.1.0 de la constitución ya aplicada); ADR-0088 marcado cumplido o reabierto fila por fila
 - [ ] T062 Ejecutar los escenarios de `quickstart.md` en producción y registrar resultados en la PR (SC-001 a SC-011)
 - [ ] T063 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX), `checklists/security.md` revisado y marcar T001–T062 como hechas en este archivo
 

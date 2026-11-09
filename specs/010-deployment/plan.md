@@ -66,16 +66,16 @@ producción.
 | VII. Desviaciones      | ADR-0089 a ADR-0098; el PLAN se corrige donde exigía backups, restauración y métricas                                                                                                                  | PASS (con ADR) |
 | VIII. Flags            | Sin flags nuevos; los kill switches `LLM_ENABLED`, `TRIGGERS_ENABLED`, `HTTP_ENABLED` se documentan; migraciones expand/contract       | PASS           |
 | IX. Idioma             | Documentos y guía de operación en español; scripts, variables y commits en inglés                                                                                                                      | PASS           |
-| Restricciones técnicas | Debian `bookworm-slim`, multi-arch con runner arm64 nativo, aprovisionamiento por script. **Desviación:** «backups fuera de la VM» (Constitución, restricciones técnicas) no se cumple por D5; ADR-0094 | PASS (con ADR) |
+| Restricciones técnicas | Debian `bookworm-slim`, multi-arch con runner arm64 nativo, aprovisionamiento por script. Los backups externos se omiten por D5 según la enmienda 1.1.0 de la constitución; ADR-0094 | PASS (con ADR) |
 
 OWASP tocado: A02 (configuración, TLS, cabeceras), A03 (SBOM y escaneo al publicar), A04 (cifrado en tránsito),
 A05 (cabeceras y puertos), A07 (SMTP, correo falsificable), A08 (artefactos con digest), A09 (retención y
 alertas por script), A10 (fallo cerrado al arrancar). LLM02 sigue `accepted` (demo cerrada, capa gratuita).
 
-> **Enmienda pendiente de la constitución:** «Despliegue portable: Docker Compose, aprovisionamiento por
-> script y backups fuera de la VM» contradice D5. Hay dos salidas: una enmienda de la constitución, o dejar la
-> excepción justificada en Complexity Tracking y en ADR-0094. Este plan toma la segunda; la primera la decide
-> el autor.
+> **Enmienda de la constitución (decidida por el autor):** la restricción «backups fuera de la VM» pasa a
+> «pueden omitirse mientras el servicio solo admita datos de prueba; antes de admitir datos reales debe
+> existir backup cifrado externo con restauración probada» (versión 1.1.0, hecha en esta PR). ADR-0094
+> la cita.
 
 ## Project Structure
 
@@ -141,6 +141,6 @@ prueba. Las columnas «Prerrequisitos» son del autor.
 | `release.yml` y `deploy.yml` separados de `ci.yml`                         | `ci.yml` conserva `contents: read` y los 6 checks; los permisos de escritura viven solo donde se publica                                                           |
 | PKI interna propia                                                        | Evita un servicio permanente en una VM pequeña; solo existe dentro de la red de Compose                                                                             |
 | Sin staging ni backups (D2C, D5)                                          | Decisión del autor: se acepta que un cambio defectuoso llegue a producción (reversa automática) y que perder la VM sea perder los datos; ADR-0094 y modelo de amenazas `accepted` |
-| Constitución dice «backups fuera de la VM»                                | Excepción por D5; se deja en ADR-0094 y el autor decide si enmienda la constitución                                                                                  |
+| Enmienda 1.1.0 de la constitución (backups)                               | D5: los backups externos son obligatorios solo antes de admitir datos reales; ADR-0094                                                                               |
 | Temporal de producción con PostgreSQL (no `start-dev`)                    | Requisito de 8C: autenticación, TLS y almacén duradero; `start-dev` usa SQLite sin autenticación                                                                    |
 | Despliegue por empuje restringido o por extracción (se elige en T047)     | Evita dar a CI un acceso amplio a la VM                                                                                                                             |
