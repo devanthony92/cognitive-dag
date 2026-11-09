@@ -79,6 +79,14 @@ describe('evaluateScan', () => {
     expect(evaluateScan(report(finding({})), [match], TODAY).blocking).toEqual([]);
   });
 
+  it('scopes an exception to one image when it names one', () => {
+    const scoped = exception({ image: 'edge' });
+    expect(evaluateScan(report(finding({})), [scoped], TODAY, 'api').blocking).toHaveLength(1);
+    expect(evaluateScan(report(finding({})), [scoped], TODAY, 'edge').blocking).toEqual([]);
+    // Without an image argument a scoped exception never applies.
+    expect(evaluateScan(report(finding({})), [scoped], TODAY).blocking).toHaveLength(1);
+  });
+
   it('does not let an exception for one id cover another', () => {
     const other = exception({ id: 'CVE-2099-9999' });
     expect(evaluateScan(report(finding({})), [other], TODAY).blocking).toHaveLength(1);
@@ -110,14 +118,24 @@ describe('parseExceptions', () => {
     expect(() => parseExceptions(JSON.stringify([bad]))).toThrow(/expires/);
   });
 
-  it('rejects a duplicated id and package pair', () => {
+  it('accepts an optional image and rejects a blank one', () => {
+    expect(parseExceptions(JSON.stringify([exception({ image: 'edge' })]))[0]?.image).toBe('edge');
+    expect(() => parseExceptions(JSON.stringify([exception({ image: ' ' })]))).toThrow(/image/);
+  });
+
+  it('rejects a duplicated id, package and image triple', () => {
     expect(() => parseExceptions(JSON.stringify([exception(), exception()]))).toThrow(/duplicate/i);
   });
 });
 
 describe('the committed exceptions file', () => {
-  it('is valid', () => {
+  it('is valid and every exception is short-lived (30 days) and tied to one image', () => {
     const file = resolve(import.meta.dirname, '../../../.github/image-scan-exceptions.json');
-    expect(() => parseExceptions(readFileSync(file, 'utf8'))).not.toThrow();
+    const entries = parseExceptions(readFileSync(file, 'utf8'));
+    for (const entry of entries) {
+      const days = (Date.parse(entry.expires) - Date.parse(entry.date)) / 86_400_000;
+      expect(days, entry.id).toBeLessThanOrEqual(30);
+      expect(entry.image, entry.id).toBeDefined();
+    }
   });
 });

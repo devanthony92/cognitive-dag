@@ -44,7 +44,7 @@ for arch in amd64 arm64; do
   layout="layouts/${image}-${arch}"
   test -d "${layout}" || { echo "missing OCI layout ${layout}" >&2; exit 1; }
   run "${GRYPE}" "oci-dir:${layout}" --only-fixed -o json --file "out/${image}-${arch}.grype.json"
-  node scripts/ci/check-image-scan.ts "out/${image}-${arch}.grype.json" .github/image-scan-exceptions.json
+  node scripts/ci/check-image-scan.ts "out/${image}-${arch}.grype.json" .github/image-scan-exceptions.json "${image}"
   run "${SYFT}" "oci-dir:${layout}" -o "cyclonedx-json=out/${image}-${arch}.cdx.json"
 done
 

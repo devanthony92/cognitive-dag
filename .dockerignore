@@ -11,3 +11,5 @@
 .specify
 specs
 docs
+.scan
+.tool-home

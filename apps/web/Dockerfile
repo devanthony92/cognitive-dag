@@ -2,7 +2,7 @@
 # Edge image (F9, D7A): the SPA build plus Caddy. Build context: repository root. The web talks to
 # the API on the same origin with relative URLs (D6A), so no VITE_API_URL is set here and the image
 # does not depend on the domain. Debian (glibc) base, never Alpine.
-ARG NODE_IMAGE=node:24.22.1-bookworm-slim@sha256:be8204d4bd327363357f532187b752ff62759c31bedf98e9e18fc08c9cbd605c
+ARG NODE_IMAGE=node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
 ARG DEBIAN_IMAGE=debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
 ARG CADDY_IMAGE=caddy:2.11.9@sha256:0c2243efcf437ab7f7a978f1027fcf0d4f9be8a75df27b1b3fbc5dbe0ffa8cf0
 
