@@ -7,6 +7,22 @@ import {
   DEFAULT_WEBHOOK_TIMESTAMP_WINDOW_SECONDS,
 } from '@cognitive-dag/contracts';
 import { ABSOLUTE_LIMITS } from '@cognitive-dag/dag-schema';
+import { buildTemporalTls, type TemporalTls } from '../temporal/temporal-tls';
+import {
+  InvalidConfigError,
+  isDevelopmentPassword,
+  isProxyEntry,
+  parseTrustedProxies,
+  readSecretFile,
+  readTextFile,
+  requiresVerifiedTls,
+  valueOf,
+  type FileReader,
+  type SmtpAuth,
+  type ValkeyAuth,
+} from './secrets';
+
+export { InvalidConfigError } from './secrets';
 
 /** A ceiling can only lower the absolute maximum of the platform (research R12). */
 const ceiling = (absolute: number, minimum: number) =>
@@ -31,6 +47,9 @@ export const EnvSchema = z.object({
   SMTP_HOST: z.string().min(1).default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
   MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),
+  // TLS of the SMTP connection (F9, FR-030): `true` is implicit TLS (port 465), `starttls` requires
+  // the upgrade (587), `false` is plain text and is only accepted outside production (Mailpit).
+  SMTP_SECURE: z.enum(['true', 'false', 'starttls']).default('false'),
   // Origin of the web app: base of the links inside emails. Defaults to WEB_ORIGIN.
   APP_BASE_URL: z.url().optional(),
   // Ceilings for the DAG limits of every organization (FR-020); they cannot exceed the platform maximum.
@@ -50,6 +69,7 @@ export const EnvSchema = z.object({
   TEMPORAL_HTTP_TASK_QUEUE: z.string().min(1).max(255).default(DEFAULT_HTTP_TASK_QUEUE),
   // Master key of the envelope encryption of credentials (F7, R10): base64 of 32 bytes. Optional
   // outside production; without it the credential endpoints answer CREDENTIALS_NOT_CONFIGURED.
+  // In production only `CREDENTIALS_MASTER_KEY_FILE` is accepted (F9).
   CREDENTIALS_MASTER_KEY: z.string().optional(),
   // Public webhook (F7, R3): body cap and half-width of the accepted timestamp window.
   WEBHOOK_MAX_BODY_BYTES: z.coerce
@@ -69,6 +89,13 @@ export const EnvSchema = z.object({
   API_PUBLIC_URL: z.url().optional(),
   // Parsed by FlagsModule: an invalid value must disable flags, not stop the API.
   FEATURE_FLAGS: z.string().default('{}'),
+  // Closed list of the proxy hops whose X-Forwarded-For is believed (F9, FR-005): addresses or CIDR
+  // ranges, comma separated. Empty means the API is reached directly and the header is ignored.
+  TRUSTED_PROXIES: z
+    .string()
+    .default('')
+    .transform(parseTrustedProxies)
+    .refine((entries) => entries.every(isProxyEntry)),
 });
 
 /** Shape of FEATURE_FLAGS: flag key to boolean value. */
@@ -77,37 +104,149 @@ export const FeatureFlagsSchema = z.record(z.string().min(1), z.boolean());
 export type AppConfig = z.infer<typeof EnvSchema> & {
   /** `CREDENTIALS_MASTER_KEY` decoded; absent when the variable is not set (never in production). */
   credentialsMasterKey: Buffer | undefined;
+  /** User, password and CA of Valkey, read from their files; absent in development. */
+  valkeyAuth: ValkeyAuth | undefined;
+  /** SMTP user and password, read from their files; absent with Mailpit. */
+  smtpAuth: SmtpAuth | undefined;
+  /** mTLS options of the Temporal client; absent in development. */
+  temporalTls: TemporalTls | undefined;
 };
 
-export class InvalidConfigError extends Error {
-  constructor(readonly variables: string[]) {
-    super(`Invalid or missing environment variables: ${variables.join(', ')}`);
-    this.name = 'InvalidConfigError';
-  }
-}
+const TEMPORAL_TLS_VARIABLES = [
+  'TEMPORAL_TLS_CA_FILE',
+  'TEMPORAL_TLS_CERT_FILE',
+  'TEMPORAL_TLS_KEY_FILE',
+];
 
 /**
- * Validates the environment. On failure the error names the offending variables only:
- * values are never included because they may hold credentials.
+ * Validates the environment. On failure the error names the offending variables only: values are
+ * never included because they may hold credentials. Secrets arrive as files (`<NAME>_FILE`); `read`
+ * is injectable for tests. With `NODE_ENV=production` the startup rules of FR-012 apply
+ * (specs/010-deployment/contracts/production-env.md).
  */
-export function parseEnv(env: NodeJS.ProcessEnv): AppConfig {
+export function parseEnv(env: NodeJS.ProcessEnv, read: FileReader = readTextFile): AppConfig {
   const result = EnvSchema.safeParse(env);
   const invalid = new Set<string>();
   if (!result.success) {
     for (const issue of result.error.issues) invalid.add(String(issue.path[0]));
   }
-  const masterKeyText = env.CREDENTIALS_MASTER_KEY === '' ? undefined : env.CREDENTIALS_MASTER_KEY;
+  const production = env.NODE_ENV === 'production';
+  const secret = (name: string) => readSecretFile(env, name, read, invalid);
+
+  // The master key: a file in production, where the direct variable is not allowed.
+  const masterKeyFile = secret('CREDENTIALS_MASTER_KEY_FILE');
+  const masterKeyDirect = valueOf(env, 'CREDENTIALS_MASTER_KEY');
+  const masterKeyText = masterKeyFile ?? masterKeyDirect;
   let credentialsMasterKey: Buffer | undefined;
   if (masterKeyText !== undefined) {
     try {
       credentialsMasterKey = parseMasterKey(masterKeyText);
     } catch {
-      invalid.add('CREDENTIALS_MASTER_KEY');
+      invalid.add(
+        masterKeyFile === undefined ? 'CREDENTIALS_MASTER_KEY' : 'CREDENTIALS_MASTER_KEY_FILE',
+      );
     }
-  } else if (env.NODE_ENV === 'production') {
+  }
+  if (production && (masterKeyDirect !== undefined || masterKeyText === undefined)) {
     invalid.add('CREDENTIALS_MASTER_KEY');
   }
+
+  // PostgreSQL: the password comes from its file and joins the URL here, never in the repository.
+  const databasePassword = secret('DATABASE_PASSWORD_FILE');
+  let databaseUrl = valueOf(env, 'DATABASE_URL');
+  if (databaseUrl !== undefined && URL.canParse(databaseUrl)) {
+    const url = new URL(databaseUrl);
+    if (production) {
+      if (!requiresVerifiedTls(url)) invalid.add('DATABASE_URL');
+      if (url.password !== '' && isDevelopmentPassword(decodeURIComponent(url.password))) {
+        invalid.add('DATABASE_URL');
+      }
+    }
+    if (databasePassword !== undefined) {
+      url.password = databasePassword;
+      databaseUrl = url.toString();
+    }
+  }
+  if (production && databasePassword !== undefined && isDevelopmentPassword(databasePassword)) {
+    invalid.add('DATABASE_PASSWORD_FILE');
+  }
+
+  // Valkey: `rediss://`, an ACL user and the CA of the internal PKI.
+  const valkeyPassword = secret('VALKEY_PASSWORD_FILE');
+  const valkeyUsername = valueOf(env, 'VALKEY_USERNAME');
+  const valkeyCa = secret('VALKEY_CA_FILE');
+  if (production) {
+    if (!(valueOf(env, 'VALKEY_URL') ?? '').startsWith('rediss://')) invalid.add('VALKEY_URL');
+    if (valkeyUsername === undefined) invalid.add('VALKEY_USERNAME');
+    if (valkeyPassword === undefined) invalid.add('VALKEY_PASSWORD_FILE');
+    if (valueOf(env, 'VALKEY_CA_FILE') === undefined) invalid.add('VALKEY_CA_FILE');
+    if (valkeyPassword !== undefined && isDevelopmentPassword(valkeyPassword)) {
+      invalid.add('VALKEY_PASSWORD_FILE');
+    }
+  }
+  const valkeyAuth: ValkeyAuth | undefined =
+    valkeyUsername || valkeyPassword || valkeyCa
+      ? {
+          ...(valkeyUsername ? { username: valkeyUsername } : {}),
+          ...(valkeyPassword ? { password: valkeyPassword } : {}),
+          ...(valkeyCa ? { ca: valkeyCa } : {}),
+        }
+      : undefined;
+
+  // Temporal: mTLS with the internal PKI.
+  let temporalTls: TemporalTls | undefined;
+  try {
+    temporalTls = buildTemporalTls(
+      {
+        caFile: valueOf(env, 'TEMPORAL_TLS_CA_FILE'),
+        certFile: valueOf(env, 'TEMPORAL_TLS_CERT_FILE'),
+        keyFile: valueOf(env, 'TEMPORAL_TLS_KEY_FILE'),
+        serverName: valueOf(env, 'TEMPORAL_TLS_SERVER_NAME'),
+      },
+      read,
+    );
+    if (production && temporalTls === undefined) {
+      throw new InvalidConfigError(TEMPORAL_TLS_VARIABLES);
+    }
+  } catch (error) {
+    if (!(error instanceof InvalidConfigError)) throw error;
+    for (const variable of error.variables) invalid.add(variable);
+  }
+
+  // Mail: TLS and credentials from files.
+  const smtpUser = secret('SMTP_USER_FILE');
+  const smtpPassword = secret('SMTP_PASSWORD_FILE');
+  if (production) {
+    if (env.SMTP_SECURE !== 'true' && env.SMTP_SECURE !== 'starttls') invalid.add('SMTP_SECURE');
+    if (valueOf(env, 'SMTP_USER_FILE') === undefined) invalid.add('SMTP_USER_FILE');
+    if (valueOf(env, 'SMTP_PASSWORD_FILE') === undefined) invalid.add('SMTP_PASSWORD_FILE');
+    if (smtpPassword !== undefined && isDevelopmentPassword(smtpPassword)) {
+      invalid.add('SMTP_PASSWORD_FILE');
+    }
+  }
+  const smtpAuth: SmtpAuth | undefined =
+    smtpUser !== undefined && smtpPassword !== undefined
+      ? { user: smtpUser, password: smtpPassword }
+      : undefined;
+
+  // Public origins: HTTPS only, and the public URL of the API must exist (webhook URLs).
+  if (production) {
+    for (const name of ['WEB_ORIGIN', 'API_PUBLIC_URL']) {
+      if (!(valueOf(env, name) ?? '').startsWith('https://')) invalid.add(name);
+    }
+    const appBase = valueOf(env, 'APP_BASE_URL');
+    if (appBase !== undefined && !appBase.startsWith('https://')) invalid.add('APP_BASE_URL');
+  }
+
   if (!result.success || invalid.size > 0) throw new InvalidConfigError([...invalid].sort());
   // The raw key stays out of the config object: only the decoded buffer travels.
-  return { ...result.data, CREDENTIALS_MASTER_KEY: undefined, credentialsMasterKey };
+  return {
+    ...result.data,
+    ...(databaseUrl === undefined ? {} : { DATABASE_URL: databaseUrl }),
+    CREDENTIALS_MASTER_KEY: undefined,
+    credentialsMasterKey,
+    valkeyAuth,
+    smtpAuth,
+    temporalTls,
+  };
 }

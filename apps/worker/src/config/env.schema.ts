@@ -9,6 +9,26 @@ import {
   type BucketConfig,
   type RateLimits,
 } from '../resilience/rate-limit-config';
+import { buildTemporalTls, type TemporalTls } from '../temporal/temporal-tls';
+import {
+  InvalidConfigError,
+  isDevelopmentPassword,
+  readSecretFile,
+  readTextFile,
+  requiresVerifiedTls,
+  valueOf,
+  type FileReader,
+  type SmtpAuth,
+  type ValkeyAuth,
+} from './secrets';
+
+export { InvalidConfigError } from './secrets';
+
+const TEMPORAL_TLS_VARIABLES = [
+  'TEMPORAL_TLS_CA_FILE',
+  'TEMPORAL_TLS_CERT_FILE',
+  'TEMPORAL_TLS_KEY_FILE',
+];
 
 const positiveInt = (fallback: number, max = 1_000_000_000) =>
   z.coerce.number().int().min(1).max(max).default(fallback);
@@ -78,6 +98,9 @@ export const EnvSchema = z.object({
   SMTP_HOST: z.string().min(1).default('127.0.0.1'),
   SMTP_PORT: z.coerce.number().int().min(1).max(65535).default(1025),
   MAIL_FROM: z.string().min(3).default('CognitiveDAG <no-reply@cognitive-dag.localhost>'),
+  // TLS of the SMTP connection (F9, FR-030): `true` implicit TLS, `starttls` required upgrade and
+  // `false` plain text, which production refuses (Mailpit in development).
+  SMTP_SECURE: z.enum(['true', 'false', 'starttls']).default('false'),
   // Origin of the web app: base of the links inside the approval emails.
   APP_BASE_URL: z.url().optional(),
   // Tests only (research R9.10): lets the HTTP client reach loopback. Must not exist in production.
@@ -103,17 +126,20 @@ export type WorkerConfig = z.infer<typeof EnvSchema> & {
   llmModelRateLimit: BucketConfig;
   /** `CREDENTIALS_MASTER_KEY` decoded; absent when the variable is not set (never in production). */
   credentialsMasterKey: Buffer | undefined;
+  /** User, password and CA of Valkey, read from their files; absent in development. */
+  valkeyAuth: ValkeyAuth | undefined;
+  /** SMTP user and password, read from their files; absent with Mailpit. */
+  smtpAuth: SmtpAuth | undefined;
+  /** mTLS options of the Temporal connections; absent in development. */
+  temporalTls: TemporalTls | undefined;
 };
 
-export class InvalidConfigError extends Error {
-  constructor(readonly variables: string[]) {
-    super(`Invalid or missing environment variables: ${variables.join(', ')}`);
-    this.name = 'InvalidConfigError';
-  }
-}
-
-/** Validates the environment and names offending variables only, never their values. */
-export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
+/**
+ * Validates the environment and names offending variables only, never their values. Secrets arrive
+ * as files (`<NAME>_FILE`); `read` is injectable for tests. With `NODE_ENV=production` the startup
+ * rules of FR-012 apply (specs/010-deployment/contracts/production-env.md).
+ */
+export function parseEnv(env: NodeJS.ProcessEnv, read: FileReader = readTextFile): WorkerConfig {
   const result = EnvSchema.safeParse(env);
   const rateLimits = parseRateLimits(env);
   const prices = parsePrices(env.LLM_PRICES);
@@ -125,24 +151,118 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
   const invalid = new Set(rateLimits.invalid);
   if (prices.invalid) invalid.add('LLM_PRICES');
   if (modelLimit === undefined) invalid.add(LLM_MODEL_RATE_LIMIT_VARIABLE);
-  if (result.success && result.data.LLM_PROVIDER === 'gemini' && !result.data.GEMINI_API_KEY) {
-    invalid.add('GEMINI_API_KEY');
-  }
   if (!result.success) {
     for (const issue of result.error.issues) invalid.add(String(issue.path[0]));
   }
   const production = env.NODE_ENV === 'production';
-  const masterKeyText = env.CREDENTIALS_MASTER_KEY === '' ? undefined : env.CREDENTIALS_MASTER_KEY;
+  const secret = (name: string) => readSecretFile(env, name, read, invalid);
+
+  // The Gemini key: a file in production, where the direct variable is not allowed.
+  const geminiFile = secret('GEMINI_API_KEY_FILE');
+  const geminiDirect = valueOf(env, 'GEMINI_API_KEY');
+  const geminiKey = geminiFile ?? geminiDirect;
+  if (production && geminiDirect !== undefined) invalid.add('GEMINI_API_KEY');
+  if (result.success && result.data.LLM_PROVIDER === 'gemini' && geminiKey === undefined) {
+    invalid.add(production ? 'GEMINI_API_KEY_FILE' : 'GEMINI_API_KEY');
+  }
+
+  // The master key: a file in production, where the direct variable is not allowed.
+  const masterKeyFile = secret('CREDENTIALS_MASTER_KEY_FILE');
+  const masterKeyDirect = valueOf(env, 'CREDENTIALS_MASTER_KEY');
+  const masterKeyText = masterKeyFile ?? masterKeyDirect;
   let credentialsMasterKey: Buffer | undefined;
   if (masterKeyText !== undefined) {
     try {
       credentialsMasterKey = parseMasterKey(masterKeyText);
     } catch {
-      invalid.add('CREDENTIALS_MASTER_KEY');
+      invalid.add(
+        masterKeyFile === undefined ? 'CREDENTIALS_MASTER_KEY' : 'CREDENTIALS_MASTER_KEY_FILE',
+      );
     }
-  } else if (production) {
+  }
+  if (production && (masterKeyDirect !== undefined || masterKeyText === undefined)) {
     invalid.add('CREDENTIALS_MASTER_KEY');
   }
+
+  // PostgreSQL: the password comes from its file and joins the URL here, never in the repository.
+  const databasePassword = secret('DATABASE_PASSWORD_FILE');
+  let databaseUrl = valueOf(env, 'DATABASE_URL');
+  if (databaseUrl !== undefined && URL.canParse(databaseUrl)) {
+    const url = new URL(databaseUrl);
+    if (production) {
+      if (!requiresVerifiedTls(url)) invalid.add('DATABASE_URL');
+      if (url.password !== '' && isDevelopmentPassword(decodeURIComponent(url.password))) {
+        invalid.add('DATABASE_URL');
+      }
+    }
+    if (databasePassword !== undefined) {
+      url.password = databasePassword;
+      databaseUrl = url.toString();
+    }
+  }
+  if (production && databasePassword !== undefined && isDevelopmentPassword(databasePassword)) {
+    invalid.add('DATABASE_PASSWORD_FILE');
+  }
+
+  // Valkey: `rediss://`, an ACL user and the CA of the internal PKI.
+  const valkeyPassword = secret('VALKEY_PASSWORD_FILE');
+  const valkeyUsername = valueOf(env, 'VALKEY_USERNAME');
+  const valkeyCa = secret('VALKEY_CA_FILE');
+  if (production) {
+    if (!(valueOf(env, 'VALKEY_URL') ?? '').startsWith('rediss://')) invalid.add('VALKEY_URL');
+    if (valkeyUsername === undefined) invalid.add('VALKEY_USERNAME');
+    if (valkeyPassword === undefined) invalid.add('VALKEY_PASSWORD_FILE');
+    if (valueOf(env, 'VALKEY_CA_FILE') === undefined) invalid.add('VALKEY_CA_FILE');
+    if (valkeyPassword !== undefined && isDevelopmentPassword(valkeyPassword)) {
+      invalid.add('VALKEY_PASSWORD_FILE');
+    }
+  }
+  const valkeyAuth: ValkeyAuth | undefined =
+    valkeyUsername || valkeyPassword || valkeyCa
+      ? {
+          ...(valkeyUsername ? { username: valkeyUsername } : {}),
+          ...(valkeyPassword ? { password: valkeyPassword } : {}),
+          ...(valkeyCa ? { ca: valkeyCa } : {}),
+        }
+      : undefined;
+
+  // Temporal: mTLS with the internal PKI.
+  let temporalTls: TemporalTls | undefined;
+  try {
+    temporalTls = buildTemporalTls(
+      {
+        caFile: valueOf(env, 'TEMPORAL_TLS_CA_FILE'),
+        certFile: valueOf(env, 'TEMPORAL_TLS_CERT_FILE'),
+        keyFile: valueOf(env, 'TEMPORAL_TLS_KEY_FILE'),
+        serverName: valueOf(env, 'TEMPORAL_TLS_SERVER_NAME'),
+      },
+      read,
+    );
+    if (production && temporalTls === undefined) {
+      throw new InvalidConfigError(TEMPORAL_TLS_VARIABLES);
+    }
+  } catch (error) {
+    if (!(error instanceof InvalidConfigError)) throw error;
+    for (const variable of error.variables) invalid.add(variable);
+  }
+
+  // Mail: TLS and credentials from files.
+  const smtpUser = secret('SMTP_USER_FILE');
+  const smtpPassword = secret('SMTP_PASSWORD_FILE');
+  if (production) {
+    if (env.SMTP_SECURE !== 'true' && env.SMTP_SECURE !== 'starttls') invalid.add('SMTP_SECURE');
+    if (valueOf(env, 'SMTP_USER_FILE') === undefined) invalid.add('SMTP_USER_FILE');
+    if (valueOf(env, 'SMTP_PASSWORD_FILE') === undefined) invalid.add('SMTP_PASSWORD_FILE');
+    if (smtpPassword !== undefined && isDevelopmentPassword(smtpPassword)) {
+      invalid.add('SMTP_PASSWORD_FILE');
+    }
+    const appBase = valueOf(env, 'APP_BASE_URL');
+    if (appBase !== undefined && !appBase.startsWith('https://')) invalid.add('APP_BASE_URL');
+  }
+  const smtpAuth: SmtpAuth | undefined =
+    smtpUser !== undefined && smtpPassword !== undefined
+      ? { user: smtpUser, password: smtpPassword }
+      : undefined;
   // The loopback escape hatch of the tests must not even be defined in production.
   if (
     production &&
@@ -162,9 +282,13 @@ export function parseEnv(env: NodeJS.ProcessEnv): WorkerConfig {
   } as const;
   return {
     ...data,
+    ...(databaseUrl === undefined ? {} : { DATABASE_URL: databaseUrl }),
     // The raw key stays out of the config object: only the decoded buffer travels.
     CREDENTIALS_MASTER_KEY: undefined,
-    GEMINI_API_KEY: data.GEMINI_API_KEY === '' ? undefined : data.GEMINI_API_KEY,
+    GEMINI_API_KEY: geminiKey,
+    valkeyAuth,
+    smtpAuth,
+    temporalTls,
     rateLimits: rateLimits.limits,
     llmModels,
     llmPrices: prices.prices,

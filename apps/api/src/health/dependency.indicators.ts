@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
 import { TEMPORAL_CONNECTION } from '../temporal/temporal.module';
+import { valkeyOptions } from '../valkey/valkey-options';
 
 const CHECK_TIMEOUT_MS = 2_000;
 
@@ -28,6 +29,7 @@ export class DependencyIndicators implements OnApplicationShutdown {
     // Background pool errors (e.g. database restart) must not crash the process.
     this.pool.on('error', () => undefined);
     this.valkey = new Valkey(config.VALKEY_URL, {
+      ...valkeyOptions(config.valkeyAuth),
       lazyConnect: true,
       connectTimeout: CHECK_TIMEOUT_MS,
       maxRetriesPerRequest: 1,

@@ -50,24 +50,24 @@ correo y demo cerrada, US9 cierre.
 
 ### Tests
 
-- [ ] T003 [P] [US1] `apps/api/test/integration/trust-proxy.test.ts`: con `TRUSTED_PROXIES` vacío, un `X-Forwarded-For` no cambia la IP vista; con el salto de confianza, la API usa la IP del cliente para el límite de tasa y para el campo `ip` de los eventos de seguridad; un cliente que envía su propio `X-Forwarded-For` no puede falsear su IP (FR-005)
-- [ ] T004 [P] [US2] `apps/api/test/unit/temporal-tls.test.ts` y `apps/worker/test/unit/temporal-tls.test.ts`: las opciones de conexión incluyen CA, certificado de cliente y `serverName` cuando están configurados, y se rechaza una configuración incompleta (FR-008)
-- [ ] T005 [P] [US2] `apps/api/test/unit/env.production.test.ts`: con `NODE_ENV=production` el arranque falla nombrando solo las variables si `DATABASE_URL` no exige TLS verificado, `VALKEY_URL` no es `rediss://`, falta TLS de Temporal, falta `CREDENTIALS_MASTER_KEY`, una contraseña coincide con un valor de desarrollo, `WEB_ORIGIN` o `API_PUBLIC_URL` no son `https://`; ningún mensaje contiene un valor (FR-012)
-- [ ] T006 [P] [US2] Misma prueba en `apps/worker` para su esquema de configuración
-- [ ] T007 [P] [US2] `apps/api/test/integration/valkey-acl.test.ts`: con un usuario de comandos mínimos, los scripts Lua, el límite de tasa, la caché de sesión y el circuit breaker siguen funcionando; `FLUSHALL`, `CONFIG` y `KEYS` fallan; con `maxmemory` lleno y `noeviction` la API falla cerrado (503); fija la lista exacta de comandos que la ACL de T035 debe permitir (FR-010)
-- [ ] T008 [P] [US1] `apps/web/test/api-base-url.test.ts`: con `VITE_API_URL` vacío el cliente usa rutas relativas `/api/v1/...` (incluido el flujo SSE) y con valor lo antepone, de modo que la imagen es independiente del dominio (FR-006)
-- [ ] T009 [P] [US8] `apps/api/test/unit/mail-transport.test.ts`: el transporte SMTP admite usuario, contraseña y TLS; en producción rechaza un servidor sin TLS (FR-030)
-- [ ] T010 [P] [US4] `apps/web/test/demo-notice.test.tsx`: la web muestra el aviso «demo sin copias de seguridad, solo datos de prueba» cuando la configuración de despliegue lo activa
+- [x] T003 [P] [US1] `apps/api/test/integration/trust-proxy.test.ts`: con `TRUSTED_PROXIES` vacío, un `X-Forwarded-For` no cambia la IP vista; con el salto de confianza, la API usa la IP del cliente para el límite de tasa y para el campo `ip` de los eventos de seguridad; un cliente que envía su propio `X-Forwarded-For` no puede falsear su IP (FR-005)
+- [x] T004 [P] [US2] `apps/api/test/unit/temporal-tls.test.ts` y `apps/worker/test/unit/temporal-tls.test.ts`: las opciones de conexión incluyen CA, certificado de cliente y `serverName` cuando están configurados, y se rechaza una configuración incompleta (FR-008)
+- [x] T005 [P] [US2] `apps/api/test/unit/env.production.test.ts`: con `NODE_ENV=production` el arranque falla nombrando solo las variables si `DATABASE_URL` no exige TLS verificado, `VALKEY_URL` no es `rediss://`, falta TLS de Temporal, falta `CREDENTIALS_MASTER_KEY`, una contraseña coincide con un valor de desarrollo, `WEB_ORIGIN` o `API_PUBLIC_URL` no son `https://`; ningún mensaje contiene un valor (FR-012)
+- [x] T006 [P] [US2] Misma prueba en `apps/worker` para su esquema de configuración
+- [x] T007 [P] [US2] `apps/api/test/integration/valkey-acl.test.ts`: con un usuario de comandos mínimos, los scripts Lua, el límite de tasa, la caché de sesión y el circuit breaker siguen funcionando; `FLUSHALL`, `CONFIG` y `KEYS` fallan; con `maxmemory` lleno y `noeviction` la API falla cerrado (503); fija la lista exacta de comandos que la ACL de T035 debe permitir (FR-010)
+- [x] T008 [P] [US1] `apps/web/test/api-base-url.test.ts`: con `VITE_API_URL` vacío el cliente usa rutas relativas `/api/v1/...` (incluido el flujo SSE) y con valor lo antepone, de modo que la imagen es independiente del dominio (FR-006)
+- [x] T009 [P] [US8] `apps/api/test/unit/mail-transport.test.ts`: el transporte SMTP admite usuario, contraseña y TLS; en producción rechaza un servidor sin TLS (FR-030)
+- [x] T010 [P] [US4] `apps/web/test/demo-notice.test.tsx`: la web muestra el aviso «demo sin copias de seguridad, solo datos de prueba» cuando la configuración de despliegue lo activa
 
 ### Implementation
 
-- [ ] T011 [US1] `apps/api`: `trust proxy` con lista cerrada `TRUSTED_PROXIES`, usada por el límite de tasa y los eventos de seguridad
-- [ ] T012 [US2] Opciones TLS del cliente de Temporal en `apps/api` y `apps/worker/src/main.ts` (`Connection.connect`, `NativeConnection.connect`) y variables `TEMPORAL_TLS_*`
-- [ ] T013 [US2] Esquemas Zod de producción de la API y del worker: reglas de arranque, lectura de secretos por `*_FILE`, lista de valores de desarrollo prohibidos (sin imprimirlos), `CREDENTIALS_MASTER_KEY` obligatoria
-- [ ] T014 [US2] Opciones de Valkey y PostgreSQL con CA de confianza (`rediss://`, `sslmode=verify-full`) y credenciales por archivo
-- [ ] T015 [US8] Transporte SMTP con autenticación y TLS (`SMTP_SECURE`, `SMTP_USER_FILE`, `SMTP_PASSWORD_FILE`); sin cambio de comportamiento en desarrollo con Mailpit
-- [ ] T016 [US1] `apps/web`: `VITE_API_URL` vacío por defecto en producción y rutas relativas; `.env.example` actualizado
-- [ ] T017 [US4] `apps/web`: aviso de demo sin copias de seguridad y con datos de prueba
+- [x] T011 [US1] `apps/api`: `trust proxy` con lista cerrada `TRUSTED_PROXIES`, usada por el límite de tasa y los eventos de seguridad
+- [x] T012 [US2] Opciones TLS del cliente de Temporal en `apps/api` y `apps/worker/src/main.ts` (`Connection.connect`, `NativeConnection.connect`) y variables `TEMPORAL_TLS_*`
+- [x] T013 [US2] Esquemas Zod de producción de la API y del worker: reglas de arranque, lectura de secretos por `*_FILE`, lista de valores de desarrollo prohibidos (sin imprimirlos), `CREDENTIALS_MASTER_KEY` obligatoria
+- [x] T014 [US2] Opciones de Valkey y PostgreSQL con CA de confianza (`rediss://`, `sslmode=verify-full`) y credenciales por archivo
+- [x] T015 [US8] Transporte SMTP con autenticación y TLS (`SMTP_SECURE`, `SMTP_USER_FILE`, `SMTP_PASSWORD_FILE`); sin cambio de comportamiento en desarrollo con Mailpit
+- [x] T016 [US1] `apps/web`: `VITE_API_URL` vacío por defecto en producción y rutas relativas; `.env.example` actualizado
+- [x] T017 [US4] `apps/web`: aviso de demo sin copias de seguridad y con datos de prueba
 - ~~T018~~ _(eliminada: D23A elegida; no hay `REGISTRATION_ENABLED`)_
 
 ## Phase 3: Imágenes y publicación (PR 2)

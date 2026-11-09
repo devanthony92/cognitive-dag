@@ -29,6 +29,7 @@ export const TEMPORAL_CLIENT = Symbol('TEMPORAL_CLIENT');
       useFactory: (config: AppConfig) =>
         Connection.lazy({
           address: config.TEMPORAL_ADDRESS,
+          ...(config.temporalTls ? { tls: config.temporalTls } : {}),
           interceptors: [
             makeGrpcRetryInterceptor(defaultGrpcRetryOptions({ maxAttempts: GRPC_RETRY_ATTEMPTS })),
           ],
