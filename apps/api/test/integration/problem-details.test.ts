@@ -37,7 +37,7 @@ function withApp(
   describe(`problem details: ${name} (requires docker compose up)`, () => {
     let app: INestApplication;
     beforeAll(async () => {
-      app = await startTestApp({ FEATURE_FLAGS: '{"ping-enabled":true}', ...overrides });
+      app = await startTestApp({ ...overrides });
     });
     afterAll(async () => {
       await app.close();

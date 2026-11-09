@@ -264,24 +264,3 @@ describe('registration (requires docker compose up and pnpm db:migrate)', () => 
     expect(last).toBe(429);
   });
 });
-
-describe('identity flag off', () => {
-  let app: INestApplication;
-
-  beforeAll(async () => {
-    app = await startIdentityApp('{"ping-enabled":true,"identity-enabled":false}');
-  });
-
-  afterAll(async () => {
-    await app.close();
-  });
-
-  it.each([
-    ['/api/v1/auth/register'],
-    ['/api/v1/auth/verify-email'],
-    ['/api/v1/auth/verify-email/resend'],
-  ])('answers 404 FEATURE_NOT_AVAILABLE on %s', async (path) => {
-    const response = await request(httpServer(app)).post(path).send({}).expect(404);
-    expect(ProblemDetailsSchema.parse(response.body).code).toBe('FEATURE_NOT_AVAILABLE');
-  });
-});

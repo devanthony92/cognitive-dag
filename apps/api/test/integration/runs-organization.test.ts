@@ -1,18 +1,15 @@
-import type { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   OrganizationRunListSchema,
   ProblemDetailsSchema,
   RunSchema,
 } from '@cognitive-dag/contracts';
-import { startTestApp } from './helpers';
 import {
   amountDefinition,
   api,
   chainDefinition,
   closeRunsEnv,
   publishedWorkflow,
-  RUN_FLAGS_WITHOUT_RESILIENCE,
   setupRunsEnv,
   startRun,
   waitForTerminal,
@@ -21,17 +18,12 @@ import {
 
 describe('organization runs (requires docker compose up and pnpm db:migrate)', () => {
   let env: RunsEnv;
-  let withoutResilience: INestApplication;
   let okWorkflow: string;
   let failingWorkflow: string;
   const runIds: { ok: string[]; failed: string[] } = { ok: [], failed: [] };
 
   beforeAll(async () => {
     env = await setupRunsEnv();
-    withoutResilience = await startTestApp({
-      FEATURE_FLAGS: RUN_FLAGS_WITHOUT_RESILIENCE,
-      TEMPORAL_TASK_QUEUE: env.taskQueue,
-    });
     okWorkflow = await publishedWorkflow(env, amountDefinition(0));
     failingWorkflow = await publishedWorkflow(env, chainDefinition(true));
     for (const [workflowId, bucket] of [
@@ -47,7 +39,6 @@ describe('organization runs (requires docker compose up and pnpm db:migrate)', (
 
   afterAll(async () => {
     await closeRunsEnv(env);
-    await withoutResilience.close();
   });
 
   const list = (query = '', session = env.owner, organizationId = env.organization.id) =>
@@ -121,13 +112,5 @@ describe('organization runs (requires docker compose up and pnpm db:migrate)', (
 
   it('any role may read it', async () => {
     await list('', env.viewer).expect(200);
-  });
-
-  it('404 FEATURE_NOT_AVAILABLE with resilience-enabled off', async () => {
-    const response = await api({ app: withoutResilience })
-      .get(`/api/v1/organizations/${env.organization.id}/runs`)
-      .set('Cookie', env.owner.cookie)
-      .expect(404);
-    expect(ProblemDetailsSchema.parse(response.body).code).toBe('FEATURE_NOT_AVAILABLE');
   });
 });

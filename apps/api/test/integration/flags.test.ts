@@ -1,9 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ProblemDetailsSchema, PublicFeaturesSchema } from '@cognitive-dag/contracts';
-import { httpServer } from './helpers';
-import { startPingApi, uniqueTaskQueue } from './ping-helpers';
+import { PublicFeaturesSchema } from '@cognitive-dag/contracts';
+import { FlagsService } from '../../src/flags/flags.service';
+import { httpServer, startTestApp } from './helpers';
 
 describe('feature flags (requires docker compose up)', () => {
   let app: INestApplication | undefined;
@@ -14,56 +14,29 @@ describe('feature flags (requires docker compose up)', () => {
   });
 
   async function appWith(flags: string): Promise<INestApplication> {
-    app = await startPingApi(uniqueTaskQueue(), flags);
+    app = await startTestApp({ FEATURE_FLAGS: flags });
     return app;
   }
 
-  it('answers 404 FEATURE_NOT_AVAILABLE when ping-enabled is false', async () => {
-    const api = await appWith('{"ping-enabled":false}');
-    const response = await request(httpServer(api)).post('/api/v1/pings').expect(404);
-    expect(ProblemDetailsSchema.parse(response.body).code).toBe('FEATURE_NOT_AVAILABLE');
-    expect(response.headers['content-type']).toContain('application/problem+json');
-    expect(response.headers['x-correlation-id']).toBeDefined();
-  });
-
-  it('accepts the ping when ping-enabled is true', async () => {
-    const api = await appWith('{"ping-enabled":true}');
-    await request(httpServer(api)).post('/api/v1/pings').expect(202);
-  });
-
   it.each([
+    ['an empty object', '{}'],
     ['malformed JSON', '{not json'],
-    ['wrong value type', '{"ping-enabled":"yes"}'],
-    ['flag missing', '{"other-flag":true}'],
-    ['empty object', '{}'],
-  ])('evaluates to false with %s', async (_name, flags) => {
+    ['a wrong value type', '{"some-flag":"yes"}'],
+    ['a flag outside the catalog', '{"internal-secret-flag":true}'],
+  ])('exposes an empty catalog in /api/v1/features with %s', async (_name, flags) => {
     const api = await appWith(flags);
-    await request(httpServer(api)).post('/api/v1/pings').expect(404);
-    const features = await request(httpServer(api)).get('/api/v1/features').expect(200);
-    expect(PublicFeaturesSchema.parse(features.body)).toEqual({
-      'ping-enabled': false,
-      'identity-enabled': false,
-      'dag-editor-enabled': false,
-      'execution-enabled': false,
-      'resilience-enabled': false,
-      'llm-nodes-enabled': false,
-      'nl-compiler-enabled': false,
-      'triggers-enabled': false,
-    });
+    const response = await request(httpServer(api)).get('/api/v1/features').expect(200);
+    expect(PublicFeaturesSchema.parse(response.body)).toEqual({});
   });
 
-  it('exposes only public flags in /api/v1/features', async () => {
-    const api = await appWith('{"ping-enabled":true,"internal-secret-flag":true}');
-    const response = await request(httpServer(api)).get('/api/v1/features').expect(200);
-    expect(response.body).toEqual({
-      'ping-enabled': true,
-      'identity-enabled': false,
-      'dag-editor-enabled': false,
-      'execution-enabled': false,
-      'resilience-enabled': false,
-      'llm-nodes-enabled': false,
-      'nl-compiler-enabled': false,
-      'triggers-enabled': false,
-    });
+  it('evaluates an unknown flag as off', async () => {
+    const api = await appWith('{}');
+    await expect(api.get(FlagsService).isEnabled('no-such-flag')).resolves.toBe(false);
+  });
+
+  it('keeps the product routes open without any flag', async () => {
+    const api = await appWith('{}');
+    const response = await request(httpServer(api)).get('/api/v1/auth/session');
+    expect(response.status).not.toBe(404);
   });
 });

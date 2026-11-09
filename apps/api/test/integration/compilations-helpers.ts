@@ -8,10 +8,7 @@ import { testConfig } from './helpers';
 import { waitFor } from './ping-helpers';
 import { RUN_FLAGS, api, closeRunsEnv, setupRunsEnv, type RunsEnv } from './runs-helpers';
 
-/** Every flag of F3-F5 plus the compiler. */
-export const COMPILER_FLAGS = RUN_FLAGS.replace(/}$/, ',"nl-compiler-enabled":true}');
-export const COMPILER_FLAGS_WITHOUT_LLM = COMPILER_FLAGS.replace(',"llm-nodes-enabled":true', '');
-export const COMPILER_FLAGS_OFF = COMPILER_FLAGS.replace(',"nl-compiler-enabled":true', '');
+export const COMPILER_FLAGS = RUN_FLAGS;
 
 export const compilationsPath = (organizationId: string) =>
   `/api/v1/organizations/${organizationId}/compilations`;

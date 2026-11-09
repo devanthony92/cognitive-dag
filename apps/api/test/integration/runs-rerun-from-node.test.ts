@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import {
   ProblemDetailsSchema,
@@ -9,7 +8,6 @@ import {
 } from '@cognitive-dag/contracts';
 import { sql } from '@cognitive-dag/db';
 import { authHeaders } from './identity-helpers';
-import { startTestApp } from './helpers';
 import { SecurityEventLogger } from '../../src/security-events/security-event.logger';
 import { publish, saveDraft } from './workflows-helpers';
 import {
@@ -17,7 +15,6 @@ import {
   chainDefinition,
   closeRunsEnv,
   publishedWorkflow,
-  RUN_FLAGS_WITHOUT_RESILIENCE,
   runPath,
   setupRunsEnv,
   slowDefinition,
@@ -29,21 +26,13 @@ import {
 
 describe('rerun from a node (requires docker compose up and pnpm db:migrate)', () => {
   let env: RunsEnv;
-  // Same database and task queue, F4 recovery off. It lives as long as the main app because
-  // closing an app tears down the shared CLS hooks of the others.
-  let withoutResilience: INestApplication;
 
   beforeAll(async () => {
     env = await setupRunsEnv();
-    withoutResilience = await startTestApp({
-      FEATURE_FLAGS: RUN_FLAGS_WITHOUT_RESILIENCE,
-      TEMPORAL_TASK_QUEUE: env.taskQueue,
-    });
   });
 
   afterAll(async () => {
     await closeRunsEnv(env);
-    await withoutResilience.close();
   });
 
   const rerunFrom = (
@@ -183,18 +172,5 @@ describe('rerun from a node (requires docker compose up and pnpm db:migrate)', (
     const { run } = await finishedChain(false);
     await rerunFrom(run.id, 'c', env.outsider).expect(404);
     await rerunFrom('018f0000-0000-7000-8000-000000000000', 'c').expect(404);
-  });
-
-  it('404 FEATURE_NOT_AVAILABLE for fromNodeId with resilience-enabled off; a plain rerun works', async () => {
-    const { run } = await finishedChain(false);
-    const blocked = await rerunFrom(run.id, 'c', env.owner, env.organization.id, {
-      app: withoutResilience,
-    }).expect(404);
-    expect(ProblemDetailsSchema.parse(blocked.body).code).toBe('FEATURE_NOT_AVAILABLE');
-
-    await api({ app: withoutResilience })
-      .post(`${runPath(env.organization.id, run.id)}/rerun`)
-      .set(authHeaders(env.owner))
-      .expect(202);
   });
 });

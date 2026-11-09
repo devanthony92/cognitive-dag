@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
@@ -8,16 +7,7 @@ import {
   WorkflowSummarySchema,
   type WorkflowSummary,
 } from '@cognitive-dag/contracts';
-import { httpServer } from './helpers';
-import {
-  authHeaders,
-  createVerifiedUser,
-  loginAs,
-  openDatabase,
-  resetRateLimits,
-  startIdentityApp,
-} from './identity-helpers';
-import { uniqueTaskQueue } from './ping-helpers';
+import { authHeaders, resetRateLimits } from './identity-helpers';
 import {
   api,
   closeWorkflowsEnv,
@@ -243,55 +233,4 @@ describe('workflows (requires docker compose up and pnpm db:migrate)', () => {
       );
     });
   });
-});
-
-describe('workflows behind dag-editor-enabled', () => {
-  const apps: INestApplication[] = [];
-
-  afterAll(async () => {
-    await Promise.all(apps.map((app) => app.close()));
-  });
-
-  it.each([
-    ['flag false', '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":false}'],
-    ['flag missing', '{"ping-enabled":true,"identity-enabled":true}'],
-  ])(
-    'answers 404 FEATURE_NOT_AVAILABLE with %s, even with a valid session',
-    async (_label, flags) => {
-      const app = await startIdentityApp(flags, { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() });
-      apps.push(app);
-      const database = openDatabase();
-      try {
-        const user = await createVerifiedUser(app, database, 'flag-off');
-        const session = await loginAs(app, user);
-        const organizationId = session.body.organizations[0]!.id;
-        const server = httpServer(app);
-        const path = workflowsPath(organizationId);
-        const calls = [
-          // Built one at a time: each supertest request opens its own listener.
-          () => request(server).get(path).set('Cookie', session.cookie),
-          () => request(server).post(path).set(authHeaders(session)).send({ name: 'x' }),
-          () => request(server).get(`${path}/${randomUUID()}`).set('Cookie', session.cookie),
-          () =>
-            request(server)
-              .put(`${path}/${randomUUID()}/draft`)
-              .set(authHeaders(session))
-              .set('If-Match', '"1"')
-              .send({ definition: {} }),
-          () =>
-            request(server)
-              .post(`${path}/${randomUUID()}/versions`)
-              .set(authHeaders(session))
-              .set('If-Match', '"1"'),
-          () =>
-            request(server)
-              .get(`/api/v1/organizations/${organizationId}/limits`)
-              .set('Cookie', session.cookie),
-        ];
-        for (const call of calls) await expectProblem(call(), 404, 'FEATURE_NOT_AVAILABLE');
-      } finally {
-        await database.end();
-      }
-    },
-  );
 });
