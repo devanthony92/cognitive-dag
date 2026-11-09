@@ -30,3 +30,6 @@ Thumbs.db
 
 # ZAP: the HTML report is regenerated on demand (the JSON and Markdown are the evidence)
 docs/security/zap/*.html
+
+# Scratch home of the tool containers in scripts/ci/publish-image.sh
+.tool-home/

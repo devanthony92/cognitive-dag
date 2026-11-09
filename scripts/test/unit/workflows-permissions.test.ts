@@ -209,3 +209,18 @@ describe('every workflow', () => {
     expect(topPermissions(read(file)).length, file).toBeGreaterThan(0);
   });
 });
+
+describe('publish-image.sh containers', () => {
+  const script = readFileSync(resolve(ROOT, 'scripts/ci/publish-image.sh'), 'utf8');
+  const runs = script.split(/\r?\n/).filter((line) => /\bdocker run\b/.test(line));
+
+  it('runs every tool container as the runner user (crane defaults to uid 65532)', () => {
+    expect(runs.length).toBeGreaterThan(0);
+    for (const line of runs) expect(line, line).toMatch(/--user\s+"\$\(id -u\):\$\(id -g\)"/);
+  });
+
+  it('starts containers only through the run helper and gives them a writable HOME', () => {
+    expect(runs).toHaveLength(1);
+    expect(script).toMatch(/-e HOME=\/work\//);
+  });
+});
