@@ -171,9 +171,66 @@ describe('Dockerfiles', () => {
     }
   });
 
-  it('builds the edge image on the official Caddy image pinned by digest', () => {
+  describe('edge image builds Caddy from source with the fixed dependencies (ADR-0090)', () => {
     const stages = parse('apps/web/Dockerfile');
-    expect(stages.some((stage) => /^caddy:\S+@sha256:[0-9a-f]{64}$/.test(stage.image))).toBe(true);
+    const goMod = read('deploy/caddy/build/go.mod');
+    const versionOf = (module: string): number[] => {
+      const line = goMod
+        .split(/\r?\n/)
+        .map((entry) => entry.trim().replace(/^require\s+/, ''))
+        .find((entry) => entry.startsWith(`${module} v`));
+      const match = /\sv(\d+)\.(\d+)\.(\d+)/.exec(line ?? '');
+      return match ? match.slice(1).map(Number) : [];
+    };
+    const atLeast = (found: number[], minimum: number[]): boolean => {
+      if (found.length !== 3) return false;
+      for (let i = 0; i < 3; i += 1) {
+        if (found[i] !== minimum[i]) return (found[i] ?? 0) > (minimum[i] ?? 0);
+      }
+      return true;
+    };
+
+    it('copies no binary from a caddy:* image', () => {
+      const text = read('apps/web/Dockerfile');
+      expect(text).not.toMatch(/^\s*(ARG|FROM)\s+[^\n]*\bcaddy:/m);
+      expect(text).not.toMatch(/CADDY_IMAGE/);
+      for (const stage of stages) expect(stage.image).not.toMatch(/(^|\/)caddy:/);
+    });
+
+    it('compiles Caddy in an official Go (Debian) stage pinned by digest', () => {
+      const go = stages.find((stage) =>
+        /^golang:\S+-bookworm@sha256:[0-9a-f]{64}$/.test(stage.image),
+      );
+      expect(go, 'a golang:*-bookworm stage pinned by digest').toBeDefined();
+      const build = (go?.lines ?? []).join('\n');
+      expect(build).toContain('CGO_ENABLED=0');
+      expect(build).toContain('-trimpath');
+      expect(build).toMatch(/-ldflags\s+"-s -w"/);
+      expect(build).toContain('GOARCH=${TARGETARCH}');
+      expect(build).toContain('-mod=readonly');
+      expect(go?.copies.join('\n')).toContain('deploy/caddy/build');
+    });
+
+    it('copies the compiled binary into the final image', () => {
+      const final = stages.at(-1);
+      expect(final?.copies.join('\n')).toMatch(/--from=\S+\s+\S*caddy\s+\/usr\/bin\/caddy/);
+    });
+
+    it('pins Caddy and raises the dependencies above the vulnerable versions', () => {
+      expect(atLeast(versionOf('github.com/caddyserver/caddy/v2'), [2, 11, 9])).toBe(true);
+      // GO-2026-6860 is fixed in x/net 0.62.0 and GO-2026-6865 in klauspost/compress 1.20.2.
+      expect(atLeast(versionOf('golang.org/x/net'), [0, 62, 0])).toBe(true);
+      expect(atLeast(versionOf('github.com/klauspost/compress'), [1, 20, 2])).toBe(true);
+    });
+
+    it('versions go.sum next to go.mod so the build is reproducible', () => {
+      expect(existsSync(resolve(ROOT, 'deploy/caddy/build/go.sum'))).toBe(true);
+      expect(read('deploy/caddy/build/main.go')).toContain('modules/standard');
+    });
+
+    it('needs no scan exception any more', () => {
+      expect(JSON.parse(read('.github/image-scan-exceptions.json'))).toEqual([]);
+    });
   });
 });
 

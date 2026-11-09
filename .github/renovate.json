@@ -31,6 +31,11 @@
       "matchManagers": ["dockerfile", "docker-compose"]
     },
     {
+      "groupName": "Caddy build",
+      "description": "Go modules of the edge image build (deploy/caddy/build, ADR-0090)",
+      "matchManagers": ["gomod"]
+    },
+    {
       "description": "NestJS 12 is blocked until nestjs-zod and @openfeature/nestjs-sdk support it (ADR-0013, issue #10)",
       "matchPackageNames": ["@nestjs/**"],
       "allowedVersions": "<12"
@@ -40,5 +45,6 @@
       "matchPackageNames": ["typescript"],
       "allowedVersions": "<6.1"
     }
-  ]
+  ],
+  "postUpdateOptions": ["gomodTidy"]
 }
