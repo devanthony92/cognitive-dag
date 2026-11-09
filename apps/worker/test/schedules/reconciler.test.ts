@@ -9,11 +9,13 @@ import { createLogger } from '@cognitive-dag/logger';
 import { parseEnv } from '../../src/config/env.schema';
 import { loadLocalEnv } from '../../src/config/load-env';
 import {
+  MAX_SYNC_ATTEMPTS,
   buildScheduleOptions,
   createScheduleReconciler,
   type ScheduleReconciler,
 } from '../../src/schedules/reconciler';
 import { seedRun, type SeededRun } from '../integration/support/seed';
+import { captureLogger } from '../support/logs';
 
 loadLocalEnv();
 const config = parseEnv(process.env);
@@ -293,5 +295,115 @@ describe('schedule reconciler (requires docker compose up)', () => {
     }
     expect(actions).toBe(1);
     await handle.delete();
+  });
+
+  describe('attempt cap', () => {
+    /** A client whose Temporal never answers; `creates` counts the tries per schedule id. */
+    function unavailable() {
+      const creates: string[] = [];
+      const client = {
+        schedule: new Proxy(env.client.schedule, {
+          get(target, property, receiver) {
+            if (property === 'create') {
+              return (options: { scheduleId: string }) => {
+                creates.push(options.scheduleId);
+                return Promise.reject(new Error('Temporal unavailable'));
+              };
+            }
+            if (property === 'getHandle') {
+              return (id: string) => ({
+                ...target.getHandle(id),
+                update: () => Promise.reject(new ScheduleNotFoundError('x', id)),
+              });
+            }
+            return Reflect.get(target, property, receiver) as unknown;
+          },
+        }),
+      };
+      return { client, creates };
+    }
+
+    const setAttempts = (run: SeededRun, attempts: number) =>
+      inOrg(run, (client) =>
+        client.query(
+          `UPDATE workflow_schedules
+              SET sync_status = 'failed', last_error_code = 'SCHEDULE_SYNC_FAILED', sync_attempts = $2
+            WHERE workflow_id = $1`,
+          [run.workflowId, attempts],
+        ),
+      );
+
+    it('stops retrying after 20 consecutive failures, keeps the row failed and says so once', async () => {
+      expect(MAX_SYNC_ATTEMPTS).toBe(20);
+      const run = await schedule();
+      await setAttempts(run, MAX_SYNC_ATTEMPTS - 1);
+      const captured = captureLogger();
+      const { client, creates } = unavailable();
+      const flaky = build({ client, logger: captured.logger });
+      const mine = () =>
+        captured
+          .events('schedule.sync_failed')
+          .filter((line) => line.workflowId === run.workflowId);
+      const tries = () => creates.filter((id) => id === scheduleIdFor(run.workflowId)).length;
+
+      await flaky.reconcileOnce();
+      expect(tries()).toBe(1);
+      expect(await rowOf(run)).toMatchObject({
+        sync_status: 'failed',
+        last_error_code: 'SCHEDULE_SYNC_FAILED',
+        sync_attempts: MAX_SYNC_ATTEMPTS,
+      });
+      expect(mine()).toHaveLength(1);
+      expect(mine()[0]).toMatchObject({
+        event: 'schedule.sync_failed',
+        organizationId: run.organizationId,
+        attempts: MAX_SYNC_ATTEMPTS,
+        errorCode: 'SCHEDULE_SYNC_FAILED',
+      });
+
+      await flaky.reconcileOnce();
+      await flaky.reconcileOnce();
+      expect(tries()).toBe(1);
+      expect(await rowOf(run)).toMatchObject({
+        sync_status: 'failed',
+        last_error_code: 'SCHEDULE_SYNC_FAILED',
+        sync_attempts: MAX_SYNC_ATTEMPTS,
+      });
+      expect(mine()).toHaveLength(1);
+    });
+
+    it('keeps retrying below the cap and emits nothing yet', async () => {
+      const run = await schedule();
+      await setAttempts(run, MAX_SYNC_ATTEMPTS - 2);
+      const captured = captureLogger();
+      const { client, creates } = unavailable();
+      const flaky = build({ client, logger: captured.logger });
+      await flaky.reconcileOnce();
+      expect(await rowOf(run)).toMatchObject({ sync_attempts: MAX_SYNC_ATTEMPTS - 1 });
+      expect(
+        captured.events('schedule.sync_failed').filter((l) => l.workflowId === run.workflowId),
+      ).toHaveLength(0);
+      expect(creates).toContain(scheduleIdFor(run.workflowId));
+    });
+
+    it('a change of the active version or of the configuration restarts the attempts', async () => {
+      const run = await schedule();
+      await setAttempts(run, MAX_SYNC_ATTEMPTS);
+      const { client, creates } = unavailable();
+      await build({ client }).reconcileOnce();
+      expect(creates).not.toContain(scheduleIdFor(run.workflowId));
+      // What the API writes when the active version changes the schedule (SchedulesService.sync).
+      await inOrg(run, (c) =>
+        c.query(
+          `UPDATE workflow_schedules
+              SET sync_status = 'pending', sync_attempts = 0, last_error_code = NULL
+            WHERE workflow_id = $1`,
+          [run.workflowId],
+        ),
+      );
+      await reconcile();
+      expect(await rowOf(run)).toMatchObject({ sync_status: 'synced', sync_attempts: 0 });
+      await env.client.schedule.getHandle(scheduleIdFor(run.workflowId)).delete();
+    });
   });
 });

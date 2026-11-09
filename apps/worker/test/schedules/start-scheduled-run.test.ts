@@ -54,6 +54,7 @@ describe('startScheduledRun (requires docker compose up)', () => {
   let database: DatabaseClient;
   let pool: pg.Pool;
   const warnings: Array<Record<string, unknown>> = [];
+  const infos: Array<Record<string, unknown>> = [];
 
   beforeAll(() => {
     database = createDatabase({ connectionString: config.DATABASE_URL, max: 4 });
@@ -71,6 +72,7 @@ describe('startScheduledRun (requires docker compose up)', () => {
       ...base,
       child: () => wrapped,
       warn: (fields: Record<string, unknown>) => warnings.push(fields),
+      info: (fields: Record<string, unknown>) => infos.push(fields),
     };
     return wrapped as unknown as Logger;
   };
@@ -173,6 +175,50 @@ describe('startScheduledRun (requires docker compose up)', () => {
     // The duration and the hard timeout grow with the deadline of the approval (2 h).
     expect(result.input.maxDurationMs).toBe(30 * 60 * 1000 + 7_200_000);
     expect(result.executionTimeoutSeconds).toBe(30 * 60 + 7200 + 60);
+  });
+
+  describe('schedule.caught_up', () => {
+    const caughtUp = () => infos.filter((fields) => fields['event'] === 'schedule.caught_up');
+    const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+
+    it('is emitted when the firing arrives more than 60 s late, without content', async () => {
+      const run = await seedRun(pool, SCHEDULED);
+      await activate(run);
+      infos.length = 0;
+      const input = { ...inputOf(run), scheduledAt: ago(5 * 60_000) };
+      const result = await activities().startScheduledRun(input);
+      expect(result.status).toBe('started');
+      expect(caughtUp()).toHaveLength(1);
+      expect(caughtUp()[0]).toMatchObject({
+        event: 'schedule.caught_up',
+        organizationId: run.organizationId,
+        workflowId: run.workflowId,
+        correlationId: input.correlationId,
+      });
+      expect(caughtUp()[0]!['lagSeconds']).toBeGreaterThanOrEqual(299);
+      expect(Object.keys(caughtUp()[0]!).sort()).toEqual(
+        ['correlationId', 'event', 'lagSeconds', 'organizationId', 'runId', 'workflowId'].sort(),
+      );
+    });
+
+    it('is not emitted for a firing on time (within 60 s)', async () => {
+      const run = await seedRun(pool, SCHEDULED);
+      await activate(run);
+      infos.length = 0;
+      await activities().startScheduledRun({ ...inputOf(run), scheduledAt: ago(30_000) });
+      expect(caughtUp()).toHaveLength(0);
+    });
+
+    it('is not emitted when the firing is skipped', async () => {
+      const run = await seedRun(pool, SCHEDULED);
+      infos.length = 0;
+      const result = await activities().startScheduledRun({
+        ...inputOf(run),
+        scheduledAt: ago(10 * 60_000),
+      });
+      expect(result.status).toBe('skipped');
+      expect(caughtUp()).toHaveLength(0);
+    });
   });
 
   it('adds F5 only when the LLM is on', async () => {

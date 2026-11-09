@@ -19,6 +19,7 @@ import {
 } from '../resilience/attempts';
 import { idempotencyKeyFor, type EffectStore } from '../resilience/effects';
 import type { RateLimiter } from '../resilience/rate-limiter';
+import type { WorkerSecurityEvent } from '../logging/security-events';
 import type { CircuitBreaker } from './circuit-breaker';
 import type { CredentialHeader, CredentialResolver } from './credentials';
 
@@ -304,10 +305,16 @@ export function createHttpActivities(options: HttpActivityOptions): HttpActiviti
         try {
           if (countsAsBreakerFailure(outcome)) {
             const { opened } = await options.breaker.failure(organizationId, host, probe);
-            if (opened) log.warn({ event: 'circuit.opened', host }, 'Circuit opened');
+            if (opened) {
+              log.warn({ event: 'circuit.opened', host, organizationId }, 'Circuit opened');
+            }
           } else if (!(result instanceof ConnectorError)) {
             // An answer, even a 4xx, shows the destination is up: it closes a half-open circuit.
-            await options.breaker.success(organizationId, host, probe);
+            const { closed } = await options.breaker.success(organizationId, host, probe);
+            if (closed) {
+              const name: WorkerSecurityEvent = 'circuit.closed';
+              log.info({ event: name, host, organizationId }, 'Circuit closed');
+            }
           }
         } catch (error) {
           // The call already happened; a lost report only delays the breaker.

@@ -19,6 +19,7 @@ import {
   type StepStatus,
 } from '@cognitive-dag/contracts';
 import type { Logger } from '@cognitive-dag/logger';
+import type { WorkerSecurityEvent } from '../logging/security-events';
 
 export interface RunEventActivities {
   recordRunEvent(event: RunEvent): Promise<void>;
@@ -127,8 +128,8 @@ async function approvalRequested(
 async function approvalResolved(
   tx: Tx,
   event: Extract<RunEvent, { transition: 'approval.resolved' }>,
-): Promise<void> {
-  await tx
+): Promise<boolean> {
+  const closed = await tx
     .update(approvals)
     .set({
       status: event.outcome,
@@ -142,7 +143,9 @@ async function approvalResolved(
         eq(approvals.nodeId, event.nodeId),
         eq(approvals.status, 'pending'),
       ),
-    );
+    )
+    .returning({ id: approvals.id });
+  return closed.length > 0;
 }
 
 async function runFinished(
@@ -269,6 +272,7 @@ export function createRunEventActivities(options: RunEventActivityOptions): RunE
         transition: event.transition,
       });
 
+      let timedOutNode: string | undefined;
       await options.withContext({ organizationId: event.organizationId }, async (tx) => {
         switch (event.transition) {
           case 'run.started':
@@ -278,12 +282,23 @@ export function createRunEventActivities(options: RunEventActivityOptions): RunE
           case 'approval.requested':
             return approvalRequested(tx, event);
           case 'approval.resolved':
-            return approvalResolved(tx, event);
+            // Only the write that closes the request counts: a repeat or a late event does not.
+            if ((await approvalResolved(tx, event)) && event.outcome === 'timed_out') {
+              timedOutNode = event.nodeId;
+            }
+            return;
           default:
             return stepChanged(tx, event);
         }
       });
       log.info('Run event recorded');
+      if (timedOutNode !== undefined) {
+        const name: WorkerSecurityEvent = 'approval.timed_out';
+        log.warn(
+          { event: name, organizationId: event.organizationId, nodeId: timedOutNode },
+          'Approval request timed out',
+        );
+      }
 
       try {
         await options.publish(runChannel(event.runId), JSON.stringify(liveEventFor(event)));
