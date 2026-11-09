@@ -3,7 +3,7 @@
 **Branch**: `010-deployment` | **Date**: 2026-11-09 | **Spec**: [spec.md](./spec.md)
 
 > Escrito con las respuestas del autor del 2026-11-09 (`1B 2C 3C 4B 5 sin backup, 6A 7A 8A 9C 10A 11C 12A 13C
-> 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`). Queda abierta **D23** (cierre del registro de la demo).
+> 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`). D23 respondida: **A**.
 > Nada de esto se despliega en la tarea de especificación.
 
 ## Summary
@@ -64,7 +64,7 @@ producción.
 | V. Errores             | Los errores de arranque nombran variables sin valores; no se añaden respuestas de error nuevas                                                                                                         | PASS           |
 | VI. Correlation-ID     | Caddy reenvía `X-Correlation-Id` sin generar otro y lo registra; los registros lo conservan                                                                                                            | PASS           |
 | VII. Desviaciones      | ADR-0089 a ADR-0098; el PLAN se corrige donde exigía backups, restauración y métricas                                                                                                                  | PASS (con ADR) |
-| VIII. Flags            | Sin flags nuevos; los kill switches `LLM_ENABLED`, `TRIGGERS_ENABLED`, `HTTP_ENABLED` se documentan; si D23B, `REGISTRATION_ENABLED` es un kill switch de operación; migraciones expand/contract       | PASS           |
+| VIII. Flags            | Sin flags nuevos; los kill switches `LLM_ENABLED`, `TRIGGERS_ENABLED`, `HTTP_ENABLED` se documentan; migraciones expand/contract       | PASS           |
 | IX. Idioma             | Documentos y guía de operación en español; scripts, variables y commits en inglés                                                                                                                      | PASS           |
 | Restricciones técnicas | Debian `bookworm-slim`, multi-arch con runner arm64 nativo, aprovisionamiento por script. **Desviación:** «backups fuera de la VM» (Constitución, restricciones técnicas) no se cumple por D5; ADR-0094 | PASS (con ADR) |
 
@@ -109,10 +109,10 @@ prueba. Las columnas «Prerrequisitos» son del autor.
 
 | PR  | Contenido                                                                                                                                                                                                                       | Depende de | Prerrequisitos del autor |
 | --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------ |
-| 1   | **Aplicación lista para producción** (Sonnet): `trust proxy`, TLS de Temporal, SMTP con auth y TLS, URL de API relativa, validación de producción al arrancar, ACL de Valkey probada, aviso de demo sin copias; T003–T018      | `main`     | ninguno                  |
+| 1   | **Aplicación lista para producción** (Sonnet): `trust proxy`, TLS de Temporal, SMTP con auth y TLS, URL de API relativa, validación de producción al arrancar, ACL de Valkey probada, aviso de demo sin copias; T003–T017      | `main`     | ninguno                  |
 | 2   | **Imágenes y publicación** (Sonnet): Dockerfiles de borde y `migrator`, `release.yml` hacia OCIR con escaneo y SBOM, `shellcheck` en `quality`; ADR-0089, 0090 y 0096; T019–T027                                              | PR 1       | P7, P9                   |
 | 3   | **Compose de producción y seguridad de datos** (Sonnet): Caddy, PKI, Temporal mTLS con PostgreSQL, PostgreSQL y Valkey con TLS y ACL, límites de memoria, pruebas de contrato y de integración, ZAP contra la imagen de borde en local; ADR-0091 y 0092; T028–T038 | PR 1, PR 2 | ninguno (local y CI)     |
-| 4   | **Aprovisionamiento, secretos, despliegue, reversa y alertas** (Sonnet; Haiku para docs): `provision.sh`, OCI Vault, `deploy.yml` con reversa automática, comprobación de cabeceras, alertas por script, SPF/DKIM/DMARC, cierre del registro; ADR-0093 a 0095; T039–T055 | PR 3       | P1, P2, P5, P6, P7, P8, P10 |
+| 4   | **Aprovisionamiento, secretos, despliegue, reversa y alertas** (Sonnet; Haiku para docs): `provision.sh`, OCI Vault, `deploy.yml` con reversa automática, comprobación de cabeceras, alertas por script, SPF/DKIM/DMARC, cierre del registro; ADR-0093 a 0095; T039–T055 | PR 3       | P1, P2, P5, P6, P7, P8 |
 | 5   | **Cierre** (Sonnet para modelo y matriz; Haiku para PLAN, README, ADR y `tasks.md`): modelo de amenazas v3.0, matriz, tratamiento de issues, PLAN §7, §9 y §10; ADR-0097 y 0098; T056–T063                                      | PR 4       | —                        |
 
 **Hito de PR 4:** primer despliegue real. **Hito de PR 5:** demo cerrada con TLS y cierre de ADR-0088.

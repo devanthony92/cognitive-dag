@@ -34,8 +34,7 @@
 - Como en F8, la spec nombra elementos concretos (Caddy, Temporal, PostgreSQL, Valkey, ZAP) porque son el
   objeto de la fase y vienen de `docs/PLAN.md` §9 y de ADR-0088.
 - Las decisiones D1 a D22 las respondió el autor el 2026-11-09 y constan en la sección «Decisiones del autor»
-  de la spec y en `research.md`. Queda abierta **D23** (cierre del registro de la demo); T018 y T051 la
-  esperan y están escritas sobre la recomendación.
+  de la spec y en `research.md`. D23 respondida: A (Caddy 404 a `register`, T051).
 - Los prerrequisitos P1, P2 y P5 a P10 dependen del autor (cuenta de Oracle, dominio, correo, alertas,
-  entorno de GitHub, Vault, registro y D23); P3 y P4 se retiraron por D5 y D13C. Esta fase no los crea.
+  entorno de GitHub, Vault y registro); P3 y P4 se retiraron por D5 y D13C. Esta fase no los crea.
 - Las cifras de planes gratuitos de terceros están marcadas **(verificar)** y la tarea T002 las confirma.

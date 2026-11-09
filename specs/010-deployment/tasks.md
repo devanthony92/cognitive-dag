@@ -6,8 +6,8 @@ description: "Task list for F9 — Despliegue"
 # Tasks: Despliegue (F9)
 
 > **Cerrada con las respuestas del autor del 2026-11-09** (`1B 2C 3C 4B 5 sin backup, 6A 7A 8A 9C 10A 11C 12A
-> 13C 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`). Queda una pregunta abierta, **D23** (cierre del
-> registro de la demo): las tareas T018 y T051 dependen de ella y están escritas sobre la recomendación (A).
+> 13C 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`). D23 respondida: **A** (Caddy responde 404 a
+> `register`; T018 eliminada, T051 vigente).
 > Nada se despliega en la tarea de especificación.
 
 **Input**: `/specs/010-deployment/` (spec, plan, research, data-model sin cambio de esquema, contracts,
@@ -43,7 +43,7 @@ correo y demo cerrada, US9 cierre.
 
 ## Phase 1: Setup
 
-- [ ] T001 (autor) Responder D23 y entregar los prerrequisitos P1, P2, P5 a P10 de la spec; anotar en esta lista cuál ya está listo
+- [ ] T001 (autor) Entregar los prerrequisitos P1, P2, P5 a P9 de la spec; anotar en esta lista cuál ya está listo
 - [ ] T002 [P] Confirmar contra la fuente oficial, y anotar fecha y URL en `research.md`, cada cifra marcada **(verificar)**: capa gratuita de Oracle (OCIR, Vault, Email Delivery, política de instancias inactivas, capacidad A1) y condiciones de datos de la capa gratuita de Gemini
 
 ## Phase 2: Aplicación lista para producción (PR 1)
@@ -68,7 +68,7 @@ correo y demo cerrada, US9 cierre.
 - [ ] T015 [US8] Transporte SMTP con autenticación y TLS (`SMTP_SECURE`, `SMTP_USER_FILE`, `SMTP_PASSWORD_FILE`); sin cambio de comportamiento en desarrollo con Mailpit
 - [ ] T016 [US1] `apps/web`: `VITE_API_URL` vacío por defecto en producción y rutas relativas; `.env.example` actualizado
 - [ ] T017 [US4] `apps/web`: aviso de demo sin copias de seguridad y con datos de prueba
-- [ ] T018 [US8] **[D23B, solo si el autor lo elige]** `REGISTRATION_ENABLED` en la API (kill switch de operación, no flag de producto) con prueba primero; con D23A esta tarea se elimina
+- ~~T018~~ _(eliminada: D23A elegida; no hay `REGISTRATION_ENABLED`)_
 
 ## Phase 3: Imágenes y publicación (PR 2)
 
@@ -151,8 +151,8 @@ correo y demo cerrada, US9 cierre.
 
 ## Implementation Strategy
 
-1. **PR 1 — Aplicación lista para producción** (Sonnet): T003–T018. Parte de `main`. Sin prerrequisitos del
-   autor; T018 solo si D23B.
+1. **PR 1 — Aplicación lista para producción** (Sonnet): T003–T017. Parte de `main`. Sin prerrequisitos del
+   autor.
 2. **PR 2 — Imágenes y publicación** (Sonnet): T019–T027. Depende de PR 1 (variables y arranque). T023 necesita
    P7 y P9.
 3. **PR 3 — Compose de producción y seguridad de datos** (Sonnet): T028–T038. Depende de PR 1 y PR 2. Se

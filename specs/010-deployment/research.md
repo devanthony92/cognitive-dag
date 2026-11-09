@@ -5,7 +5,7 @@
 Decisiones del autor (2026-11-09): `1B 2C 3C 4B 5 sin backup, 6A 7A 8A 9C 10A 11C 12A 13C 14A 15A 16A 17A 18A 19A 20 sin métricas 21B 22A`.
 Cada R conserva su análisis original (la comparación sigue siendo útil para revisar) y empieza con una
 línea **Respuesta del autor** y su efecto. Donde la respuesta se apartó de la recomendación, el análisis
-dice cuál era y qué riesgo se acepta. Queda una pregunta abierta, **D23** (R23).
+dice cuál era y qué riesgo se acepta. D23 respondida: A.
 
 Las comprobaciones del estado actual se hicieron leyendo el repositorio en `main` (`e424bb5`). Las cifras
 de planes gratuitos de terceros (Oracle, GitHub, Grafana, Backblaze y similares) **cambian sin aviso**
@@ -398,7 +398,7 @@ autor se apura, B es el corte natural. **Lo no recomendable es C.**
 | B. Variable de operación `REGISTRATION_ENABLED` en la API | Cierre por configuración, probado por TDD, sin depender del proxy | Cambio de código en el camino de autenticación; es un kill switch de operación, no un flag de producto |
 | C. Dejar el registro abierto | Cero trabajo | Contradice D13C: la capa gratuita de Gemini puede usar el contenido de usuarios desconocidos, y cualquiera consumiría la cuota |
 
-**Recomendación: A.** Pendiente de respuesta.
+**Respuesta del autor: A (Caddy 404).** Sin cambio de código; T018 se elimina.
 
 ---
 
