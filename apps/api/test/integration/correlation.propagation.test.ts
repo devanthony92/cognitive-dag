@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
-import type { INestApplication } from '@nestjs/common';
 import { Client, Connection } from '@temporalio/client';
 import { SearchAttributeType, defineSearchAttributeKey } from '@temporalio/common';
-import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   CORRELATION_ID_HEADER,
@@ -11,18 +9,19 @@ import {
   PingExecutionSchema,
 } from '@cognitive-dag/contracts';
 import { createLogger } from '@cognitive-dag/logger';
-import { httpServer, testConfig } from './helpers';
-import { startPingApi, startPingWorker, uniqueTaskQueue, waitFor } from './ping-helpers';
+import { testConfig } from './helpers';
+import { setupOrgPing, type OrgPingEnv } from './org-ping-helpers';
+import { startPingWorker, uniqueTaskQueue, waitFor } from './ping-helpers';
 
 describe('correlation propagation API to worker (requires docker compose up)', () => {
   const taskQueue = uniqueTaskQueue();
   const lines: string[] = [];
-  let app: INestApplication;
+  let env: OrgPingEnv;
   let connection: Connection;
   let client: Client;
 
   beforeAll(async () => {
-    app = await startPingApi(taskQueue);
+    env = await setupOrgPing({ TEMPORAL_TASK_QUEUE: taskQueue });
     const config = testConfig();
     connection = await Connection.connect({ address: config.TEMPORAL_ADDRESS });
     client = new Client({ connection, namespace: config.TEMPORAL_NAMESPACE });
@@ -30,7 +29,7 @@ describe('correlation propagation API to worker (requires docker compose up)', (
 
   afterAll(async () => {
     await connection.close();
-    await app.close();
+    await env.close();
   });
 
   it('carries the POST correlation id into the search attribute and the worker logs', async () => {
@@ -44,8 +43,8 @@ describe('correlation propagation API to worker (requires docker compose up)', (
     const logger = createLogger({ component: 'worker', level: 'info' }, sink);
     const worker = await startPingWorker(taskQueue, { logger });
     try {
-      const created = await request(httpServer(app))
-        .post('/api/v1/pings')
+      const created = await env
+        .post()
         .set(CORRELATION_ID_HEADER, correlationId)
         .send({})
         .expect(202);
@@ -54,7 +53,7 @@ describe('correlation propagation API to worker (requires docker compose up)', (
       expect(ping.correlationId).toBe(correlationId);
 
       await waitFor(async () => {
-        const response = await request(httpServer(app)).get(`/api/v1/pings/${ping.pingId}`);
+        const response = await env.get(ping.pingId);
         return PingExecutionSchema.parse(response.body).status === 'completed' ? true : undefined;
       });
 

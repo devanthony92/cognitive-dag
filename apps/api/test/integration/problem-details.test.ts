@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
@@ -9,7 +8,8 @@ import {
   type ProblemDetails,
 } from '@cognitive-dag/contracts';
 import type { AppConfig } from '../../src/config/env.schema';
-import { httpServer, startTestApp } from './helpers';
+import { httpServer } from './helpers';
+import { setupOrgPing, type OrgPingEnv } from './org-ping-helpers';
 
 function expectProblem(
   response: request.Response,
@@ -32,28 +32,27 @@ function expectProblem(
 function withApp(
   name: string,
   overrides: Partial<AppConfig>,
-  tests: (app: () => INestApplication) => void,
+  tests: (env: () => OrgPingEnv) => void,
 ): void {
   describe(`problem details: ${name} (requires docker compose up)`, () => {
-    let app: INestApplication;
+    let env: OrgPingEnv;
     beforeAll(async () => {
-      app = await startTestApp({ ...overrides });
+      env = await setupOrgPing({ ...overrides });
     });
     afterAll(async () => {
-      await app.close();
+      await env.close();
     });
-    tests(() => app);
+    tests(() => env);
   });
 }
 
 const correlationId = randomUUID();
-const post = (app: INestApplication) =>
-  request(httpServer(app)).post('/api/v1/pings').set(CORRELATION_ID_HEADER, correlationId);
+const post = (env: OrgPingEnv) => env.post().set(CORRELATION_ID_HEADER, correlationId);
 
-withApp('validation and routing', {}, (app) => {
+withApp('validation and routing', {}, (env) => {
   it('returns 422 with field errors for an invalid body', async () => {
     const problem = expectProblem(
-      await post(app()).send({ message: 42 }),
+      await post(env()).send({ message: 42 }),
       422,
       'VALIDATION_FAILED',
       correlationId,
@@ -62,28 +61,28 @@ withApp('validation and routing', {}, (app) => {
   });
 
   it('returns 422 for malformed JSON', async () => {
-    const response = await post(app()).set('Content-Type', 'application/json').send('{"message":');
+    const response = await post(env()).set('Content-Type', 'application/json').send('{"message":');
     expectProblem(response, 422, 'VALIDATION_FAILED', correlationId);
   });
 
   it('returns 404 ROUTE_NOT_FOUND for an unknown route', async () => {
-    const response = await request(httpServer(app()))
+    const response = await request(httpServer(env().app))
       .get('/api/v1/nope')
       .set(CORRELATION_ID_HEADER, correlationId);
     expectProblem(response, 404, 'ROUTE_NOT_FOUND', correlationId);
   });
 });
 
-withApp('body limit', { BODY_LIMIT: '1kb' }, (app) => {
+withApp('body limit', { BODY_LIMIT: '1kb' }, (env) => {
   it('returns 413 when the body exceeds the configured limit', async () => {
-    const response = await post(app()).send({ message: 'x'.repeat(5_000) });
+    const response = await post(env()).send({ message: 'x'.repeat(5_000) });
     expectProblem(response, 413, 'PAYLOAD_TOO_LARGE', correlationId);
   });
 });
 
-withApp('Temporal unreachable', { TEMPORAL_ADDRESS: '127.0.0.1:1' }, (app) => {
+withApp('Temporal unreachable', { TEMPORAL_ADDRESS: '127.0.0.1:1' }, (env) => {
   it('returns 503 SERVICE_UNAVAILABLE without leaking the address', async () => {
-    const response = await post(app()).send({});
+    const response = await post(env()).send({});
     expectProblem(response, 503, 'SERVICE_UNAVAILABLE', correlationId);
     expect(JSON.stringify(response.body)).not.toMatch(/127\.0\.0\.1|ECONNREFUSED|grpc/i);
   });
@@ -91,9 +90,9 @@ withApp('Temporal unreachable', { TEMPORAL_ADDRESS: '127.0.0.1:1' }, (app) => {
 
 // A namespace that does not exist makes Temporal answer NOT_FOUND: neither a client mistake nor
 // an outage, so it must surface as an opaque 500.
-withApp('unexpected error', { TEMPORAL_NAMESPACE: `missing-${randomUUID()}` }, (app) => {
+withApp('unexpected error', { TEMPORAL_NAMESPACE: `missing-${randomUUID()}` }, (env) => {
   it('returns 500 without stack trace or internal names', async () => {
-    const response = await post(app()).send({});
+    const response = await post(env()).send({});
     expectProblem(response, 500, 'INTERNAL_ERROR', correlationId);
     expect(JSON.stringify(response.body)).not.toMatch(
       /\bat\s.+\(|stack|Namespace|Error:|missing-|node_modules|\.ts/,
