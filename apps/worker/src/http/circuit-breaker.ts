@@ -27,8 +27,11 @@ export type BreakerDecision =
 export interface CircuitBreaker {
   /** Asks whether a call to the host may go out now; a half-open permit is taken by the caller. */
   acquire(organizationId: string, host: string): Promise<BreakerDecision>;
-  /** The call got an answer that is not a counted failure. Closes a half-open circuit. */
-  success(organizationId: string, host: string, probe: boolean): Promise<void>;
+  /**
+   * The call got an answer that is not a counted failure. Closes a half-open circuit; `closed`
+   * tells whether this call was the one that did.
+   */
+  success(organizationId: string, host: string, probe: boolean): Promise<{ closed: boolean }>;
   /** A counted failure (5xx, network error, timeout). Returns whether the circuit just opened. */
   failure(organizationId: string, host: string, probe: boolean): Promise<{ opened: boolean }>;
 }
@@ -88,8 +91,9 @@ const SUCCESS = `
 local probe = tonumber(ARGV[1])
 if probe == 1 and redis.call('HGET', KEYS[1], 'state') == 'open' then
   redis.call('DEL', KEYS[1], KEYS[2], KEYS[3])
+  return 1
 end
-return 1
+return 0
 `;
 
 interface BreakerCommands {
@@ -140,7 +144,8 @@ export function createValkeyCircuitBreaker(
     },
     async success(organizationId, host, probe) {
       const k = keys(organizationId, host);
-      await commands.breakerSuccess(k.hash, k.failures, k.probe, probe ? 1 : 0);
+      const closed = await commands.breakerSuccess(k.hash, k.failures, k.probe, probe ? 1 : 0);
+      return { closed: closed === 1 };
     },
     async failure(organizationId, host, probe) {
       const k = keys(organizationId, host);

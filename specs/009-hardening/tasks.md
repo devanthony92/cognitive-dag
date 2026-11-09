@@ -94,19 +94,33 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 
 ### Tests
 
-- [ ] T027 [P] [US7] `apps/worker/test/approvals/events.test.ts`: `approval.timed_out` al vencer una solicitud, con organización, ejecución, nodo y correlación; `apps/worker/test/http/circuit-breaker-valkey.test.ts`: `circuit.closed` cuando la prueba del semiabierto tiene éxito; `apps/worker/test/workflows/fire-schedule.test.ts`: `schedule.caught_up` si el disparo llega con más de 60 s de retraso; ninguno incluye contenido
-- [ ] T028 [P] [US7] `apps/worker/test/schedules/reconciler.test.ts`: tras 20 intentos fallidos consecutivos deja de reintentar (la fila sigue `failed` con su código) y un cambio de versión activa reinicia `sync_attempts`; emite `schedule.sync_failed` una vez
-- [ ] T029 [P] [US7] Estabilizar `apps/web`: `maxWorkers` y `testTimeout` explícitos en `vitest.config.ts`; tres ejecuciones seguidas de `pnpm test` sin fallos por tiempo (SC-007)
-- [ ] T030 [P] [US8] `apps/api/test/integration/security-surface.test.ts`: cabeceras de Helmet y atributos de `__Host-session` fijados sobre login, `features`, salud y webhook; sin `X-Powered-By`; errores 5xx sin traza
-- [ ] T031 [P] [US8] [US9] `scripts/test/unit/no-dynamic-eval.test.ts`: falla ante `eval(`, `new Function(` o `dangerouslySetInnerHTML` en `apps/*/src` y `packages/*/src`, con lista cerrada de excepciones (vacía)
-- [ ] T032 [P] [US9] `packages/llm/test` y `packages/compiler/test`: los prompts de sistema no contienen patrones de secreto ni nombres de variables de entorno
+- [X] T027 [P] [US7] `apps/worker/test/approvals/events.test.ts`: `approval.timed_out` al vencer una solicitud, con organización, ejecución, nodo y correlación; `apps/worker/test/http/circuit-breaker-valkey.test.ts`: `circuit.closed` cuando la prueba del semiabierto tiene éxito; `apps/worker/test/workflows/fire-schedule.test.ts`: `schedule.caught_up` si el disparo llega con más de 60 s de retraso; ninguno incluye contenido
+  - `schedule.caught_up` se emite en la actividad `startScheduledRun` (el flujo de trabajo es
+    determinista y no puede registrar eventos), así que su prueba está en
+    `apps/worker/test/schedules/start-scheduled-run.test.ts` y no en `fire-schedule.test.ts`.
+- [X] T028 [P] [US7] `apps/worker/test/schedules/reconciler.test.ts`: tras 20 intentos fallidos consecutivos deja de reintentar (la fila sigue `failed` con su código) y un cambio de versión activa reinicia `sync_attempts`; emite `schedule.sync_failed` una vez
+  - La parte «versión activa nueva reinicia `sync_attempts`» vive en la API
+    (`SchedulesService`) y se prueba en `apps/api/test/integration/schedules.e2e.test.ts`; el
+    reconciliador prueba el tope. Sin cambio de esquema.
+- [X] T029 [P] [US7] Estabilizar `apps/web`: `maxWorkers` y `testTimeout` explícitos en `vitest.config.ts`; tres ejecuciones seguidas de `pnpm test` sin fallos por tiempo (SC-007)
+  - La configuración de Vitest de la web está en `apps/web/vite.config.ts` (no existe
+    `vitest.config.ts`): `maxWorkers: 2`, `testTimeout` y `hookTimeout` de 30 s. Tres `pnpm test --force`
+    seguidos: 17/17 tareas, `apps/web` 31 archivos y 310 pruebas en las tres, sin fallos por tiempo.
+- [X] T030 [P] [US8] `apps/api/test/integration/security-surface.test.ts`: cabeceras de Helmet y atributos de `__Host-session` fijados sobre login, `features`, salud y webhook; sin `X-Powered-By`; errores 5xx sin traza
+  - Prueba de caracterización: pasó en cuanto se escribió (el control ya existía); no hubo excepciones.
+- [X] T031 [P] [US8] [US9] `scripts/test/unit/no-dynamic-eval.test.ts`: falla ante `eval(`, `new Function(` o `dangerouslySetInnerHTML` en `apps/*/src` y `packages/*/src`, con lista cerrada de excepciones (vacía)
+  - Lista de excepciones vacía; ninguna construcción prohibida en `apps/*/src` ni `packages/*/src`.
+- [X] T032 [P] [US9] `packages/llm/test` y `packages/compiler/test`: los prompts de sistema no contienen patrones de secreto ni nombres de variables de entorno
+  - Prueba de caracterización: pasó al escribirse; ningún prompt contiene patrones de secreto ni
+    nombres de variable. Archivos `prompt-no-secrets.test.ts` en ambos paquetes.
 
 ### Implementation
 
-- [ ] T033 [US7] Eventos de seguridad `approval.timed_out`, `circuit.closed`, `schedule.caught_up` y `schedule.sync_failed` con tipo estable (ADR-0038)
-- [ ] T034 [US7] Tope de intentos del reconciliador en `apps/worker/src/schedules/reconciler.ts` (20, constante con nombre) y reinicio de `sync_attempts` al cambiar la versión activa o la configuración
-- [ ] T035 [US7] Aplicar lo que salga de T029–T032; documentar cualquier excepción en la matriz
-- [ ] T036 [US7] ADR-0085 (tope del reconciliador, eventos nuevos y desviaciones de F7 aceptadas con dueño y revisión)
+- [X] T033 [US7] Eventos de seguridad `approval.timed_out`, `circuit.closed`, `schedule.caught_up` y `schedule.sync_failed` con tipo estable (ADR-0038)
+- [X] T034 [US7] Tope de intentos del reconciliador en `apps/worker/src/schedules/reconciler.ts` (20, constante con nombre) y reinicio de `sync_attempts` al cambiar la versión activa o la configuración
+- [X] T035 [US7] Aplicar lo que salga de T029–T032; documentar cualquier excepción en la matriz
+  - T029–T032 no produjeron excepciones ni cambios de código fuera de la configuración de la web.
+- [X] T036 [US7] ADR-0085 (tope del reconciliador, eventos nuevos y desviaciones de F7 aceptadas con dueño y revisión)
 
 ## Phase 5: ZAP baseline (PR 4)
 

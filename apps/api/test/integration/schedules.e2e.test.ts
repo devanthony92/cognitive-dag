@@ -1,6 +1,7 @@
 import { ScheduleNotFoundError } from '@temporalio/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { scheduleIdFor, type Schedule } from '@cognitive-dag/contracts';
+import { eq, workflowSchedules } from '@cognitive-dag/db';
 import { authHeaders } from './identity-helpers';
 import {
   api,
@@ -129,6 +130,49 @@ describe('schedule of the active version', () => {
     await env.reconcile();
     expect(await existsInTemporal(workflow.id)).toBe(false);
     expect((await getSchedule(workflow.id)).syncStatus).toBe('synced');
+  });
+
+  it('a new active version restarts the attempts of a schedule the reconciler gave up on (F8, cap of 20)', async () => {
+    const workflow = await scheduled('*/10 * * * *');
+    const rowOf = () =>
+      env.database.withContext({ organizationId: env.organization.id }, async (tx) => {
+        const [row] = await tx
+          .select({
+            syncStatus: workflowSchedules.syncStatus,
+            syncAttempts: workflowSchedules.syncAttempts,
+            lastErrorCode: workflowSchedules.lastErrorCode,
+          })
+          .from(workflowSchedules)
+          .where(eq(workflowSchedules.workflowId, workflow.id));
+        return row!;
+      });
+    await env.database.withContext({ organizationId: env.organization.id }, (tx) =>
+      tx
+        .update(workflowSchedules)
+        .set({ syncStatus: 'failed', syncAttempts: 20, lastErrorCode: 'SCHEDULE_SYNC_FAILED' })
+        .where(eq(workflowSchedules.workflowId, workflow.id)),
+    );
+    expect(await rowOf()).toMatchObject({ syncStatus: 'failed', syncAttempts: 20 });
+
+    // Same cron, new version: the row follows the version and starts over.
+    const draft = await saveDraft(
+      env,
+      env.owner,
+      workflow.id,
+      2,
+      // Same cron, another definition (an identical one would not publish).
+      (() => {
+        const same = scheduleDefinition('*/10 * * * *');
+        return { ...same, nodes: [same.nodes[0]!, { ...same.nodes[1]!, label: 'Otro paso' }] };
+      })(),
+    ).expect(200);
+    await publish(
+      env,
+      env.owner,
+      workflow.id,
+      (draft.body as { revision: number }).revision,
+    ).expect(201);
+    expect(await rowOf()).toEqual({ syncStatus: 'pending', syncAttempts: 0, lastErrorCode: null });
   });
 
   it('archiving the workflow removes its schedule', async () => {

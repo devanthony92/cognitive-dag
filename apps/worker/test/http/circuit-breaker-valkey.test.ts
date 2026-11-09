@@ -17,6 +17,7 @@ import { parseEnv } from '../../src/config/env.schema';
 import { loadLocalEnv } from '../../src/config/load-env';
 import { seedRun, type SeededRun } from '../integration/support/seed';
 import { MASTER_KEY, startLocalServer, type LocalServer } from '../support/f7';
+import { captureLogger } from '../support/logs';
 
 loadLocalEnv();
 const config = parseEnv(process.env);
@@ -107,6 +108,17 @@ describe('circuit breaker on Valkey (requires docker compose up)', () => {
       for (let i = 0; i < 4; i++) expect((await cb.failure(org, host, false)).opened).toBe(false);
     });
 
+    it('reports that the successful probe closed the circuit, and only that one', async () => {
+      const { org, host } = fresh();
+      const cb = breaker();
+      expect(await cb.success(org, host, false)).toEqual({ closed: false });
+      await openIt(org, host);
+      await sleep(SETTINGS.cooldownMs + 100);
+      expect(await cb.acquire(org, host)).toEqual({ allowed: true, probe: true });
+      expect(await cb.success(org, host, true)).toEqual({ closed: true });
+      expect(await cb.success(org, host, true)).toEqual({ closed: false });
+    });
+
     it('opens again after a failed probe, for another cooldown', async () => {
       const { org, host } = fresh();
       await openIt(org, host);
@@ -153,10 +165,10 @@ describe('circuit breaker on Valkey (requires docker compose up)', () => {
     });
 
     function activity(
-      options: { valkeyClient?: Valkey; maxWaitMs?: number } = {},
+      options: { valkeyClient?: Valkey; maxWaitMs?: number; log?: typeof logger } = {},
     ): (input: HttpRequestInput, scheduledAgoMs?: number) => Promise<HttpRequestResult> {
       const impl = createHttpActivities({
-        logger,
+        logger: options.log ?? logger,
         enabled: true,
         credentials: createCredentialResolver({
           withContext: database.withContext,
@@ -223,6 +235,38 @@ describe('circuit breaker on Valkey (requires docker compose up)', () => {
       await expect(call(input)).resolves.toMatchObject({ output: { status: 200 } });
       // Closed again: the next call goes straight through.
       await expect(call(input)).resolves.toMatchObject({ output: { status: 200 } });
+    });
+
+    it('emits circuit.closed once, when the probe of the half-open state succeeds, without content', async () => {
+      const org = await seedRun(pool, { schemaVersion: 1, nodes: [], edges: [] });
+      const captured = captureLogger();
+      const call = activity({ log: captured.logger });
+      const input = {
+        ...inputOf(),
+        runId: org.runId,
+        organizationId: org.organizationId,
+        config: { ...inputOf().config, body: 'SECRET-CANARY-0001' },
+      };
+      status = 503;
+      for (let i = 0; i < SETTINGS.failureThreshold; i++) await failureOf(call(input));
+      expect(captured.events('circuit.opened')).toHaveLength(1);
+      expect(captured.events('circuit.closed')).toHaveLength(0);
+
+      status = 200;
+      await sleep(SETTINGS.cooldownMs + 150);
+      await call(input);
+      await call(input);
+      const closed = captured.events('circuit.closed');
+      expect(closed).toHaveLength(1);
+      expect(closed[0]).toMatchObject({
+        event: 'circuit.closed',
+        host,
+        organizationId: org.organizationId,
+        runId: org.runId,
+        nodeId: input.nodeId,
+        correlationId: input.correlationId,
+      });
+      expect(captured.raw()).not.toContain('SECRET-CANARY-0001');
     });
 
     it('does not count 429, 4xx or a blocked address as failures', async () => {

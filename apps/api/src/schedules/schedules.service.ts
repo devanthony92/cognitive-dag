@@ -79,7 +79,14 @@ export class SchedulesService {
         if (current.versionId !== version.id) {
           await tx
             .update(workflowSchedules)
-            .set({ versionId: version.id })
+            .set({
+              versionId: version.id,
+              // A new active version starts the reconciler's attempts over (ADR-0085): a row it
+              // gave up on is tried again. A synced row stays synced.
+              ...(current.syncStatus === 'synced'
+                ? {}
+                : { syncStatus: 'pending', syncAttempts: 0, lastErrorCode: null }),
+            })
             .where(eq(workflowSchedules.id, current.id));
         }
         return;

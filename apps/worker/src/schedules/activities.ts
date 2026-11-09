@@ -7,6 +7,7 @@ import {
 import { DagDefinitionSchema, approvalWaitBudgetMs } from '@cognitive-dag/dag-schema';
 import { startRun, type WithContext } from '@cognitive-dag/db';
 import type { Logger } from '@cognitive-dag/logger';
+import type { WorkerSecurityEvent } from '../logging/security-events';
 
 export interface StartScheduledRunInput {
   organizationId: string;
@@ -53,6 +54,9 @@ export interface ScheduleActivityOptions {
   llmTaskQueue: string;
   httpTaskQueue: string;
 }
+
+/** A firing this late after its programmed time is a catch-up (`schedule.caught_up`, ADR-0085). */
+export const CAUGHT_UP_AFTER_MS = 60_000;
 
 /** Margin of the hard timeout of Temporal over the maximum duration the interpreter enforces. */
 const EXECUTION_TIMEOUT_MARGIN_MS = 60_000;
@@ -121,6 +125,21 @@ export function createScheduleActivities(options: ScheduleActivityOptions): Sche
       );
       const { run, version } = outcome;
       log.info({ event: 'schedule.fired', runId: run.id }, 'Scheduled run created');
+      const lagMs = Date.now() - new Date(input.scheduledAt).getTime();
+      if (lagMs > CAUGHT_UP_AFTER_MS) {
+        const name: WorkerSecurityEvent = 'schedule.caught_up';
+        log.info(
+          {
+            event: name,
+            organizationId: input.organizationId,
+            workflowId: input.workflowId,
+            correlationId: input.correlationId,
+            runId: run.id,
+            lagSeconds: Math.round(lagMs / 1000),
+          },
+          'Scheduled firing caught up',
+        );
+      }
       return {
         status: 'started',
         temporalWorkflowId: run.temporalWorkflowId,

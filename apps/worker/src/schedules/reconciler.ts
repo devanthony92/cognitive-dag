@@ -7,6 +7,7 @@ import {
 import { FIRE_SCHEDULE_WORKFLOW_NAME, scheduleIdFor } from '@cognitive-dag/contracts';
 import { and, eq, sql, workflowSchedules, type WithContext } from '@cognitive-dag/db';
 import type { Logger } from '@cognitive-dag/logger';
+import type { WorkerSecurityEvent } from '../logging/security-events';
 
 export interface ScheduleReconcilerOptions {
   withContext: WithContext;
@@ -37,6 +38,12 @@ export interface ScheduleReconciler {
 
 /** Interval of the timer of the worker (research R6). */
 export const RECONCILE_EVERY_MS = 60_000;
+/**
+ * Consecutive failed syncs after which a row is left alone (ADR-0085). It stays `failed` with its
+ * code; a new active version or a new configuration starts the count again (the API writes
+ * `sync_attempts = 0`, `pending`).
+ */
+export const MAX_SYNC_ATTEMPTS = 20;
 const DEFAULT_BATCH_SIZE = 50;
 const SYNC_FAILED_CODE = 'SCHEDULE_SYNC_FAILED';
 
@@ -126,8 +133,9 @@ export function createScheduleReconciler(options: ScheduleReconcilerOptions): Sc
     );
   }
 
-  async function markFailed(row: PendingRow): Promise<void> {
-    await options.withContext({ organizationId: row.organizationId }, (tx) =>
+  /** Records the failure; returns the attempts so far, or undefined if the row changed meanwhile. */
+  async function markFailed(row: PendingRow): Promise<number | undefined> {
+    const [updated] = await options.withContext({ organizationId: row.organizationId }, (tx) =>
       tx
         .update(workflowSchedules)
         .set({
@@ -135,8 +143,10 @@ export function createScheduleReconciler(options: ScheduleReconcilerOptions): Sc
           lastErrorCode: SYNC_FAILED_CODE,
           syncAttempts: sql`least(${workflowSchedules.syncAttempts} + 1, 32767)`,
         })
-        .where(and(eq(workflowSchedules.id, row.id), unchanged(row))),
+        .where(and(eq(workflowSchedules.id, row.id), unchanged(row)))
+        .returning({ attempts: workflowSchedules.syncAttempts }),
     );
+    return updated?.attempts;
   }
 
   return {
@@ -157,7 +167,10 @@ export function createScheduleReconciler(options: ScheduleReconcilerOptions): Sc
             updatedAt: workflowSchedules.updatedAt,
           })
           .from(workflowSchedules)
-          .where(sql`${workflowSchedules.syncStatus} <> 'synced'`)
+          .where(
+            sql`${workflowSchedules.syncStatus} <> 'synced'
+              AND ${workflowSchedules.syncAttempts} < ${MAX_SYNC_ATTEMPTS}`,
+          )
           .orderBy(workflowSchedules.updatedAt)
           .limit(batchSize),
       );
@@ -173,7 +186,20 @@ export function createScheduleReconciler(options: ScheduleReconcilerOptions): Sc
           result.failed += 1;
           log.warn({ event: 'schedule.failed', err: error }, 'Could not sync the schedule');
           try {
-            await markFailed(row);
+            const attempts = await markFailed(row);
+            // The attempt that reaches the cap is the last one: say so once.
+            if (attempts === MAX_SYNC_ATTEMPTS) {
+              const name: WorkerSecurityEvent = 'schedule.sync_failed';
+              log.warn(
+                {
+                  event: name,
+                  organizationId: row.organizationId,
+                  attempts,
+                  errorCode: SYNC_FAILED_CODE,
+                },
+                'The schedule could not be synced; no more attempts',
+              );
+            }
           } catch (markError) {
             log.warn({ err: markError }, 'Could not record the failed sync');
           }
