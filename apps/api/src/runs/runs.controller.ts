@@ -18,14 +18,11 @@ import type {
   RunList,
   StepIo,
 } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { ExecutionEnabledGuard } from './execution-enabled.guard';
-import { ResilienceEnabledGuard } from './resilience-enabled.guard';
 import { RunEventsService } from './run-events.service';
 import {
   ListRunsQueryDto,
@@ -45,13 +42,13 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): RunAct
 });
 
 /**
- * Runs of an organization (F3). Behind `execution-enabled`. Only owner and editor start, cancel and
+ * Runs of an organization (F3). Only owner and editor start, cancel and
  * rerun (F8, ADR-0082, which replaces ADR-0053); every member reads. The organization guard
  * answers 404 to non-members, so a run of another organization never shows up, SSE included. A
  * route that changes state must declare its roles: `runs-roles.test.ts` fails otherwise (FR-008).
  */
 @Controller('api/v1/organizations/:organizationId')
-@UseGuards(IdentityEnabledGuard, ExecutionEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class RunsController {
   constructor(
     private readonly runs: RunsService,
@@ -85,9 +82,8 @@ export class RunsController {
     return this.runs.list(actorOf(auth, tenant, req), params.workflowId, query.cursor, query.limit);
   }
 
-  /** Review queue of the organization (F4). Behind `resilience-enabled`. */
+  /** Review queue of the organization (F4). */
   @Get('runs')
-  @UseGuards(ResilienceEnabledGuard)
   listOrganization(
     @Query() query: OrganizationRunsQueryDto,
     @CurrentAuth() auth: AuthSession,

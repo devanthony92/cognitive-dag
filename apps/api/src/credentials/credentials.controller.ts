@@ -19,13 +19,11 @@ import {
   type Credential,
   type CredentialList,
 } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { TriggersEnabledGuard } from '../triggers/triggers-enabled.guard';
 import { CredentialsService, type CredentialActor } from './credentials.service';
 
 class CreateCredentialDto extends createZodDto(CreateCredentialRequestSchema) {}
@@ -42,7 +40,7 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): Creden
 
 /** Owners manage credentials; editors only see their metadata, to pick one in a node. */
 @Controller('api/v1/organizations/:organizationId/credentials')
-@UseGuards(IdentityEnabledGuard, TriggersEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class CredentialsController {
   constructor(private readonly credentials: CredentialsService) {}
 

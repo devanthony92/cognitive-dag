@@ -3,7 +3,6 @@ import type { Request } from 'express';
 import type { OrganizationSummary } from '@cognitive-dag/contracts';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { OrganizationGuard } from './organization.guard';
 import { CreateOrganizationDto, RenameOrganizationDto } from './organizations.dto';
 import { RequiredRoles } from './required-roles.decorator';
@@ -11,7 +10,6 @@ import type { RequestTenant } from './tenant-context';
 import { OrganizationsService } from './organizations.service';
 
 @Controller('api/v1/organizations')
-@UseGuards(IdentityEnabledGuard)
 export class OrganizationsController {
   constructor(private readonly organizations: OrganizationsService) {}
 

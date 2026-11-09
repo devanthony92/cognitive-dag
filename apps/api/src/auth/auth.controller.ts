@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { AcceptedResponse, SessionInfo } from '@cognitive-dag/contracts';
 import {
@@ -9,7 +9,6 @@ import {
   RegisterDto,
   TokenDto,
 } from './auth.dto';
-import { IdentityEnabledGuard } from './identity-enabled.guard';
 import { LoginService } from './login.service';
 import { PasswordService } from './password.service';
 import { Public } from './public.decorator';
@@ -28,7 +27,6 @@ import { SessionService, type AuthSession } from './session.service';
 const ACCEPTED: AcceptedResponse = { message: ACCEPTED_MESSAGE };
 
 @Controller('api/v1/auth')
-@UseGuards(IdentityEnabledGuard)
 export class AuthController {
   constructor(
     private readonly registration: RegistrationService,

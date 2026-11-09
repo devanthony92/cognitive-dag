@@ -131,7 +131,7 @@ export class WebhooksService {
 
     // 5. The workflow, with the version that is active right now (decision 5A).
     const correlationId = resolveCorrelationId(this.cls.getId());
-    const phases = await this.launcher.executablePhases();
+    const phases = this.launcher.executablePhases();
     const context = { organizationId: trigger.organizationId };
     const outcome = await this.database.withContext(context, async (tx) => {
       const started = await startRun(tx, {

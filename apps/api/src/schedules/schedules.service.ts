@@ -10,16 +10,10 @@ import {
   type DatabaseClient,
   type Tx,
 } from '@cognitive-dag/db';
-import {
-  FEATURE_FLAGS,
-  SCHEDULE_NEXT_RUNS_MAX,
-  scheduleIdFor,
-  type Schedule,
-} from '@cognitive-dag/contracts';
+import { SCHEDULE_NEXT_RUNS_MAX, scheduleIdFor, type Schedule } from '@cognitive-dag/contracts';
 import { DagDefinitionSchema } from '@cognitive-dag/dag-schema';
 import { DomainException, ResourceNotFoundException } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
-import { FlagsService } from '../flags/flags.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 import { RunTemporalService } from '../runs/run-history.service';
 import { findActiveWorkflow } from '../workflows/workflow-queries';
@@ -50,14 +44,12 @@ export class SchedulesService {
   constructor(
     @Inject(DATABASE) private readonly database: DatabaseClient,
     private readonly temporal: RunTemporalService,
-    private readonly flags: FlagsService,
     private readonly events: SecurityEventLogger,
   ) {}
 
   /**
    * Called inside the transaction that makes `version` the active one. A version with a schedule
    * trigger asks for the schedule; one without it removes whatever schedule the workflow had.
-   * Does nothing while `triggers-enabled` is off: no Schedule is created or touched then.
    */
   async syncActiveVersion(
     tx: Tx,
@@ -65,7 +57,6 @@ export class SchedulesService {
     workflowId: string,
     version: ScheduledVersion,
   ): Promise<void> {
-    if (!(await this.flags.isEnabled(FEATURE_FLAGS.triggersEnabled))) return;
     const parsed = DagDefinitionSchema.safeParse(version.definition);
     const node = parsed.success
       ? parsed.data.nodes.find((candidate) => candidate.type === 'trigger.schedule')
@@ -117,7 +108,6 @@ export class SchedulesService {
 
   /** The workflow no longer has a schedule (archived, or its active version has none). */
   async remove(tx: Tx, workflowId: string): Promise<void> {
-    if (!(await this.flags.isEnabled(FEATURE_FLAGS.triggersEnabled))) return;
     await this.markRemoved(tx, workflowId);
   }
 

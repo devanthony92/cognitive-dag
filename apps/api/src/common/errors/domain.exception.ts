@@ -28,12 +28,6 @@ export class ServiceUnavailableException extends DomainException {
 }
 
 /** Generic anti-enumeration and expected-failure helpers used by the identity endpoints. */
-export class FeatureNotAvailableException extends DomainException {
-  constructor() {
-    super(404, 'FEATURE_NOT_AVAILABLE', 'Esta funcionalidad no está disponible.');
-  }
-}
-
 export class RateLimitedException extends DomainException {
   constructor(retryAfterSeconds: number) {
     super(429, 'RATE_LIMITED', 'Demasiados intentos. Espera antes de volver a intentarlo.', {

@@ -1,14 +1,12 @@
 import { Controller, Get, HttpCode, Param, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import type { Webhook, WebhookAccepted, WebhookWithToken } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { Public, SkipCsrf } from '../auth/public.decorator';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { TriggersEnabledGuard } from '../triggers/triggers-enabled.guard';
 import { WorkflowTriggerParamsDto } from '../triggers/triggers.dto';
 import { WebhookTokenService } from './webhook-token.service';
 import { WebhooksService } from './webhooks.service';
@@ -21,7 +19,6 @@ import { WebhooksService } from './webhooks.service';
 @Controller('api/v1/hooks')
 @Public()
 @SkipCsrf()
-@UseGuards(TriggersEnabledGuard)
 export class HooksController {
   constructor(private readonly webhooks: WebhooksService) {}
 
@@ -40,7 +37,7 @@ export class HooksController {
 
 /** Token management for the people of the organization: any role reads, owners and editors generate. */
 @Controller('api/v1/organizations/:organizationId/workflows/:workflowId/webhook')
-@UseGuards(IdentityEnabledGuard, TriggersEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class WebhookTokenController {
   constructor(private readonly tokens: WebhookTokenService) {}
 

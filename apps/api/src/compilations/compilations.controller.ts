@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import type { Compilation, CompilationList, CompilationResult } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
@@ -23,7 +22,6 @@ import {
   ListCompilationsQueryDto,
 } from './compilations.dto';
 import { CompilationsService, type CompilationActor } from './compilations.service';
-import { NlCompilerEnabledGuard } from './nl-compiler-enabled.guard';
 
 const actorOf = (auth: AuthSession, tenant: RequestTenant): CompilationActor => ({
   userId: auth.userId,
@@ -31,12 +29,12 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant): CompilationActor => 
 });
 
 /**
- * Natural language to DAG (F6). Behind `nl-compiler-enabled`. Owners and editors compile (the
+ * Natural language to DAG (F6). Owners and editors compile (the
  * roles that edit drafts); any member reads. Applying the result is not here: it uses the
  * endpoints of workflows (F2). The organization guard answers 404 to non-members.
  */
 @Controller('api/v1/organizations/:organizationId/compilations')
-@UseGuards(IdentityEnabledGuard, NlCompilerEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class CompilationsController {
   constructor(private readonly compilations: CompilationsService) {}
 

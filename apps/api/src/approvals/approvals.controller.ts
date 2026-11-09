@@ -20,13 +20,11 @@ import {
   type ApprovalDetail,
   type ApprovalList,
 } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { TriggersEnabledGuard } from '../triggers/triggers-enabled.guard';
 import { OrganizationOnlyParamsDto } from '../triggers/triggers.dto';
 import { ApprovalsService, type ApprovalActor } from './approvals.service';
 
@@ -44,7 +42,7 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): Approv
 
 /** Owners and editors only. The role is read again on every request, so a lost role applies at once. */
 @Controller('api/v1/organizations/:organizationId/approvals')
-@UseGuards(IdentityEnabledGuard, TriggersEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 @RequiredRoles('owner', 'editor')
 export class ApprovalsController {
   constructor(private readonly approvals: ApprovalsService) {}
