@@ -76,19 +76,19 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 
 ### Tests
 
-- [ ] T017 [P] [US5] `apps/api/test/integration/flags.test.ts`: catálogo vacío, `GET /api/v1/features` devuelve `{}` y un flag desconocido se evalúa como apagado
-- [ ] T018 [P] [US5] Pruebas de kill switches: `LLM_ENABLED=false` → `LLM_DISABLED` en nodos y compilador; `HTTP_ENABLED=false` → `HTTP_DISABLED`; `TRIGGERS_ENABLED=false` → disparos omitidos (sin llamar al modelo ni al destino)
-- [ ] T019 [P] [US5] Comprobar que cada endpoint que tenía una prueba de "flag apagado" conserva una de rol, no miembro y otra organización antes de borrar la prueba de flag (lista en la PR)
-- [ ] T020 [P] [US5] Prueba de repositorio en `scripts/test/unit`: ninguna referencia viva a los ocho nombres (guion, camelCase y constante) fuera de `docs/adr` y `specs`
+- [X] T017 [P] [US5] `apps/api/test/integration/flags.test.ts`: catálogo vacío, `GET /api/v1/features` devuelve `{}` y un flag desconocido se evalúa como apagado
+- [X] T018 [P] [US5] Pruebas de kill switches: `LLM_ENABLED=false` → `LLM_DISABLED` en nodos y compilador; `HTTP_ENABLED=false` → `HTTP_DISABLED`; `TRIGGERS_ENABLED=false` → disparos omitidos (sin llamar al modelo ni al destino)
+- [X] T019 [P] [US5] Comprobar que cada endpoint que tenía una prueba de "flag apagado" conserva una de rol, no miembro y otra organización antes de borrar la prueba de flag (lista en la PR)
+- [X] T020 [P] [US5] Prueba de repositorio en `scripts/test/unit`: ninguna referencia viva a los ocho nombres (guion, camelCase y constante) fuera de `docs/adr` y `specs`
 
 ### Implementation
 
-- [ ] T021 [US5] Eliminar `triggers-enabled` (#55): guarda, constante, catálogo, `.env.example`, web, `executablePhases` fijo (`F3`, `F5`, `F7`) y pruebas del estado apagado
-- [ ] T022 [US5] Eliminar `nl-compiler-enabled` (#48) y `llm-nodes-enabled` (#39): guardas, catálogo, compilador (`llmNodesEnabled`), web y pruebas
-- [ ] T023 [US5] Eliminar `resilience-enabled` (#32), `execution-enabled` (#27) y `dag-editor-enabled` (#21)
-- [ ] T024 [US5] Eliminar `identity-enabled` y la ruta F0 de ping sin organización (#14) y `ping-enabled` (#2); conservar `/organizations/{id}/pings`
-- [ ] T025 [US5] Eliminar `FEATURE_NOT_AVAILABLE` del contrato si ya nadie lo devuelve; conservar `FlagsModule`, OpenFeature y `GET /api/v1/features` con catálogo vacío
-- [ ] T026 [US5] ADR-0084 (flags eliminados y kill switches conservados; ADR-0080 `superseded` en lo del flag); la PR cierra #2, #14, #21, #27, #32, #39, #48 y #55 con `Closes`
+- [X] T021 [US5] Eliminar `triggers-enabled` (#55): guarda, constante, catálogo, `.env.example`, web, `executablePhases` fijo (`F3`, `F5`, `F7`) y pruebas del estado apagado
+- [X] T022 [US5] Eliminar `nl-compiler-enabled` (#48) y `llm-nodes-enabled` (#39): guardas, catálogo, compilador (`llmNodesEnabled`), web y pruebas
+- [X] T023 [US5] Eliminar `resilience-enabled` (#32), `execution-enabled` (#27) y `dag-editor-enabled` (#21)
+- [X] T024 [US5] Eliminar `identity-enabled` y la ruta F0 de ping sin organización (#14) y `ping-enabled` (#2); conservar `/organizations/{id}/pings`
+- [X] T025 [US5] Eliminar `FEATURE_NOT_AVAILABLE` del contrato si ya nadie lo devuelve; conservar `FlagsModule`, OpenFeature y `GET /api/v1/features` con catálogo vacío
+- [X] T026 [US5] ADR-0084 (flags eliminados y kill switches conservados; ADR-0080 `superseded` en lo del flag); la PR cierra #2, #14, #21, #27, #32, #39, #48 y #55 con `Closes`
 
 ## Phase 4: Desviaciones de F7 y comprobaciones (PR 3)
 

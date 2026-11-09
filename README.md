@@ -13,8 +13,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 
 ## Status
 
-**F0 — foundations and walking skeleton: complete. F1 — identity and multi-tenancy: complete** (behind
-the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG model and visual editor: complete** (behind `dag-editor-enabled`). **F3 — execution engine: complete** (behind `execution-enabled`). **F4 — resilience: complete** (behind `resilience-enabled` for the new UI and endpoints). **F5 — cognitive nodes: complete** (behind `llm-nodes-enabled`). **F6 — natural language compiler: complete** (behind `nl-compiler-enabled`). **F7 — triggers and human control: complete** (behind `triggers-enabled`).
+**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler and F7 — triggers and human control: complete.** F8 (hardening) removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -22,7 +21,7 @@ the `identity-enabled` flag, on by default in `.env.example`). **F2 — DAG mode
 | Contracts            | Shared Zod schemas; RFC 9457 errors; `X-Correlation-Id` end to end (API, Temporal search attribute, worker logs) |
 | API                  | NestJS 11: health checks, config validation, structured logs with redaction, feature flags (OpenFeature)         |
 | Workflow             | Ping workflow with idempotency (`Idempotency-Key`), call deadlines, replay tests and hard-crash chaos tests      |
-| Web                  | React 19 + Vite panel that runs a ping and shows its status, behind the `ping-enabled` flag                      |
+| Web                  | React 19 + Vite panel that runs a ping and shows its status                                                      |
 | Infrastructure       | Docker Compose: PostgreSQL, Valkey, Temporal dev server; multi-arch (amd64, arm64) container images              |
 | CI                   | GitHub Actions: quality, security (audit + gitleaks), integration and images on amd64 and arm64                  |
 | Documentation        | 23 architecture decision records and a [threat model](docs/threat-model.md)                                      |
@@ -183,20 +182,19 @@ Infrastructure ports listen on `127.0.0.1` only. If a port is already taken, cha
 the host so it does not clash with a local installation
 ([ADR-0021](docs/adr/0021-postgresql-en-puerto-5433.md)).
 
-Open the web app and press **Ejecutar ping**: the status moves from `pending`/`running` to
+Sign in, open an organization and press **Ejecutar ping** on its home page: the status moves from `pending`/`running` to
 `completed` and shows the result and the correlation ID. To follow that ID, search
 `CorrelationId="<id>"` in the Temporal UI and in the API and worker logs.
 
-With `identity-enabled` on (the default in `.env.example`) the web app starts at `/login`. Register,
+The web app starts at `/login`. Register,
 open the verification link in Mailpit and sign in; from the header you can switch organization,
 change your password (**Contraseña**) and manage the organization's **Miembros**: owners invite by
 email (the invitation link arrives in Mailpit), change roles and remove people. **Olvidé mi
 contraseña** on the login screen mails a reset link. Registration lets you name your personal
 organization and every password field has a show/hide button; owners rename an organization from
-**Ajustes de la organización** on its home page. With the flag off the F0 ping panel is shown
-instead and none of these screens exist.
+**Ajustes de la organización** on its home page.
 
-### Workflows API (F2, behind `dag-editor-enabled`)
+### Workflows API (F2)
 
 Under `/api/v1/organizations/{organizationId}/workflows` the API stores workflows with a draft,
 immutable numbered versions and one active version
@@ -206,7 +204,6 @@ it, `409 DRAFT_CONFLICT` if it is stale) and stores drafts with validation error
 validates with `@cognitive-dag/dag-schema` and answers `422 DAG_INVALID` with `dagErrors`. Each
 version stores `definition_hash`, the SHA-256 of the definition in canonical JSON (RFC 8785 style:
 sorted keys, no whitespace, ECMAScript numbers), see `apps/api/src/workflows/canonical-json.ts`.
-With the flag off every one of these endpoints answers `404 FEATURE_NOT_AVAILABLE`.
 
 `GET /organizations/{id}/limits` shows the limits in force (50 nodes, 100 connections and 256 KB by
 default). No endpoint writes them: the platform operator sets them per organization, connected as
@@ -219,9 +216,9 @@ pnpm ops:set-limits <organizationId> --max-nodes 80 --max-edges 160 --max-defini
 The ceilings are 500 nodes, 1000 connections and 1 MB; `DAG_MAX_NODES_CEILING`,
 `DAG_MAX_EDGES_CEILING` and `DAG_MAX_DEFINITION_BYTES_CEILING` can lower them for the whole server.
 
-### Visual editor (F2, behind `dag-editor-enabled`)
+### Visual editor (F2)
 
-With the flag on (default in `.env.example`), open an organization and choose **Workflows**. Owners and
+Open an organization and choose **Workflows**. Owners and
 editors create a workflow, drag nodes from the palette, connect them and configure each one in the
 side panel; viewers get a read-only canvas.
 
@@ -236,13 +233,13 @@ side panel; viewers get a read-only canvas.
 - **Conflicts:** if someone saved the draft first, a dialog offers to reload it.
 - **Limits:** the home page of an organization shows the limits in force, read-only.
 
-### Runs (F3, behind `execution-enabled`)
+### Runs (F3)
 
-With `execution-enabled` on (default in `.env.example`) the editor header shows **Ejecutar** and
+The editor header shows **Ejecutar** and
 **Ejecuciones**. **Ejecutar** runs the active version and asks for the fields the manual trigger
 declares (a generated form, validated before it is sent); it is disabled, with the reason next to
 it, when the workflow has no active version or the version has nodes that are not executable yet
-(`http.request`, `human.approval`, webhook and schedule triggers; they run when `triggers-enabled` is on, and `llm.*` run when `llm-nodes-enabled` is on). Only owners and editors can run, cancel and rerun; for a viewer the buttons are disabled with the reason
+(none today: the API sends the phases F3, F5 and F7). Only owners and editors can run, cancel and rerun; for a viewer the buttons are disabled with the reason
 ([ADR-0082](docs/adr/0082-solo-owner-y-editor-ejecutan.md), which replaces ADR-0053).
 
 - **List:** the runs of a workflow, newest first, with state, version, who started it, start and duration.
@@ -259,12 +256,10 @@ pnpm ops:set-limits <organizationId> --max-concurrent-runs 10 --operator ana
 ```
 
 The contract is in [specs/004-execution-engine](specs/004-execution-engine/contracts/api.openapi.yaml).
-With the flag off every run endpoint answers `404 FEATURE_NOT_AVAILABLE` and the web app shows
-nothing about runs.
 
-### Resilience (F4, behind `resilience-enabled`)
+### Resilience (F4)
 
-With `resilience-enabled` on (default in `.env.example`) the editor shows a **Reintentos** section for
+The editor shows a **Reintentos** section for
 nodes with effects, the run detail offers **Reejecutar desde aquí**, and the organization has an
 **Ejecuciones** page that filters by status and workflow and shows the error class of failed runs.
 Rate limits are set by the platform in the worker environment, one variable per node type, for example:
@@ -276,9 +271,9 @@ RATE_LIMIT_MOCK_SERVICE=capacity:10,refillPerSecond:5
 The decisions are in [ADR-0055](docs/adr/0055-taxonomia-de-errores-y-clasificacion-por-nodo.md) to
 [ADR-0060](docs/adr/0060-decisiones-diferidas-de-resiliencia.md).
 
-## Cognitive nodes (F5, behind `llm-nodes-enabled`)
+## Cognitive nodes (F5)
 
-With `llm-nodes-enabled` on (default in `.env.example`) the editor offers the three LLM nodes, runs can
+The editor offers the three LLM nodes, runs can
 execute them, and the run detail shows tokens and estimated cost. The worker uses the deterministic
 `LLM_PROVIDER=fake` by default. To use Gemini put `LLM_PROVIDER=gemini` and your key in your local
 `.env` (never commit it). The free tier may use what is sent: **use test data only** until F9.
@@ -298,9 +293,9 @@ pnpm eval:llm
 The decisions are in [ADR-0061](docs/adr/0061-paquete-llm-con-proveedor-intercambiable.md) to
 [ADR-0066](docs/adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md).
 
-## Natural language compiler (F6, behind `nl-compiler-enabled`)
+## Natural language compiler (F6)
 
-With `nl-compiler-enabled` on (default in `.env.example`) the workflows page offers "Describir workflow":
+The workflows page offers "Describir workflow":
 describe an automation in up to 2000 characters and the compiler returns a **draft** DAG shown in a
 read-only preview. You can create a workflow with it or, from the editor, replace the current draft
 ("Regenerar borrador"). Nothing runs until a person publishes the workflow. Owners and editors can
@@ -321,13 +316,13 @@ pnpm eval:compiler -- --provider gemini
 The decisions are in [ADR-0067](docs/adr/0067-compilador-asincrono-en-temporal-con-contenido-solo-en-el-historial.md) to
 [ADR-0071](docs/adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md).
 
-## Triggers, human control and HTTP (F7, behind `triggers-enabled`)
+## Triggers, human control and HTTP (F7)
 
-With `triggers-enabled` on (default in `.env.example`) the editor offers `trigger.webhook`,
+The editor offers `trigger.webhook`,
 `trigger.schedule`, `human.approval` and `http.request`, the webhook panel shows the URL, the
 workflow page shows the schedule status, the header shows the approvals inbox with its counter, and
-the **Connections** page manages credentials and allowed hosts. With the flag off these nodes are not
-offered, and a version that contains them fails with `UNSUPPORTED_NODES`.
+the **Connections** page manages credentials and allowed hosts. A worker that does not support a phase
+refuses the versions that contain its nodes with `UNSUPPORTED_NODES`.
 
 - **Webhook:** owners and editors generate the token from the webhook panel; the URL with the token
   is shown once. Callers send `POST /api/v1/hooks/{triggerId}/{token}` with `X-Event-Id`,

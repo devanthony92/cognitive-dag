@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0084 (en lo del flag)
 date: 2026-11-07
 decision-makers: autor
 ---
