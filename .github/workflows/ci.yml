@@ -26,6 +26,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm format:check
+      # Shell scripts for deployment and CI (F9, D16A). shellcheck is preinstalled on the runner.
+      - name: shellcheck
+        run: |
+          mapfile -t scripts < <(git ls-files 'deploy/*.sh' 'scripts/*.sh')
+          if [ "${#scripts[@]}" -gt 0 ]; then shellcheck "${scripts[@]}"; fi
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
