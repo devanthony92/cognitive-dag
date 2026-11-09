@@ -1,11 +1,10 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { CSRF_HEADER, FEATURE_FLAGS } from '@cognitive-dag/contracts';
+import { CSRF_HEADER } from '@cognitive-dag/contracts';
 import { CsrfRejectedException } from '../common/errors/domain.exception';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
-import { FlagsService } from '../flags/flags.service';
 import { SKIP_CSRF } from './public.decorator';
 import type { AppRequest } from './request-context';
 
@@ -20,11 +19,10 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 export class CsrfGuard implements CanActivate {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
-    private readonly flags: FlagsService,
     private readonly reflector: Reflector,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AppRequest>();
     if (SAFE_METHODS.has(request.method)) return true;
     if (
@@ -35,7 +33,6 @@ export class CsrfGuard implements CanActivate {
     ) {
       return true;
     }
-    if (!(await this.flags.isEnabled(FEATURE_FLAGS.identityEnabled))) return true;
 
     const origin = request.headers.origin;
     if (!request.auth) {

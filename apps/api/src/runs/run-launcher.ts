@@ -11,7 +11,6 @@ import {
   CORRELATION_ID_SEARCH_ATTRIBUTE,
   DEFAULT_RUN_MAX_DURATION_MS,
   EXECUTE_DAG_WORKFLOW_NAME,
-  FEATURE_FLAGS,
   RUN_EXECUTION_TIMEOUT,
   type ExecuteDagInput,
 } from '@cognitive-dag/contracts';
@@ -19,7 +18,6 @@ import { approvalWaitBudgetMs, type DagDefinition } from '@cognitive-dag/dag-sch
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
 import { DATABASE } from '../database/database.module';
-import { FlagsService } from '../flags/flags.service';
 import { RunTemporalService } from './run-history.service';
 
 export type ExecutablePhases = NonNullable<ExecuteDagInput['executablePhases']>;
@@ -49,15 +47,14 @@ export class RunLauncher {
     @Inject(DATABASE) private readonly database: DatabaseClient,
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly temporal: RunTemporalService,
-    private readonly flags: FlagsService,
   ) {}
 
-  /** F3 always; F5 with `llm-nodes-enabled`; F7 with `triggers-enabled` (the workflow cannot read flags). */
-  async executablePhases(): Promise<ExecutablePhases> {
-    const phases: ExecutablePhases = ['F3'];
-    if (await this.flags.isEnabled(FEATURE_FLAGS.llmNodesEnabled)) phases.push('F5');
-    if (await this.flags.isEnabled(FEATURE_FLAGS.triggersEnabled)) phases.push('F7');
-    return phases;
+  /**
+   * Fixed: F3, F5 and F7. It stays in the workflow input so the worker can still refuse node types
+   * its version does not support (`UNSUPPORTED_NODES`); it is deployment compatibility, not access.
+   */
+  executablePhases(): ExecutablePhases {
+    return ['F3', 'F5', 'F7'];
   }
 
   /** The run bound: the base duration plus the time the approval nodes may wait. */

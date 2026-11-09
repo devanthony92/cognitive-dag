@@ -21,7 +21,6 @@ import {
 } from '@cognitive-dag/db';
 import {
   DEFAULT_MAX_CONCURRENT_RUNS,
-  FEATURE_FLAGS,
   resolveCorrelationId,
   temporalWorkflowIdFor,
   type ExecuteDagInput,
@@ -41,13 +40,8 @@ import {
 } from '@cognitive-dag/dag-schema';
 import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
-import {
-  DomainException,
-  FeatureNotAvailableException,
-  ResourceNotFoundException,
-} from '../common/errors/domain.exception';
+import { DomainException, ResourceNotFoundException } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
-import { FlagsService } from '../flags/flags.service';
 import { SecurityEventLogger } from '../security-events/security-event.logger';
 import { loadRunLlmUsage } from '../llm-usage/llm-usage.service';
 import { RunLauncher, type ExecutablePhases } from './run-launcher';
@@ -97,7 +91,6 @@ export class RunsService {
     private readonly temporal: RunTemporalService,
     private readonly launcher: RunLauncher,
     private readonly events: SecurityEventLogger,
-    private readonly flags: FlagsService,
     private readonly cls: ClsService,
   ) {}
 
@@ -117,7 +110,7 @@ export class RunsService {
     rerun?: RerunSource,
   ): Promise<Run> {
     const correlationId = resolveCorrelationId(this.cls.getId());
-    const phases = await this.launcher.executablePhases();
+    const phases = this.launcher.executablePhases();
     const { row, names, workflowInput } = await this.database.withContext(
       this.context(actor),
       async (tx) => {
@@ -252,16 +245,13 @@ export class RunsService {
         .from(workflowVersions)
         .where(eq(workflowVersions.id, row.versionId));
       const names = await userNames(tx, [row.triggeredBy]);
-      // Without the flag no indicator of consumption exists (R13): fields stay null.
-      const usage = (await this.flags.isEnabled(FEATURE_FLAGS.llmNodesEnabled))
-        ? await loadRunLlmUsage(tx, runId)
-        : undefined;
+      const usage = await loadRunLlmUsage(tx, runId);
       return {
         ...toRun(row, names),
-        llmUsage: usage?.total ?? null,
+        llmUsage: usage.total,
         steps: steps.map((step) => ({
           ...toStep(step),
-          llmUsage: usage?.byNode.get(step.nodeId) ?? null,
+          llmUsage: usage.byNode.get(step.nodeId) ?? null,
         })),
         definition: (version?.definition ?? {}) as Record<string, unknown>,
       };
@@ -382,12 +372,6 @@ export class RunsService {
    * effect that do not depend on the chosen node (research R6).
    */
   async rerun(actor: RunActor, runId: string, fromNodeId?: string): Promise<Run> {
-    if (
-      fromNodeId !== undefined &&
-      !(await this.flags.isEnabled(FEATURE_FLAGS.resilienceEnabled))
-    ) {
-      throw new FeatureNotAvailableException();
-    }
     const found = await this.database.withContext(this.context(actor), async (tx) => {
       const original = await this.findRun(tx, actor, runId);
       if (fromNodeId === undefined) return { original, reusable: [], nodes: [] };

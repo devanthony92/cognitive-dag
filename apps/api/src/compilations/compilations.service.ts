@@ -10,7 +10,6 @@ import {
   COMPILER_INTENT_MAX_CHARS,
   COMPILE_INTENT_WORKFLOW_NAME,
   CORRELATION_ID_SEARCH_ATTRIBUTE,
-  FEATURE_FLAGS,
   resolveCorrelationId,
   type Compilation,
   type CompilationList,
@@ -33,7 +32,6 @@ import { APP_CONFIG } from '../config/config.module';
 import type { AppConfig } from '../config/env.schema';
 import { DomainException, ResourceNotFoundException } from '../common/errors/domain.exception';
 import { DATABASE } from '../database/database.module';
-import { FlagsService } from '../flags/flags.service';
 import { RunTemporalService } from '../runs/run-history.service';
 import { outcomeOf } from './compilation-history';
 import { toCompilation } from './compilation-mappers';
@@ -72,7 +70,6 @@ export class CompilationsService {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly temporal: RunTemporalService,
     private readonly limiter: CompilerRateLimiter,
-    private readonly flags: FlagsService,
     private readonly cls: ClsService,
   ) {}
 
@@ -110,8 +107,7 @@ export class CompilationsService {
   ): Promise<Compilation> {
     const intent = this.checkIntent(body.intent);
     const correlationId = resolveCorrelationId(this.cls.getId());
-    const llmNodesEnabled = await this.flags.isEnabled(FEATURE_FLAGS.llmNodesEnabled);
-    const allowedTypes = allowedNodeTypes({ llmNodesEnabled });
+    const allowedTypes = allowedNodeTypes();
 
     const row = await this.database.withContext(this.context(actor), async (tx) => {
       let baseDraftRevision: number | null = null;

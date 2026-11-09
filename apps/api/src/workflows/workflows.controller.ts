@@ -20,13 +20,11 @@ import type {
   WorkflowBody,
   WorkflowSummary,
 } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { DagEditorEnabledGuard } from './dag-editor-enabled.guard';
 import { IfMatchRevision } from './if-match.decorator';
 import { VersionsService } from './versions.service';
 import {
@@ -47,11 +45,11 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): Workfl
 });
 
 /**
- * Workflows of an organization (F2). Behind `dag-editor-enabled`; owner and editor write, viewer
+ * Workflows of an organization (F2). owner and editor write, viewer
  * reads, and only the owner archives. The organization guard answers 404 to non-members.
  */
 @Controller('api/v1/organizations/:organizationId/workflows')
-@UseGuards(IdentityEnabledGuard, DagEditorEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class WorkflowsController {
   constructor(
     private readonly workflows: WorkflowsService,

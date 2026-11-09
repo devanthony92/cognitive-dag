@@ -17,13 +17,11 @@ import {
   type HttpAllowedHost,
   type HttpAllowedHostList,
 } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { OrganizationGuard } from '../organizations/organization.guard';
 import { RequiredRoles } from '../organizations/required-roles.decorator';
 import type { RequestTenant } from '../organizations/tenant-context';
-import { TriggersEnabledGuard } from '../triggers/triggers-enabled.guard';
 import { HttpHostsService, type HttpHostActor } from './http-hosts.service';
 
 class AddHostDto extends createZodDto(AddHttpAllowedHostRequestSchema) {}
@@ -38,7 +36,7 @@ const actorOf = (auth: AuthSession, tenant: RequestTenant, req: Request): HttpHo
 });
 
 @Controller('api/v1/organizations/:organizationId/http-allowed-hosts')
-@UseGuards(IdentityEnabledGuard, TriggersEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class HttpHostsController {
   constructor(private readonly hosts: HttpHostsService) {}
 

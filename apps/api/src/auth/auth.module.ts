@@ -3,7 +3,6 @@ import { APP_GUARD } from '@nestjs/core';
 import { OrganizationsModule } from '../organizations/organizations.module';
 import { AuthController } from './auth.controller';
 import { CsrfGuard } from './csrf.guard';
-import { IdentityEnabledGuard } from './identity-enabled.guard';
 import { LoginService } from './login.service';
 import { OneTimeTokenService } from './one-time-token.service';
 import { PasswordHasher } from './password-hasher';
@@ -20,7 +19,6 @@ import { SessionService } from './session.service';
   imports: [OrganizationsModule],
   controllers: [AuthController],
   providers: [
-    IdentityEnabledGuard,
     LoginService,
     OneTimeTokenService,
     PasswordHasher,

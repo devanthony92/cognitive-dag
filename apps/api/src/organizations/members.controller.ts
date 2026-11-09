@@ -11,7 +11,6 @@ import {
 } from '@nestjs/common';
 import type { Request } from 'express';
 import type { Member } from '@cognitive-dag/contracts';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
 import { MembersService } from './members.service';
@@ -25,7 +24,7 @@ import type { RequestTenant } from './tenant-context';
  * The guard re-reads the caller's role on every request, so a demotion applies at once (FR-025).
  */
 @Controller('api/v1/organizations/:organizationId/members')
-@UseGuards(IdentityEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class MembersController {
   constructor(private readonly members: MembersService) {}
 

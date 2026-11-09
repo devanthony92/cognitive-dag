@@ -1,5 +1,4 @@
 import { Module } from '@nestjs/common';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { InvitationLinksController, InvitationsController } from './invitations.controller';
 import { InvitationsService } from './invitations.service';
 import { MembersController } from './members.controller';
@@ -17,13 +16,12 @@ import { OrganizationsService } from './organizations.service';
     InvitationLinksController,
   ],
   providers: [
-    IdentityEnabledGuard,
     InvitationsService,
     MembersService,
     MembershipService,
     OrganizationGuard,
     OrganizationsService,
   ],
-  exports: [IdentityEnabledGuard, MembershipService, OrganizationGuard, OrganizationsService],
+  exports: [MembershipService, OrganizationGuard, OrganizationsService],
 })
 export class OrganizationsModule {}

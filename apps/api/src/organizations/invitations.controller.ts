@@ -12,7 +12,6 @@ import {
 import type { Request } from 'express';
 import type { Invitation, InvitationPreview, OrganizationSummary } from '@cognitive-dag/contracts';
 import { TokenDto } from '../auth/auth.dto';
-import { IdentityEnabledGuard } from '../auth/identity-enabled.guard';
 import { Public } from '../auth/public.decorator';
 import { CurrentAuth, CurrentTenant } from '../auth/request-context';
 import type { AuthSession } from '../auth/session.service';
@@ -24,7 +23,7 @@ import type { RequestTenant } from './tenant-context';
 
 /** Managing invitations is for owners only (FR-022). */
 @Controller('api/v1/organizations/:organizationId/invitations')
-@UseGuards(IdentityEnabledGuard, OrganizationGuard)
+@UseGuards(OrganizationGuard)
 export class InvitationsController {
   constructor(private readonly invitations: InvitationsService) {}
 
@@ -75,7 +74,6 @@ export class InvitationsController {
  * member yet.
  */
 @Controller('api/v1/invitations')
-@UseGuards(IdentityEnabledGuard)
 export class InvitationLinksController {
   constructor(private readonly invitations: InvitationsService) {}
 

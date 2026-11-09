@@ -6,48 +6,7 @@ export interface FlagDefinition {
   removalIssue: string;
 }
 
-/** Every flag the API knows about. Flags absent here are never exposed. */
-export const FLAG_CATALOG = {
-  'ping-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/2',
-  },
-  'identity-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/14',
-  },
-  'dag-editor-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/21',
-  },
-  'execution-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/27',
-  },
-  'resilience-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/32',
-  },
-  'llm-nodes-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/39',
-  },
-  'nl-compiler-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/48',
-  },
-  'triggers-enabled': {
-    public: true,
-    owner: 'devanthony92',
-    removalIssue: 'https://github.com/devanthony92/cognitive-dag/issues/55',
-  },
-} as const satisfies Record<string, FlagDefinition>;
+/** Every flag the API knows about. Flags absent here are never exposed. Empty since F8. */
+export const FLAG_CATALOG = {} as const satisfies Record<string, FlagDefinition>;
 
 export type FlagKey = keyof typeof FLAG_CATALOG;
