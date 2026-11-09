@@ -128,12 +128,7 @@ const VERSION = {
 };
 
 export function mount(path: string, handlers: Handlers = {}) {
-  const flags = {
-    'identity-enabled': true,
-    'dag-editor-enabled': true,
-    'execution-enabled': true,
-    ...handlers.flags,
-  };
+  const flags = { ...handlers.flags };
   const fetchMock = vi.fn((url: string, init: RequestInit = {}) => {
     const custom = handlers.on?.(url, init);
     if (custom) return Promise.resolve(custom);

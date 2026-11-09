@@ -15,7 +15,6 @@ import {
   DialogTitle,
 } from '../../components/ui/dialog';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isLlmNodesEnabled, isResilienceEnabled } from '../flags';
 import { workflowQuery } from '../workflows/api';
 import { toEditableDefinition } from '../workflows/model';
 import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
@@ -63,9 +62,6 @@ export function RunDetailPage({
   const mode = useRunLive(organizationId, runId, active);
   const now = useNow(active);
 
-  const features = useQuery(featuresQuery);
-  const resilience = isResilienceEnabled(features.data);
-  const llm = isLlmNodesEnabled(features.data);
   const [selectedId, setSelectedId] = useState<string | undefined>(initialNodeId);
   const [cancelOpen, setCancelOpen] = useState(false);
 
@@ -165,7 +161,7 @@ export function RunDetailPage({
             <dt>Duración</dt>
             <dd className="text-foreground">{formatDuration(runDurationMs(data, now))}</dd>
           </div>
-          {llm && data.llmUsage && (
+          {data.llmUsage && (
             <div className="flex gap-1">
               <dt>Consumo LLM</dt>
               <dd className="text-foreground">
@@ -180,12 +176,10 @@ export function RunDetailPage({
               <Link
                 to="/orgs/$organizationId/runs/$runId"
                 params={{ organizationId, runId: data.rerunOf }}
-                {...(resilience && data.rerunFromNodeId
-                  ? { search: { node: data.rerunFromNodeId } }
-                  : {})}
+                {...(data.rerunFromNodeId ? { search: { node: data.rerunFromNodeId } } : {})}
                 className="underline"
               >
-                {resilience && data.rerunFromNodeId
+                {data.rerunFromNodeId
                   ? `Reejecución desde «${labelOf(data.rerunFromNodeId)}» de otra ejecución`
                   : 'Reejecución de otra ejecución'}
               </Link>
@@ -288,10 +282,8 @@ export function RunDetailPage({
               step={selectedStep}
               label={labelOf(selectedStep.nodeId)}
               now={now}
-              resilience={resilience}
-              llm={llm}
               rerunOf={data.rerunOf}
-              {...(resilience && final
+              {...(final
                 ? {
                     onRerunFrom: () => rerun.mutate(selectedStep.nodeId),
                     rerunning: rerun.isPending,

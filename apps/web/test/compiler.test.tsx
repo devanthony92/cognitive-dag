@@ -25,11 +25,7 @@ const USER_ID = '0192f0a0-0000-7000-8000-000000000001';
 const CORRELATION_ID = '0b5f7f5e-3c1a-4d57-9a53-7d9a2a2d6c11';
 const NOW = '2026-11-06T12:00:00.000Z';
 
-const FLAGS = {
-  'identity-enabled': true,
-  'dag-editor-enabled': true,
-  'nl-compiler-enabled': true,
-};
+const FLAGS: Record<string, boolean> = {};
 
 const session = (role: Role): SessionInfo => ({
   user: { id: USER_ID, name: 'Ana', email: 'ana@example.com' },
@@ -246,36 +242,21 @@ async function describeAndSend(user: ReturnType<typeof userEvent.setup>, text: s
 }
 
 describe('entry points (US1, US2)', () => {
-  it('offers "Describir workflow" to editors when the flag is on', async () => {
+  it('offers "Describir workflow" to editors', async () => {
     const { router } = open(`/orgs/${ORG_ID}/workflows`, new FakeApi());
     const link = await screen.findByRole('link', { name: /Describir workflow/ });
     expect(link.getAttribute('href')).toBe(NEW_PATH);
     expect(router.state.location.pathname).toBe(`/orgs/${ORG_ID}/workflows`);
   });
 
-  it('hides it from viewers and when the flag is off', async () => {
-    const off = new FakeApi();
-    off.features = { ...FLAGS, 'nl-compiler-enabled': false };
-    open(`/orgs/${ORG_ID}/workflows`, off);
-    await screen.findByText('Tus workflows');
-    expect(screen.queryByRole('link', { name: /Describir workflow/ })).toBeNull();
-    cleanup();
-
+  it('hides it from viewers', async () => {
     open(`/orgs/${ORG_ID}/workflows`, new FakeApi(), 'viewer');
     await screen.findByText('Tus workflows');
     expect(screen.queryByRole('link', { name: /Describir workflow/ })).toBeNull();
   });
 
-  it('sends the person home when the flag is off', async () => {
-    const off = new FakeApi();
-    off.features = { ...FLAGS, 'nl-compiler-enabled': false };
-    const { router } = open(NEW_PATH, off);
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-  });
-
   it('adds "Regenerar borrador" to the editor for writers only', async () => {
     const server = new FakeServer({ schemaVersion: 1, nodes: [], edges: [] });
-    server.features = { 'nl-compiler-enabled': true };
     mountEditor(server);
     const link = await screen.findByRole('link', { name: /Regenerar borrador/ });
     expect(link.getAttribute('href')).toContain(`/workflows/new?workflowId=`);
@@ -283,7 +264,6 @@ describe('entry points (US1, US2)', () => {
     vi.unstubAllGlobals();
 
     const viewerServer = new FakeServer({ schemaVersion: 1, nodes: [], edges: [] });
-    viewerServer.features = { 'nl-compiler-enabled': true };
     mountEditor(viewerServer, 'viewer');
     await screen.findByText('Solo lectura');
     expect(screen.queryByRole('link', { name: /Regenerar borrador/ })).toBeNull();

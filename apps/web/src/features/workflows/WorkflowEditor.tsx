@@ -36,13 +36,6 @@ import {
 import { Toast } from '../../components/ui/toast';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import {
-  featuresQuery,
-  isLlmNodesEnabled,
-  isTriggersEnabled,
-  isNlCompilerEnabled,
-  isResilienceEnabled,
-} from '../flags';
 import { RunButton } from '../runs/RunButton';
 import { ScheduleStatus } from '../schedules/ScheduleStatus';
 import { WebhookPanel } from '../webhooks/WebhookPanel';
@@ -151,11 +144,6 @@ function EditorSession({
 }: SessionProps) {
   const queryClient = useQueryClient();
   const readOnly = !canWrite;
-  const featureFlags = useQuery(featuresQuery).data;
-  const resilience = isResilienceEnabled(featureFlags);
-  const llm = isLlmNodesEnabled(featureFlags);
-  const triggers = isTriggersEnabled(featureFlags);
-  const compiler = isNlCompilerEnabled(featureFlags);
   const flow = useReactFlow<FlowNode, Edge>();
   const canvas = useRef<HTMLDivElement>(null);
 
@@ -486,7 +474,7 @@ function EditorSession({
           >
             <Download aria-hidden />
           </Button>
-          {canWrite && compiler && (
+          {canWrite && (
             <Button asChild variant="outline">
               <Link
                 to="/orgs/$organizationId/workflows/new"
@@ -557,7 +545,7 @@ function EditorSession({
       )}
 
       <div className="flex min-h-0 flex-1">
-        {canWrite && <Palette onAdd={addFromPalette} llm={llm} triggers={triggers} />}
+        {canWrite && <Palette onAdd={addFromPalette} />}
 
         <div
           ref={canvas}
@@ -638,17 +626,15 @@ function EditorSession({
                     errors={errors}
                     onChange={onNodeChange}
                     onRename={renameSelected}
-                    resilience={resilience}
-                    llm={llm}
                   />
-                  {triggers && selectedNode.type === 'trigger.webhook' && (
+                  {selectedNode.type === 'trigger.webhook' && (
                     <WebhookPanel
                       organizationId={organizationId}
                       workflowId={workflowId}
                       canWrite={canWrite}
                     />
                   )}
-                  {triggers && selectedNode.type === 'trigger.schedule' && (
+                  {selectedNode.type === 'trigger.schedule' && (
                     <ScheduleStatus organizationId={organizationId} workflowId={workflowId} />
                   )}
                 </>

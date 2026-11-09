@@ -225,7 +225,7 @@ describe('run detail (US3)', () => {
 
     const link = await screen.findByRole('link', { name: 'Soporte' });
     expect(link.getAttribute('href')).toBe(`/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`);
-    expect(screen.getByRole('link', { name: 'Ejecuciones' })).toBeDefined();
+    expect(screen.getAllByRole('link', { name: 'Ejecuciones' }).length).toBeGreaterThan(0);
   });
 
   it('hides attempts for triggers, logic, skipped and pending nodes', async () => {

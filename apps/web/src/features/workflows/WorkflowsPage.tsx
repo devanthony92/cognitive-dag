@@ -31,7 +31,6 @@ import {
   TableRow,
 } from '../../components/ui/table';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isNlCompilerEnabled } from '../flags';
 import { sessionQuery } from '../session/session';
 import { createWorkflow, workflowsKey, workflowsQuery } from './api';
 
@@ -45,8 +44,6 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
   const session = useQuery(sessionQuery);
   const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
   const canCreate = role === 'owner' || role === 'editor';
-  const features = useQuery(featuresQuery);
-  const canDescribe = canCreate && isNlCompilerEnabled(features.data);
   const workflows = useQuery(workflowsQuery(organizationId));
 
   const form = useForm<CreateInput, unknown, CreateOutput>({
@@ -111,7 +108,7 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
               </form>
             </Form>
             {create.isError && <ProblemAlert error={create.error} />}
-            {canDescribe && (
+            {canCreate && (
               <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
                 <Button asChild variant="outline">
                   <Link to="/orgs/$organizationId/workflows/new" params={{ organizationId }}>

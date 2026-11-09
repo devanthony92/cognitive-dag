@@ -22,7 +22,7 @@ const EDITOR = `/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`;
 const DETAIL = `/orgs/${ORG_ID}/runs/${RUN_ID}`;
 const LIST = `/orgs/${ORG_ID}/runs`;
 const FINISHED = '2026-10-30T12:00:05.000Z';
-const RESILIENCE = { 'resilience-enabled': true };
+const NO_FLAGS: Record<string, boolean> = {};
 
 beforeEach(() => {
   FakeEventSource.instances = [];
@@ -79,7 +79,7 @@ describe.each([
   it(`${allowed ? 'can' : 'cannot'} cancel a run in progress`, async () => {
     mount(DETAIL, {
       role,
-      flags: RESILIENCE,
+      flags: NO_FLAGS,
       on: (url, init) => (isRunDetail(url, init) ? detail({ status: 'running' }) : undefined),
     });
     const cancel = await button('Cancelar');
@@ -90,7 +90,7 @@ describe.each([
   it(`${allowed ? 'can' : 'cannot'} rerun a finished run, whole or from a node`, async () => {
     mount(DETAIL, {
       role,
-      flags: RESILIENCE,
+      flags: NO_FLAGS,
       on: (url, init) =>
         isRunDetail(url, init) ? detail({ status: 'failed', finishedAt: FINISHED }) : undefined,
     });
@@ -118,7 +118,7 @@ describe.each([
     };
     mount(LIST, {
       role,
-      flags: RESILIENCE,
+      flags: NO_FLAGS,
       on: (url) =>
         /\/organizations\/[0-9a-f-]{36}\/runs\?/.test(url)
           ? json({ items: [failed], nextCursor: null })

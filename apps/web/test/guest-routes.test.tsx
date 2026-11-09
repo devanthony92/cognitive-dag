@@ -34,7 +34,7 @@ function open(path: string, signedIn: boolean) {
     'fetch',
     vi.fn((url: string) => {
       if (/\/features$/.test(url)) {
-        return Promise.resolve(json({ 'identity-enabled': true, 'ping-enabled': true }));
+        return Promise.resolve(json({}));
       }
       if (/\/auth\/session$/.test(url)) {
         return Promise.resolve(signedIn ? json(SESSION) : unauthenticated());

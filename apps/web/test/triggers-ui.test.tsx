@@ -489,15 +489,11 @@ describe('palette and run origin (US10)', () => {
   const labelsOfF7 = () =>
     screen.getAllByText(/Ejecutable|Se ejecuta desde F7/).map((node) => node.textContent);
 
-  it('marks the F7 nodes as executable only with triggers-enabled', () => {
-    render(<Palette onAdd={() => undefined} triggers />);
+  it('marks the F7 nodes as executable', () => {
+    render(<Palette onAdd={() => undefined} />);
     expect(screen.getByText('Disparador por webhook')).toBeDefined();
     expect(labelsOfF7()).not.toContain('Se ejecuta desde F7');
-    cleanup();
-
-    render(<Palette onAdd={() => undefined} />);
-    expect(labelsOfF7()).toContain('Se ejecuta desde F7');
-    expect(screen.getAllByText('Se ejecuta desde F7').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByText('Ejecutable').length).toBeGreaterThanOrEqual(4);
   });
 
   it('names who or what started a run', () => {

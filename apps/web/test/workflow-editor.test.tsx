@@ -183,9 +183,7 @@ describe('editor: palette and canvas (US1)', () => {
       ).toBeDefined();
     }
     expect(within(palette()).getAllByRole('button')).toHaveLength(11);
-    expect(within(palette()).getAllByText('Se ejecuta desde F3').length).toBeGreaterThan(0);
-    expect(within(palette()).getAllByText('Se ejecuta desde F5').length).toBeGreaterThan(0);
-    expect(within(palette()).getAllByText('Se ejecuta desde F7').length).toBeGreaterThan(0);
+    expect(within(palette()).getAllByText('Ejecutable')).toHaveLength(11);
     expect(within(palette()).getByRole('heading', { name: 'Disparadores' })).toBeDefined();
   });
 

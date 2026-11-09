@@ -15,7 +15,7 @@ import {
   step,
 } from './runs-harness';
 
-const FLAG_ON = { 'llm-nodes-enabled': true };
+const NO_FLAGS: Record<string, boolean> = {};
 const DETAIL = `/orgs/${ORG_ID}/runs/${RUN_ID}`;
 const HOME = `/orgs/${ORG_ID}`;
 const USAGE_URL = /\/llm-usage\/today$/;
@@ -110,7 +110,7 @@ const stepPanel = () => screen.findByRole('complementary', { name: 'Detalle del 
 
 describe('LLM step panel and run header (US1)', () => {
   it('shows model, tokens, cost, repairs and the estimated confidence', async () => {
-    openRun(FLAG_ON);
+    openRun(NO_FLAGS);
     fireEvent.click(await canvasNode());
     const panel = await stepPanel();
 
@@ -125,13 +125,13 @@ describe('LLM step panel and run header (US1)', () => {
   });
 
   it('shows the total of the run in the header', async () => {
-    openRun(FLAG_ON);
+    openRun(NO_FLAGS);
     expect(await screen.findByText('Consumo LLM')).toBeDefined();
     expect(screen.getByText(/1200 entrada · 300 salida/)).toBeDefined();
   });
 
   it('prints the output as escaped text, never as HTML', async () => {
-    openRun(FLAG_ON);
+    openRun(NO_FLAGS);
     fireEvent.click(await canvasNode());
     const panel = await stepPanel();
 
@@ -141,7 +141,7 @@ describe('LLM step panel and run header (US1)', () => {
 
   it('names the budget class in Spanish', async () => {
     openRun(
-      FLAG_ON,
+      NO_FLAGS,
       failedLlm({
         code: 'LLM_DAILY_BUDGET_EXHAUSTED',
         message: 'Daily budget exhausted.',
@@ -155,21 +155,12 @@ describe('LLM step panel and run header (US1)', () => {
 
   it('names invalid output in Spanish', async () => {
     openRun(
-      FLAG_ON,
+      NO_FLAGS,
       failedLlm({ code: 'LLM_INVALID_OUTPUT', message: 'Bad.', class: 'invalid_output' }),
     );
     fireEvent.click(await canvasNode());
     const panel = await stepPanel();
     expect(within(panel).getByText(/Clase de error: Salida inválida/)).toBeDefined();
-  });
-
-  it('shows no consumption with the flag off', async () => {
-    openRun({});
-    fireEvent.click(await canvasNode());
-    const panel = await stepPanel();
-
-    expect(within(panel).queryByRole('region', { name: 'Consumo LLM' })).toBeNull();
-    expect(screen.queryByText('Consumo LLM')).toBeNull();
   });
 });
 
@@ -177,16 +168,10 @@ describe('run button (US1)', () => {
   const EDITOR = `/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`;
   const runButton = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Ejecutar' });
 
-  it('enables the run with LLM nodes when the flag is on', async () => {
-    mount(EDITOR, { flags: FLAG_ON, definition: LLM_DEFINITION });
+  it('enables the run with LLM nodes', async () => {
+    mount(EDITOR, { flags: NO_FLAGS, definition: LLM_DEFINITION });
     await waitFor(() => expect(runButton().disabled).toBe(false));
     expect(screen.queryByText(/desde F5/)).toBeNull();
-  });
-
-  it('keeps it blocked, naming the nodes, when the flag is off', async () => {
-    mount(EDITOR, { definition: LLM_DEFINITION });
-    expect(await screen.findByText(/Clasificar \(desde F5\)/)).toBeDefined();
-    expect(runButton().disabled).toBe(true);
   });
 });
 
@@ -198,7 +183,7 @@ describe('"Consumo LLM de hoy" card (US3)', () => {
     });
 
   it('shows used of limit, a progress bar and the cost', async () => {
-    home(FLAG_ON, () =>
+    home(NO_FLAGS, () =>
       json({
         date: '2026-10-30',
         tokensUsed: 125_000,
@@ -214,12 +199,12 @@ describe('"Consumo LLM de hoy" card (US3)', () => {
   });
 
   it('shows the loading state', async () => {
-    home(FLAG_ON, () => new Promise<Response>(() => {}));
+    home(NO_FLAGS, () => new Promise<Response>(() => {}));
     expect(await screen.findByText('Cargando consumo…')).toBeDefined();
   });
 
   it('says "Sin consumo hoy" when there is none', async () => {
-    home(FLAG_ON, () =>
+    home(NO_FLAGS, () =>
       json({ date: '2026-10-30', tokensUsed: 0, tokensLimit: 500_000, costMicroUsd: 0 }),
     );
     expect(await screen.findByText('Sin consumo hoy')).toBeDefined();
@@ -227,15 +212,8 @@ describe('"Consumo LLM de hoy" card (US3)', () => {
   });
 
   it('shows the error', async () => {
-    home(FLAG_ON, () => problem(503, 'SERVICE_UNAVAILABLE', 'No se pudo leer el consumo.'));
+    home(NO_FLAGS, () => problem(503, 'SERVICE_UNAVAILABLE', 'No se pudo leer el consumo.'));
     expect(await screen.findByRole('alert')).toBeDefined();
-  });
-
-  it('does not draw the card nor ask the API with the flag off', async () => {
-    const { fetchMock } = home({});
-    await screen.findAllByText('Equipo');
-    expect(screen.queryByText('Consumo LLM de hoy')).toBeNull();
-    expect(fetchMock.mock.calls.some(([url]) => USAGE_URL.test(String(url)))).toBe(false);
   });
 });
 
@@ -261,8 +239,8 @@ describe('editor: LLM nodes (US5)', () => {
     return fake;
   };
 
-  it('offers the PII switch and the warning with the flag on', async () => {
-    mountEditor(server(FLAG_ON));
+  it('offers the PII switch and the warning', async () => {
+    mountEditor(server(NO_FLAGS));
     fireEvent.click(await canvasNode());
     const toggle = await within(panel()).findByRole('switch', { name: 'Ocultar datos personales' });
     expect((toggle as HTMLInputElement).checked).toBe(false);
@@ -273,23 +251,10 @@ describe('editor: LLM nodes (US5)', () => {
     ).toBeDefined();
   });
 
-  it('shows no warning with the flag off', async () => {
-    mountEditor(server({}));
-    fireEvent.click(await canvasNode());
-    await within(panel()).findByRole('switch', { name: 'Ocultar datos personales' });
-    expect(within(panel()).queryByText(/No envíes datos reales/)).toBeNull();
-  });
-
-  it('marks the LLM nodes of the palette as executable only with the flag on', async () => {
-    mountEditor(server(FLAG_ON));
+  it('marks the LLM nodes of the palette as executable', async () => {
+    mountEditor(server(NO_FLAGS));
     const palette = await screen.findByRole('complementary', { name: 'Paleta de nodos' });
     const classify = within(palette).getByRole('button', { name: /Clasificar/ });
     await waitFor(() => expect(within(classify).getByText('Ejecutable')).toBeDefined());
-    cleanup();
-
-    mountEditor(server({}));
-    const off = await screen.findByRole('complementary', { name: 'Paleta de nodos' });
-    const offClassify = within(off).getByRole('button', { name: /Clasificar/ });
-    expect(within(offClassify).getByText('Se ejecuta desde F5')).toBeDefined();
   });
 });

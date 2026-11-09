@@ -3,11 +3,9 @@ import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { AcceptInvitationPanel } from '../features/invitations/AcceptInvitationPanel';
 import { readPendingInvitation, rememberPendingInvitation } from '../features/invitations/pending';
-import { requireIdentity } from '../features/session/guards';
 
 export const Route = createFileRoute('/invitations/accept')({
   validateSearch: z.object({ token: z.string().optional().catch(undefined) }),
-  beforeLoad: ({ context }) => requireIdentity(context.queryClient),
   component: AcceptInvitationPage,
 });
 

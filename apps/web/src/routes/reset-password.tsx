@@ -2,11 +2,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { ResetPasswordForm } from '../features/auth/PasswordResetForms';
-import { requireIdentity } from '../features/session/guards';
 
 export const Route = createFileRoute('/reset-password')({
   validateSearch: z.object({ token: z.string().optional().catch(undefined) }),
-  beforeLoad: ({ context }) => requireIdentity(context.queryClient),
   component: ResetPasswordPage,
 });
 
