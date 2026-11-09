@@ -141,21 +141,22 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 
 ### Tests
 
-- [ ] T043 [P] [US1] [US6] `scripts/test/unit/check-evidence.test.ts`: el comprobador falla con una ruta inexistente, una fila sin estado, una `verified` sin evidencia y cualquier `planned:F4`/`planned:F8`; pasa con la matriz y el modelo actuales
+- [X] T043 [P] [US1] [US6] `scripts/test/unit/check-evidence.test.ts`: el comprobador falla con una ruta inexistente, una fila sin estado, una `verified` sin evidencia y cualquier `planned:F4`/`planned:F8`; pasa con la matriz y el modelo actuales
 
 ### Implementation
 
-- [ ] T044 [US1] `scripts/security/check-evidence.ts` y `pnpm security:evidence`, ejecutado dentro de un job existente (sin check nuevo)
-- [ ] T045 [US1] Ejecutar el comando de evidencia de cada fila de 6.1 y 6.2 y escribir `docs/security/owasp-evidence.md` (control, ubicación, evidencia, resultado, fecha, estado) según `research.md` R1
-- [ ] T046 [US1] Contrastar el orden y los nombres de OWASP LLM 2026 con genai.owasp.org (fecha y URL en la matriz); corregir `docs/PLAN.md` §6.1 si difiere, o dejar la fila `deferred` si la fuente no está accesible
-- [ ] T047 [US6] `docs/threat-model.md` v2.0 según `research.md` R8: estados normalizados, E6 y F5 `planned:F4` resueltas, ADR-0053 `mitigated`, fila del compilador sin "Pendiente en F8", razón + dueño + revisión en cada `accepted`, `deferred:F9` para Temporal, PostgreSQL y Valkey (8C) y para SBOM y escaneo de imágenes (9C), resumen reescrito
-- [ ] T048 [US1] [US6] `docs/PLAN.md`: F8 completada con su criterio de aceptación; §6.1 y §6.2 corregidas (A07 sesiones opacas, A08 sin HMAC ni artefactos firmados, A09 eventos en logs, A03 sin SBOM por decisión); §9 con los requisitos de F9 de `research.md` R9 (incluida la razón y la fase de revisión de 8C y 9C); eliminar el párrafo "pendiente de decisión del autor" sobre viewers
-- [ ] T049 [P] README (estado, "Next: F9") y `docs/adr/README` o índice si existe
-- [ ] T050 [P] ADR-0087 (matriz, comprobador y estados) y ADR-0088 (riesgos aceptados y diferidos a F9, con 4A, 5A, 8C y 9C)
+- [X] T044 [US1] `scripts/security/check-evidence.ts` y `pnpm security:evidence`, ejecutado dentro de un job existente (sin check nuevo)
+- [X] T045 [US1] Ejecutar el comando de evidencia de cada fila de 6.1 y 6.2 y escribir `docs/security/owasp-evidence.md` (control, ubicación, evidencia, resultado, fecha, estado) según `research.md` R1
+- [X] T046 [US1] Contrastar el orden y los nombres de OWASP LLM 2026 con genai.owasp.org (fecha y URL en la matriz); corregir `docs/PLAN.md` §6.1 si difiere, o dejar la fila `deferred` si la fuente no está accesible
+  - genai.owasp.org muestra la edición 2025 (no existe una 2026); se corrigieron el orden y los nombres de `docs/PLAN.md` §6.1 y de las filas LLM del modelo de amenazas.
+- [X] T047 [US6] `docs/threat-model.md` v2.0 según `research.md` R8: estados normalizados, E6 y F5 `planned:F4` resueltas, ADR-0053 `mitigated`, fila del compilador sin "Pendiente en F8", razón + dueño + revisión en cada `accepted`, `deferred:F9` para Temporal, PostgreSQL y Valkey (8C) y para SBOM y escaneo de imágenes (9C), resumen reescrito
+- [X] T048 [US1] [US6] `docs/PLAN.md`: F8 completada con su criterio de aceptación; §6.1 y §6.2 corregidas (A07 sesiones opacas, A08 sin HMAC ni artefactos firmados, A09 eventos en logs, A03 sin SBOM por decisión); §9 con los requisitos de F9 de `research.md` R9 (incluida la razón y la fase de revisión de 8C y 9C); eliminar el párrafo "pendiente de decisión del autor" sobre viewers
+- [X] T049 [P] README (estado, "Next: F9") y `docs/adr/README` o índice si existe
+- [X] T050 [P] ADR-0087 (matriz, comprobador y estados) y ADR-0088 (riesgos aceptados y diferidos a F9, con 4A, 5A, 8C y 9C)
 - [ ] T051 [US9] Ejecutar `pnpm eval:llm` y `pnpm eval:compiler` contra Gemini una vez con el catálogo final; registrar resultado y modelo en la matriz y en el ADR de evals correspondiente
-- [ ] T052 Ejecutar los 21 escenarios de `quickstart.md` y registrar resultados en la PR
-- [ ] T053 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX) y `checklists/security.md` revisado
-- [ ] T054 Marcar T001–T053 como hechas en este archivo
+- [X] T052 Ejecutar los 21 escenarios de `quickstart.md` y registrar resultados en la PR
+- [X] T053 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX) y `checklists/security.md` revisado
+- [X] T054 Marcar T001–T053 como hechas en este archivo
 
 ---
 
