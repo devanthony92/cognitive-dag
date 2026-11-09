@@ -24,9 +24,9 @@ const step = {
   waitingReason: null,
 };
 
-describe('F5 flag', () => {
-  it('names the flag llm-nodes-enabled', () => {
-    expect(FEATURE_FLAGS.llmNodesEnabled).toBe('llm-nodes-enabled');
+describe('product flags', () => {
+  it('has none since F8: the catalog is empty', () => {
+    expect(Object.keys(FEATURE_FLAGS)).toEqual([]);
   });
 });
 

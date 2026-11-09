@@ -12,7 +12,7 @@ export interface UnsupportedNode {
 
 /**
  * Nodes whose phase is not executable: a version that contains any cannot be run. The caller says
- * which phases run (F3 by default; the API adds F5 when `llm-nodes-enabled` is on, research R13).
+ * which phases run (F3 by default; the API sends F3, F5 and F7).
  */
 export function findUnsupportedNodes(
   definition: DagDefinition,

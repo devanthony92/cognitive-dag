@@ -21,13 +21,8 @@ describe('node types by phase (research R10)', () => {
     }
   });
 
-  it('adds the LLM nodes only when llm-nodes-enabled is on', () => {
-    expect(allowedNodeTypes({ llmNodesEnabled: false })).toEqual(
-      nodeTypesExecutableIn(['F3', 'F7']),
-    );
-    expect(allowedNodeTypes({ llmNodesEnabled: true })).toEqual(
-      nodeTypesExecutableIn(['F3', 'F5', 'F7']),
-    );
+  it('offers everything executable up to F7', () => {
+    expect(allowedNodeTypes()).toEqual(nodeTypesExecutableIn(['F3', 'F5', 'F7']));
   });
 });
 

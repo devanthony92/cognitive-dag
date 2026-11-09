@@ -59,8 +59,8 @@ export const ExecuteDagInputSchema = z.strictObject({
    */
   memoized: z.record(z.string(), z.unknown()).optional(),
   /**
-   * Phases whose nodes may run (F5, research R13). The API decides it from `llm-nodes-enabled`, so
-   * the workflow never reads flags; without it the run accepts F3 nodes only, as in F4.
+   * Phases whose nodes may run. The API sends F3, F5 and F7 (F8); a worker that supports fewer
+   * refuses the rest (`UNSUPPORTED_NODES`). Without it the run accepts F3 nodes only, as in F4.
    */
   executablePhases: z
     .array(z.enum(['F3', 'F5', 'F7']))
