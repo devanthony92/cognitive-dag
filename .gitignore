@@ -27,3 +27,6 @@ Thumbs.db
 
 # TanStack Router generator cache
 .tanstack/
+
+# ZAP: the HTML report is regenerated on demand (the JSON and Markdown are the evidence)
+docs/security/zap/*.html

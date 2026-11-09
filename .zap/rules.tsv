@@ -1,0 +1,13 @@
+# ZAP baseline rules (F8, decision 6A): rule id, action, (name), separated by tabs.
+# The decision and reason for every Medium or High alert live in docs/security/zap.md.
+# Accepted alerts stay at WARN on purpose: the F9 run against staging must still show them.
+10038	WARN	(Content Security Policy (CSP) Header Not Set)
+10020	WARN	(Missing Anti-clickjacking Header)
+10021	WARN	(X-Content-Type-Options Header Missing)
+10063	WARN	(Permissions Policy Header Not Set)
+90004	WARN	(Insufficient Site Isolation Against Spectre Vulnerability)
+# False positive: the match is a number inside the minified bundle, not a timestamp.
+10096	IGNORE	(Timestamp Disclosure - Unix)
+10027	INFO	(Information Disclosure - Suspicious Comments)
+10109	INFO	(Modern Web Application)
+10049	INFO	(Non-Storable Content)

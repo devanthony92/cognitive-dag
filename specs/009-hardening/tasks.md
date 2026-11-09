@@ -126,15 +126,16 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 
 ### Tests
 
-- [ ] T037 [P] [US4] `scripts/test/unit/zap-script.test.ts`: el script se niega a apuntar a un host que no sea loopback y no incluye ningún destino de terceros ni de Gemini
+- [X] T037 [P] [US4] `scripts/test/unit/zap-script.test.ts`: el script se niega a apuntar a un host que no sea loopback y no incluye ningún destino de terceros ni de Gemini
 
 ### Implementation
 
-- [ ] T038 [US4] `scripts/security/zap-baseline.sh` (contenedor oficial de ZAP fijado por digest, `--network host`, sembrado con las rutas públicas y la web, límites de pruebas relajados por variables existentes e impresos) y `.zap/rules.tsv`
-- [ ] T039 [US4] `docs/security/zap.md`: procedimiento, alcance (pasivo, local, sin sesión), qué diferir a F9 (staging, activo, con sesión)
-- [ ] T040 [US4] Ejecutar contra el estado final de PR 1–3; guardar resumen y JSON en `docs/security/zap/`; decidir cada alerta de nivel medio o alto (corregida, falso positivo o aceptada con razón, dueño y revisión)
-- [ ] T041 [US4] Corregir las alertas que lo exijan, cada una con prueba de regresión (en `security-surface.test.ts` o la suite del área)
-- [ ] T042 [US4] ADR-0086 (ZAP baseline pasivo como script manual; alcance y límites)
+- [X] T038 [US4] `scripts/security/zap-baseline.sh` (contenedor oficial de ZAP fijado por digest, `--network host`, sembrado con las rutas públicas y la web, límites de pruebas relajados por variables existentes e impresos) y `.zap/rules.tsv`
+- [X] T039 [US4] `docs/security/zap.md`: procedimiento, alcance (pasivo, local, sin sesión), qué diferir a F9 (staging, activo, con sesión)
+- [X] T040 [US4] Ejecutar contra el estado final de PR 1–3; guardar resumen y JSON en `docs/security/zap/`; decidir cada alerta de nivel medio o alto (corregida, falso positivo o aceptada con razón, dueño y revisión)
+- [X] T041 [US4] Corregir las alertas que lo exijan, cada una con prueba de regresión (en `security-surface.test.ts` o la suite del área)
+  - La corrida no dejó medias ni altas en la API; las dos medias de la web (CSP y anti-clickjacking) se aceptan hasta F9 (Caddy). Sin cambios de código, así que sin pruebas de regresión nuevas.
+- [X] T042 [US4] ADR-0086 (ZAP baseline pasivo como script manual; alcance y límites)
 
 ## Phase 6: Matriz, modelo de amenazas y cierre (PR 5)
 
