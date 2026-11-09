@@ -1,23 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { Button, buttonVariants } from '../../components/ui/button';
-import {
-  featuresQuery,
-  isDagEditorEnabled,
-  isExecutionEnabled,
-  isIdentityEnabled,
-  isResilienceEnabled,
-  isTriggersEnabled,
-} from '../flags';
 import { ApprovalsBadge } from '../approvals/ApprovalsBadge';
 import { OrganizationSwitcher } from '../organizations/OrganizationSwitcher';
 import { forgetSession, logout, sessionQuery } from './session';
 
 /** Top bar: brand, organization switcher and sign-out once there is a session. */
 export function AppHeader() {
-  const features = useQuery(featuresQuery);
-  const identity = isIdentityEnabled(features.data);
-  const session = useQuery({ ...sessionQuery, enabled: identity });
+  const session = useQuery(sessionQuery);
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { organizationId } = useParams({ strict: false });
@@ -39,7 +29,7 @@ export function AppHeader() {
         <Link to="/" className="font-semibold tracking-tight">
           CognitiveDAG
         </Link>
-        {identity && info && (
+        {info && (
           <OrganizationSwitcher
             organizations={info.organizations}
             activeId={organizationId}
@@ -48,7 +38,7 @@ export function AppHeader() {
             }
           />
         )}
-        {identity && info && organizationId !== undefined && isDagEditorEnabled(features.data) && (
+        {info && organizationId !== undefined && (
           <Link
             to="/orgs/$organizationId/workflows"
             params={{ organizationId }}
@@ -57,24 +47,17 @@ export function AppHeader() {
             Workflows
           </Link>
         )}
-        {identity &&
-          info &&
+        {info && organizationId !== undefined && (
+          <Link
+            to="/orgs/$organizationId/runs"
+            params={{ organizationId }}
+            className="text-sm underline"
+          >
+            Ejecuciones
+          </Link>
+        )}
+        {info &&
           organizationId !== undefined &&
-          isDagEditorEnabled(features.data) &&
-          isExecutionEnabled(features.data) &&
-          isResilienceEnabled(features.data) && (
-            <Link
-              to="/orgs/$organizationId/runs"
-              params={{ organizationId }}
-              className="text-sm underline"
-            >
-              Ejecuciones
-            </Link>
-          )}
-        {identity &&
-          info &&
-          organizationId !== undefined &&
-          isTriggersEnabled(features.data) &&
           info.organizations.some(
             (organization) => organization.id === organizationId && organization.role !== 'viewer',
           ) && (
@@ -89,7 +72,7 @@ export function AppHeader() {
               </Link>
             </>
           )}
-        {identity && info && organizationId !== undefined && (
+        {info && organizationId !== undefined && (
           <Link
             to="/orgs/$organizationId/members"
             params={{ organizationId }}
@@ -99,7 +82,7 @@ export function AppHeader() {
           </Link>
         )}
         <div className="ml-auto flex min-w-0 items-center gap-3 text-sm whitespace-nowrap">
-          {identity && info && (
+          {info && (
             <>
               <span className="min-w-0 truncate text-muted-foreground" title={info.user.name}>
                 {info.user.name}
@@ -116,7 +99,7 @@ export function AppHeader() {
               </Button>
             </>
           )}
-          {identity && session.isSuccess && !info && (
+          {session.isSuccess && !info && (
             <Link to="/login" className={buttonVariants({ variant: 'outline' })}>
               Iniciar sesión
             </Link>

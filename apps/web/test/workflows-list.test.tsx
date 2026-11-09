@@ -35,17 +35,16 @@ const problem = (status: number, code: string, detail: string) =>
   );
 
 interface Options {
-  flag?: boolean;
   role?: Role;
   list?: unknown[];
   create?: () => Response;
 }
 
-function open(path: string, { flag = true, role = 'editor', list = [], create }: Options = {}) {
+function open(path: string, { role = 'editor', list = [], create }: Options = {}) {
   const fetchMock = vi.fn((url: string, init: RequestInit = {}) => {
     const method = init.method ?? 'GET';
     if (/\/features$/.test(url)) {
-      return Promise.resolve(json({ 'identity-enabled': true, 'dag-editor-enabled': flag }));
+      return Promise.resolve(json({}));
     }
     if (/\/auth\/session$/.test(url)) return Promise.resolve(json(session(role)));
     if (/\/workflows$/.test(url) && method === 'GET') return Promise.resolve(json(list));
@@ -139,27 +138,5 @@ describe('workflows list (US1)', () => {
     expect(await screen.findByRole('link', { name: 'Soporte' })).toBeDefined();
     expect(screen.queryByLabelText('Nombre del workflow')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Crear workflow' })).toBeNull();
-  });
-});
-
-describe('dag-editor-enabled', () => {
-  it('shows the Workflows entry in the navigation only with the flag on', async () => {
-    open(`/orgs/${ORG_ID}`, { flag: true });
-    expect(await screen.findByRole('link', { name: 'Workflows' })).toBeDefined();
-    cleanup();
-
-    open(`/orgs/${ORG_ID}`, { flag: false });
-    await screen.findAllByRole('link', { name: 'Miembros' });
-    expect(screen.queryByRole('link', { name: 'Workflows' })).toBeNull();
-  });
-
-  it('sends the list and the editor routes back to the organization when the flag is off', async () => {
-    const first = open(`/orgs/${ORG_ID}/workflows`, { flag: false });
-    await waitFor(() => expect(first.router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-    cleanup();
-
-    const second = open(`/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`, { flag: false });
-    await waitFor(() => expect(second.router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-    expect(second.fetchMock.mock.calls.some(([url]) => /\/workflows/.test(url))).toBe(false);
   });
 });

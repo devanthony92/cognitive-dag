@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
-import { featuresQuery, isDagEditorEnabled, isExecutionEnabled } from '../flags';
 import { limitsQuery } from '../workflows/api';
 
 const formatBytes = (bytes: number): string => {
@@ -20,21 +19,17 @@ const formatBytes = (bytes: number): string => {
  * this card has no inputs and no buttons.
  */
 export function OrganizationLimits({ organizationId }: { organizationId: string }) {
-  const features = useQuery(featuresQuery);
-  const enabled = isDagEditorEnabled(features.data);
-  const limits = useQuery({ ...limitsQuery(organizationId), enabled });
+  const limits = useQuery(limitsQuery(organizationId));
 
-  if (!enabled || !limits.data) return null;
+  if (!limits.data) return null;
   const { maxNodes, maxEdges, maxDefinitionBytes, maxConcurrentRuns, source } = limits.data;
 
   const rows: Array<[string, string]> = [
     ['Nodos por workflow', String(maxNodes)],
     ['Conexiones por workflow', String(maxEdges)],
     ['Tamaño de la definición', formatBytes(maxDefinitionBytes)],
+    ['Ejecuciones simultáneas', String(maxConcurrentRuns)],
   ];
-  if (isExecutionEnabled(features.data)) {
-    rows.push(['Ejecuciones simultáneas', String(maxConcurrentRuns)]);
-  }
 
   return (
     <Card>

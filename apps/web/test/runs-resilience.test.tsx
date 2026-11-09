@@ -15,7 +15,7 @@ import {
   step,
 } from './runs-harness';
 
-const RESILIENCE = { 'resilience-enabled': true };
+const NO_FLAGS: Record<string, boolean> = {};
 const LIST = `/orgs/${ORG_ID}/runs`;
 const DETAIL = `/orgs/${ORG_ID}/runs/${RUN_ID}`;
 const ORG_RUNS_URL = /\/organizations\/[0-9a-f-]{36}\/runs\?/;
@@ -55,7 +55,7 @@ describe('organization runs (US6)', () => {
     items: OrganizationRun[],
     extra?: (url: string, init: RequestInit) => Response | undefined,
     path = LIST,
-    flags: Record<string, boolean> = RESILIENCE,
+    flags: Record<string, boolean> = NO_FLAGS,
   ) =>
     mount(path, {
       flags,
@@ -88,14 +88,9 @@ describe('organization runs (US6)', () => {
     expect(table.getByText('Completada')).toBeDefined();
   });
 
-  it('is in the navigation, and the page does not exist with the flag off', async () => {
+  it('is in the navigation', async () => {
     open([orgRun()]);
     expect(await screen.findByRole('link', { name: 'Ejecuciones' })).toBeDefined();
-    cleanup();
-
-    const { router } = open([orgRun()], undefined, LIST, {});
-    await waitFor(() => expect(router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-    expect(screen.queryByRole('link', { name: 'Ejecuciones' })).toBeNull();
   });
 
   it('asks the API for the status and workflow chosen, and keeps them in the address', async () => {
@@ -226,7 +221,7 @@ describe('run detail with resilience (US5)', () => {
   const open = (
     payload: () => Response,
     extra?: (url: string, init: RequestInit) => Response | undefined,
-    flags: Record<string, boolean> = RESILIENCE,
+    flags: Record<string, boolean> = NO_FLAGS,
     path = DETAIL,
   ) =>
     mount(path, {
@@ -276,22 +271,12 @@ describe('run detail with resilience (US5)', () => {
     expect(bodies).toEqual([{ fromNodeId: 'servicio_a' }]);
   });
 
-  it('does not offer it while the run is in progress, nor with the flag off', async () => {
+  it('does not offer it while the run is in progress', async () => {
     const { user } = open(() =>
       detail({}, [step('inicio', { status: 'succeeded' }), step('alto'), step('servicio_a')]),
     );
     await selectNode(user, 'Servicio A');
     expect(screen.queryByRole('button', { name: 'Reejecutar desde aquí' })).toBeNull();
-    cleanup();
-
-    const off = open(
-      () => detail({ status: 'failed', finishedAt: FINISHED }, finishedSteps()),
-      undefined,
-      {},
-    );
-    await selectNode(off.user, 'Servicio A');
-    expect(screen.queryByRole('button', { name: 'Reejecutar desde aquí' })).toBeNull();
-    expect(screen.queryByText(/Clase de error/)).toBeNull();
   });
 
   it('writes the error in Spanish, keeping the code, and falls back by class', async () => {
@@ -373,7 +358,7 @@ describe('run detail with resilience (US5)', () => {
     open(
       () => detail({ status: 'failed', finishedAt: FINISHED }, finishedSteps()),
       undefined,
-      RESILIENCE,
+      NO_FLAGS,
       `${DETAIL}?node=servicio_a`,
     );
     const panel = await screen.findByLabelText('Detalle del nodo');

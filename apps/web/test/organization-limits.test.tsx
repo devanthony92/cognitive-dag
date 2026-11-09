@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { FEATURE_FLAGS } from '@cognitive-dag/contracts';
 import { OrganizationLimits } from '../src/features/organizations/OrganizationLimits';
 
 const ORG_ID = '0192f0a0-0000-7000-8000-0000000000aa';
@@ -9,16 +8,8 @@ const ORG_ID = '0192f0a0-0000-7000-8000-0000000000aa';
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
-function stub(limits: unknown, editorEnabled = true, executionEnabled = false) {
+function stub(limits: unknown) {
   const fetchMock = vi.fn((url: string) => {
-    if (url.endsWith('/features')) {
-      return Promise.resolve(
-        json({
-          [FEATURE_FLAGS.dagEditorEnabled]: editorEnabled,
-          [FEATURE_FLAGS.executionEnabled]: executionEnabled,
-        }),
-      );
-    }
     if (url.endsWith('/limits')) return Promise.resolve(json(limits));
     return Promise.resolve(json({}, 404));
   });
@@ -93,16 +84,7 @@ describe('OrganizationLimits (US7)', () => {
     expect(screen.queryAllByRole('button')).toHaveLength(0);
   });
 
-  it('shows nothing, and asks nothing of the limits endpoint, with the editor flag off', async () => {
-    const fetchMock = stub({}, false);
-    renderLimits();
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-
-    expect(screen.queryByText('Límites de los workflows')).toBeNull();
-    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/limits'))).toBe(false);
-  });
-
-  it('shows the concurrent run limit only with execution-enabled on', async () => {
+  it('shows the concurrent run limit and no controls', async () => {
     const limits = {
       maxNodes: 50,
       maxEdges: 100,
@@ -110,17 +92,11 @@ describe('OrganizationLimits (US7)', () => {
       maxConcurrentRuns: 3,
       source: 'organization',
     };
-    stub(limits, true, true);
+    stub(limits);
     renderLimits();
     expect(
       (await screen.findByText('Ejecuciones simultáneas')).parentElement?.textContent,
     ).toContain('3');
     expect(screen.queryAllByRole('button')).toHaveLength(0);
-    cleanup();
-
-    stub(limits, true, false);
-    renderLimits();
-    await screen.findByText('Nodos por workflow');
-    expect(screen.queryByText('Ejecuciones simultáneas')).toBeNull();
   });
 });

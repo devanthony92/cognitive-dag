@@ -35,7 +35,7 @@ const draft = (retry?: Record<string, unknown>) => ({
 
 const panel = () => screen.getByRole('complementary', { name: 'Panel lateral' });
 
-const serverWith = (retry?: Record<string, unknown>, flags = { 'resilience-enabled': true }) => {
+const serverWith = (retry?: Record<string, unknown>, flags: Record<string, boolean> = {}) => {
   const server = new FakeServer(draft(retry));
   server.features = flags;
   return server;
@@ -74,13 +74,6 @@ describe('editor: retry settings (US2)', () => {
 
     fireEvent.click(screen.getByText('Disparo'));
     await within(panel()).findByText('Inicia el workflow a mano', { exact: false });
-    expect(within(panel()).queryByRole('region', { name: 'Reintentos' })).toBeNull();
-  });
-
-  it('does not exist with resilience-enabled off', async () => {
-    mountEditor(serverWith(undefined, {} as never));
-    fireEvent.click(await screen.findByText('Cobrar'));
-    await within(panel()).findByLabelText('Nombre del nodo');
     expect(within(panel()).queryByRole('region', { name: 'Reintentos' })).toBeNull();
   });
 

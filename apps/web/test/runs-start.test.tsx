@@ -1,15 +1,6 @@
 import { cleanup, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  LLM_DEFINITION,
-  NEW_RUN_ID,
-  ORG_ID,
-  WORKFLOW_ID,
-  json,
-  mount,
-  problem,
-  run,
-} from './runs-harness';
+import { ORG_ID, WORKFLOW_ID, json, mount, problem, run } from './runs-harness';
 
 const EDITOR = `/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}`;
 const runButton = () => screen.getByRole<HTMLButtonElement>('button', { name: 'Ejecutar' });
@@ -21,16 +12,6 @@ afterEach(() => {
 });
 
 describe('Run button and form (US1, FR-020)', () => {
-  it('shows no run controls while execution-enabled is off', async () => {
-    const { fetchMock } = mount(EDITOR, { flags: { 'execution-enabled': false } });
-    // First mount of the file: the route chunks load here, so allow more than one second.
-    await screen.findByRole('heading', { name: 'Soporte' }, { timeout: 5000 });
-
-    expect(screen.queryByRole('button', { name: 'Ejecutar' })).toBeNull();
-    expect(screen.queryByRole('link', { name: 'Ejecuciones' })).toBeNull();
-    expect(fetchMock.mock.calls.some(([url]) => /\/runs/.test(String(url)))).toBe(false);
-  });
-
   it('disables the button for a viewer, says why and never calls the API (ADR-0082)', async () => {
     const { fetchMock } = mount(EDITOR, { role: 'viewer' });
 
@@ -43,13 +24,6 @@ describe('Run button and form (US1, FR-020)', () => {
     mount(EDITOR, { versions: [] });
 
     expect(await screen.findByText(/Publica una versión/)).toBeDefined();
-    expect(runButton().disabled).toBe(true);
-  });
-
-  it('disables the button and names the nodes that cannot run yet', async () => {
-    mount(EDITOR, { definition: LLM_DEFINITION });
-
-    expect(await screen.findByText(/Clasificar \(desde F5\)/)).toBeDefined();
     expect(runButton().disabled).toBe(true);
   });
 
@@ -138,21 +112,5 @@ describe('Run button and form (US1, FR-020)', () => {
     await user.click(screen.getAllByRole('button', { name: 'Ejecutar' }).at(-1)!);
 
     expect(await screen.findByText(/archivado y no se puede ejecutar/)).toBeDefined();
-  });
-});
-
-describe('run routes behind the flag', () => {
-  it('sends the run routes back to the organization when execution-enabled is off', async () => {
-    const list = mount(`/orgs/${ORG_ID}/workflows/${WORKFLOW_ID}/runs`, {
-      flags: { 'execution-enabled': false },
-    });
-    await waitFor(() => expect(list.router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-    cleanup();
-
-    const detail = mount(`/orgs/${ORG_ID}/runs/${NEW_RUN_ID}`, {
-      flags: { 'execution-enabled': false },
-    });
-    await waitFor(() => expect(detail.router.state.location.pathname).toBe(`/orgs/${ORG_ID}`));
-    expect(detail.fetchMock.mock.calls.some(([url]) => /\/runs/.test(String(url)))).toBe(false);
   });
 });

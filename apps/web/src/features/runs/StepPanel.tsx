@@ -23,10 +23,6 @@ interface Props {
   step: RunStep;
   label: string;
   now: number;
-  /** F4 behind `resilience-enabled`: error class, rate limit wait, reuse and rerun from a node. */
-  resilience?: boolean;
-  /** F5 behind `llm-nodes-enabled`: consumption of the LLM nodes. */
-  llm?: boolean;
   /** The run this one repeats, to follow a reused node back to where it ran. */
   rerunOf?: string | null;
   /** Rerun from this node; only offered when the run has finished. */
@@ -145,8 +141,6 @@ export function StepPanel({
   step,
   label,
   now,
-  resilience = false,
-  llm = false,
   rerunOf = null,
   onRerunFrom,
   rerunning = false,
@@ -171,12 +165,9 @@ export function StepPanel({
     step.status !== 'pending' &&
     step.status !== 'reused';
 
-  const errorClass =
-    (resilience || llm) && step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
+  const errorClass = step.error?.class ? ERROR_CLASS_LABELS[step.error.class] : undefined;
   const waitingText =
-    step.waitingReason === 'approval' || (resilience && step.waitingReason !== null)
-      ? WAITING_REASON_LABELS[step.waitingReason]
-      : undefined;
+    step.waitingReason !== null ? WAITING_REASON_LABELS[step.waitingReason] : undefined;
 
   return (
     <div className="grid gap-4">
@@ -211,7 +202,7 @@ export function StepPanel({
         <dt className="text-muted-foreground">Fin</dt>
         <dd>{step.finishedAt ? formatDateTime(step.finishedAt) : '—'}</dd>
       </dl>
-      {llm && step.llmUsage && (
+      {step.llmUsage && (
         <section aria-label="Consumo LLM" className="grid gap-2">
           <h3 className="text-sm font-semibold">Consumo LLM</h3>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">

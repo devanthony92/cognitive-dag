@@ -1,37 +1,12 @@
 import { queryOptions } from '@tanstack/react-query';
-import { FEATURE_FLAGS, PublicFeaturesSchema } from '@cognitive-dag/contracts';
+import { PublicFeaturesSchema } from '@cognitive-dag/contracts';
 import { request } from '../api/client';
 
-/** Same key and data as the ping panel's query, so both share one request. */
+/**
+ * The flags the API exposes. F8 removed the eight product flags, so the catalog is empty; the
+ * query stays for the next feature that needs a flag (constitution, principle VIII).
+ */
 export const featuresQuery = queryOptions({
   queryKey: ['features'],
   queryFn: async () => (await request('/api/v1/features', PublicFeaturesSchema)).data,
 });
-
-export function isIdentityEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.identityEnabled] === true;
-}
-
-export function isDagEditorEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.dagEditorEnabled] === true;
-}
-
-export function isResilienceEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.resilienceEnabled] === true;
-}
-
-export function isLlmNodesEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.llmNodesEnabled] === true;
-}
-
-export function isExecutionEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.executionEnabled] === true;
-}
-
-export function isNlCompilerEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.nlCompilerEnabled] === true;
-}
-
-export function isTriggersEnabled(features: Record<string, boolean> | undefined): boolean {
-  return features?.[FEATURE_FLAGS.triggersEnabled] === true;
-}

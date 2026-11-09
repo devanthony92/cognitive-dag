@@ -3,7 +3,6 @@ import { Link } from '@tanstack/react-router';
 import { History, Play } from 'lucide-react';
 import { useId, useMemo, useState } from 'react';
 import { Button } from '../../components/ui/button';
-import { featuresQuery, isExecutionEnabled, isLlmNodesEnabled, isTriggersEnabled } from '../flags';
 import { versionQuery, versionsQuery } from '../workflows/api';
 import { RunDialog } from './RunDialog';
 import { useRunPermission } from './permissions';
@@ -21,17 +20,15 @@ interface Props {
 /**
  * Runs the active version. Only owner and editor can (F8, ADR-0082); for a viewer the button is
  * disabled and says why. While the version cannot run, the button is disabled and the reason stays
- * on screen next to it. Renders nothing while `execution-enabled` is off.
+ * on screen next to it.
  */
 export function RunButton({ organizationId, workflowId, workflowName, showHistory }: Props) {
   const reasonId = useId();
-  const features = useQuery(featuresQuery);
-  const enabled = isExecutionEnabled(features.data);
-  const versions = useQuery({ ...versionsQuery(organizationId, workflowId), enabled });
+  const versions = useQuery(versionsQuery(organizationId, workflowId));
   const active = versions.data?.find((version) => version.active);
   const activeVersion = useQuery({
     ...versionQuery(organizationId, workflowId, active?.number ?? 0),
-    enabled: enabled && active !== undefined,
+    enabled: active !== undefined,
   });
   const [open, setOpen] = useState(false);
   const { canExecute, blockedReason } = useRunPermission(organizationId);
@@ -41,8 +38,6 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
     [activeVersion.data?.definition],
   );
 
-  if (!enabled) return null;
-
   const loading = versions.isPending || (active !== undefined && activeVersion.isPending);
   const reason = blockedReason
     ? blockedReason
@@ -50,12 +45,7 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
       ? undefined
       : versions.isError || activeVersion.isError
         ? 'No se pudo cargar la versión activa.'
-        : runBlockReason(
-            activeVersion.data?.definition,
-            active !== undefined,
-            isLlmNodesEnabled(features.data),
-            isTriggersEnabled(features.data),
-          );
+        : runBlockReason(activeVersion.data?.definition, active !== undefined);
   const blocked =
     !canExecute || loading || reason !== undefined || activeVersion.data === undefined;
 

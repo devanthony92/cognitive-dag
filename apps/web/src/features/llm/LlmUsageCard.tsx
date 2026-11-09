@@ -7,20 +7,14 @@ import {
   CardTitle,
 } from '../../components/ui/card';
 import { ProblemAlert } from '../auth/ProblemAlert';
-import { featuresQuery, isLlmNodesEnabled } from '../flags';
 import { llmUsageQuery } from './api';
 import { formatCostUsd, formatTokens } from './format';
 
 /**
  * "Consumo LLM de hoy" (F5, research R12): tokens used of the daily limit and estimated cost.
- * Nothing is drawn while `llm-nodes-enabled` is off, so the API is not even asked.
  */
 export function LlmUsageCard({ organizationId }: { organizationId: string }) {
-  const features = useQuery(featuresQuery);
-  const enabled = isLlmNodesEnabled(features.data);
-  const usage = useQuery({ ...llmUsageQuery(organizationId), enabled });
-
-  if (!enabled) return null;
+  const usage = useQuery(llmUsageQuery(organizationId));
 
   const body = () => {
     if (usage.isPending) {

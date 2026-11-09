@@ -46,10 +46,6 @@ interface Props {
   readOnly: boolean;
   errors: GroupedErrors;
   onChange: (patch: { label?: string; config?: unknown; retry?: RetrySetting | undefined }) => void;
-  /** F4 behind `resilience-enabled`: the retry settings of nodes with an effect. */
-  resilience?: boolean;
-  /** F5 behind `llm-nodes-enabled`: the warning about real data sent to the provider. */
-  llm?: boolean;
   /** Renames the node and everything that points to it; returns why it cannot, if it cannot. */
   onRename: (id: string) => string | undefined;
 }
@@ -62,16 +58,7 @@ const asText = (value: unknown): string => (typeof value === 'string' ? value : 
  * The form of the side panel, generated from the `configSchema` of the node type. The shared
  * validator (not this form) decides what is valid: it marks the fields through `errors`.
  */
-export function ConfigForm({
-  node,
-  definition,
-  readOnly,
-  errors,
-  onChange,
-  onRename,
-  resilience = false,
-  llm = false,
-}: Props) {
+export function ConfigForm({ node, definition, readOnly, errors, onChange, onRename }: Props) {
   const descriptors = useMemo(() => describeConfig(node.type), [node.type]);
   const config = (
     typeof node.config === 'object' && node.config !== null ? node.config : {}
@@ -289,7 +276,7 @@ export function ConfigForm({
         ),
       )}
 
-      {llm && node.type.startsWith('llm.') && (
+      {node.type.startsWith('llm.') && (
         <p
           role="note"
           className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900"
@@ -298,7 +285,7 @@ export function ConfigForm({
         </p>
       )}
 
-      {resilience && supportsRetry(node.type) && (
+      {supportsRetry(node.type) && (
         <RetrySection node={node} errors={errors} onChange={(retry) => onChange({ retry })} />
       )}
     </fieldset>

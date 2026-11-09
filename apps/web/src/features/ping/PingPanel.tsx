@@ -1,9 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import {
-  FEATURE_FLAGS,
   IDEMPOTENCY_KEY_HEADER,
   PingExecutionSchema,
-  PublicFeaturesSchema,
   TERMINAL_PING_STATUSES,
   type PingExecution,
 } from '@cognitive-dag/contracts';
@@ -34,23 +32,15 @@ function isTerminal(ping: PingExecution | undefined): boolean {
 }
 
 /**
- * Starts a ping and follows it until a terminal status. Hidden while the feature flag is off.
- * Inside an organization (identity on) the ping is scoped to it; otherwise it is the F0 route.
+ * Starts a ping and follows it until a terminal status. The ping is scoped to the organization.
  */
-export function PingPanel({ organizationId }: { organizationId?: string } = {}) {
-  const basePath =
-    organizationId === undefined
-      ? '/api/v1/pings'
-      : `/api/v1/organizations/${organizationId}/pings`;
-  const features = useQuery({
-    queryKey: ['features'],
-    queryFn: async () => (await request('/api/v1/features', PublicFeaturesSchema)).data,
-  });
+export function PingPanel({ organizationId }: { organizationId: string }) {
+  const basePath = `/api/v1/organizations/${organizationId}/pings`;
 
   // Viewers cannot start pings (the API answers 403), so the action is not offered to them.
-  const session = useQuery({ ...sessionQuery, enabled: organizationId !== undefined });
+  const session = useQuery(sessionQuery);
   const role = session.data?.organizations.find((item) => item.id === organizationId)?.role;
-  const canStart = organizationId === undefined || (role !== undefined && role !== 'viewer');
+  const canStart = role !== undefined && role !== 'viewer';
 
   const start = useMutation({
     mutationFn: async () =>
@@ -71,8 +61,6 @@ export function PingPanel({ organizationId }: { organizationId?: string } = {}) 
     queryFn: async () => (await request(`${basePath}/${pingId}`, PingExecutionSchema)).data,
     refetchInterval: (query) => (isTerminal(query.state.data) ? false : POLL_INTERVAL_MS),
   });
-
-  if (!features.data?.[FEATURE_FLAGS.pingEnabled]) return null;
 
   const ping = status.data ?? start.data;
   const error = start.error ?? status.error;
