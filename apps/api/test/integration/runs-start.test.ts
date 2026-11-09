@@ -5,8 +5,7 @@ import {
   RunListSchema,
   RunSchema,
 } from '@cognitive-dag/contracts';
-import { authHeaders, startIdentityApp } from './identity-helpers';
-import { uniqueTaskQueue } from './ping-helpers';
+import { authHeaders } from './identity-helpers';
 import {
   amountDefinition,
   api,
@@ -16,16 +15,10 @@ import {
   runsPath,
   setupRunsEnv,
   startRun,
-  unsupportedDefinition,
   waitForTerminal,
   type RunsEnv,
 } from './runs-helpers';
-import {
-  createWorkflow,
-  setupWorkflowsEnv,
-  closeWorkflowsEnv,
-  workflowsPath,
-} from './workflows-helpers';
+import { createWorkflow, workflowsPath } from './workflows-helpers';
 
 describe('start a run (requires docker compose up and pnpm db:migrate)', () => {
   let env: RunsEnv;
@@ -102,26 +95,6 @@ describe('start a run (requires docker compose up and pnpm db:migrate)', () => {
     const response = await startRun(env, env.owner, workflow.id).expect(409);
     const problem = ProblemDetailsSchema.parse(response.body);
     expect(problem).toMatchObject({ code: 'WORKFLOW_NOT_RUNNABLE', reason: 'no_active_version' });
-  });
-
-  it('409 WORKFLOW_NOT_RUNNABLE when the version has nodes of later phases', async () => {
-    // Nodes of F5 run with llm-nodes-enabled (llm-flag.test.ts); human approval waits for F7.
-    const definition = unsupportedDefinition();
-    definition.nodes[1] = {
-      id: 'texto',
-      type: 'human.approval',
-      label: 'Aprobar',
-      position: { x: 200, y: 0 },
-      config: { message: 'Aprueba', timeoutSeconds: 3600 },
-    };
-    const workflowId = await publishedWorkflow(env, definition);
-    const response = await startRun(env, env.owner, workflowId, {}).expect(409);
-    const problem = ProblemDetailsSchema.parse(response.body);
-    expect(problem).toMatchObject({
-      code: 'WORKFLOW_NOT_RUNNABLE',
-      reason: 'unsupported_nodes',
-      nodes: [{ nodeId: 'texto', type: 'human.approval' }],
-    });
   });
 
   it('409 WORKFLOW_NOT_RUNNABLE for an archived workflow', async () => {
@@ -231,44 +204,4 @@ describe('start a run when Temporal fails', () => {
     });
     expect(items[0]?.finishedAt).not.toBeNull();
   }, 30_000);
-});
-
-describe('start a run with execution-enabled off', () => {
-  it('404 FEATURE_NOT_AVAILABLE on the run endpoints, with the roles still enforced when on', async () => {
-    const env = await setupWorkflowsEnv();
-    const app = await startIdentityApp(
-      '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true}',
-      { TEMPORAL_TASK_QUEUE: uniqueTaskQueue() },
-    );
-    try {
-      const orgId = env.organization.id;
-      const workflowId = '018f0000-0000-7000-8000-000000000000';
-      for (const response of [
-        await api({ app })
-          .post(runsPath(orgId, workflowId))
-          .set(authHeaders(env.owner))
-          .send({ input: {} }),
-        await api({ app }).get(runsPath(orgId, workflowId)).set('Cookie', env.owner.cookie),
-        await api({ app }).get(runPath(orgId, workflowId)).set('Cookie', env.owner.cookie),
-        await api({ app })
-          .get(`${runPath(orgId, workflowId)}/events`)
-          .set('Cookie', env.owner.cookie),
-        await api({ app })
-          .post(`${runPath(orgId, workflowId)}/cancel`)
-          .set(authHeaders(env.owner)),
-        await api({ app })
-          .post(`${runPath(orgId, workflowId)}/rerun`)
-          .set(authHeaders(env.owner)),
-        await api({ app })
-          .get(`${runPath(orgId, workflowId)}/steps/trigger/io`)
-          .set('Cookie', env.owner.cookie),
-      ]) {
-        expect(response.status).toBe(404);
-        expect(ProblemDetailsSchema.parse(response.body).code).toBe('FEATURE_NOT_AVAILABLE');
-      }
-    } finally {
-      await app.close();
-      await closeWorkflowsEnv(env);
-    }
-  });
 });

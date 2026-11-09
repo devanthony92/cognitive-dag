@@ -17,7 +17,7 @@ import {
 import { createOrganization, joinAs } from './members-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
 
-export const DAG_FLAGS = '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true}';
+export const DAG_FLAGS = '{}';
 
 export interface WorkflowsEnv {
   app: INestApplication;

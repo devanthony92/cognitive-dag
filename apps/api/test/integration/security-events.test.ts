@@ -26,7 +26,7 @@ import { createOrganization, invite, joinAs } from './members-helpers';
 import { uniqueTaskQueue } from './ping-helpers';
 import { DAG_FLAGS, validDefinition } from './workflows-helpers';
 
-const EVENT_FLAGS = DAG_FLAGS.replace('}', ',"execution-enabled":true}');
+const EVENT_FLAGS = DAG_FLAGS;
 
 const ALLOWED_KEYS = new Set(['event', 'outcome', 'userId', 'organizationId', 'ip']);
 

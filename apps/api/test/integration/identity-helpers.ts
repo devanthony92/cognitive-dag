@@ -7,7 +7,8 @@ import Valkey from 'iovalkey';
 import type { AppConfig } from '../../src/config/env.schema';
 import { httpServer, startTestApp, testConfig } from './helpers';
 
-export const IDENTITY_FLAGS = '{"ping-enabled":true,"identity-enabled":true}';
+/** Since F8 no product flag exists: the catalog is empty and every feature is on. */
+export const IDENTITY_FLAGS = '{}';
 
 export const STRONG_PASSWORD = 'un-caballo-azul-en-marte';
 

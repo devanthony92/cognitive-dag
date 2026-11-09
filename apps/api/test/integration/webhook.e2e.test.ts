@@ -7,7 +7,6 @@ import { authHeaders, resetRateLimits } from './identity-helpers';
 import { httpServer, startTestApp } from './helpers';
 import { waitFor } from './ping-helpers';
 import {
-  NO_TRIGGER_FLAGS,
   TRIGGER_FLAGS,
   closeTriggersEnv,
   generateWebhook,
@@ -254,7 +253,7 @@ describe('POST /api/v1/hooks/{triggerId}/{token}', () => {
   });
 });
 
-describe('without Valkey or without the flag', () => {
+describe('without Valkey', () => {
   let app: INestApplication | undefined;
   afterAll(async () => {
     await app?.close();
@@ -272,14 +271,5 @@ describe('without Valkey or without the flag', () => {
     expect(problemOf(response).code).toBe('SERVICE_UNAVAILABLE');
     await app.close();
     app = undefined;
-  });
-
-  it('answers 404 FEATURE_NOT_AVAILABLE when triggers-enabled is off', async () => {
-    app = await startTestApp({ FEATURE_FLAGS: NO_TRIGGER_FLAGS });
-    const response = await postHook(
-      { app },
-      `/api/v1/hooks/${randomUUID()}/cdw_${'A'.repeat(43)}`,
-    ).expect(404);
-    expect(problemOf(response).code).toBe('FEATURE_NOT_AVAILABLE');
   });
 });

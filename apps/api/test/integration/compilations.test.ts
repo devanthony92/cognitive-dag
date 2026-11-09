@@ -4,10 +4,8 @@ import {
   CompilationSchema,
   ProblemDetailsSchema,
 } from '@cognitive-dag/contracts';
-import { authHeaders, withValkey } from './identity-helpers';
+import { withValkey } from './identity-helpers';
 import {
-  COMPILER_FLAGS_OFF,
-  COMPILER_FLAGS_WITHOUT_LLM,
   closeRunsEnv,
   compilationsPath,
   compileInputOf,
@@ -195,51 +193,32 @@ describe('compilations (requires docker compose up and pnpm db:migrate)', () => 
   });
 });
 
-describe('compilations without llm-nodes-enabled', () => {
+describe('compilations offer every type executable up to F7', () => {
   let env: RunsEnv;
 
   beforeAll(async () => {
-    env = await setupRunsEnv({ FEATURE_FLAGS: COMPILER_FLAGS_WITHOUT_LLM });
+    env = await setupRunsEnv();
     await withValkey((valkey) => valkey.del(bucketOf(env.owner.body.user.id)));
   }, 60_000);
   afterAll(async () => {
     await closeRunsEnv(env);
   });
 
-  it('gives the workflow only the types executable in F3', async () => {
+  it('gives the workflow the F3, F5 and F7 types, with no flag in between', async () => {
     const response = await createCompilation(env, env.owner, { intent: INTENT }).expect(202);
     const input = await compileInputOf(CompilationSchema.parse(response.body).id);
     const types = input['allowedTypes'] as string[];
     expect(types).toEqual(
-      expect.arrayContaining(['trigger.manual', 'logic.condition', 'mock.service']),
+      expect.arrayContaining([
+        'trigger.manual',
+        'logic.condition',
+        'llm.classify',
+        'trigger.webhook',
+        'trigger.schedule',
+        'human.approval',
+        'http.request',
+      ]),
     );
-    expect(types.filter((type) => type.startsWith('llm.'))).toEqual([]);
-  });
-});
-
-describe('compilations with nl-compiler-enabled off', () => {
-  let env: RunsEnv;
-
-  beforeAll(async () => {
-    env = await setupRunsEnv({ FEATURE_FLAGS: COMPILER_FLAGS_OFF });
-  }, 60_000);
-  afterAll(async () => {
-    await closeRunsEnv(env);
-  });
-
-  it('answers 404 FEATURE_NOT_AVAILABLE on every endpoint', async () => {
-    const id = '0198a000-0000-7000-8000-000000000000';
-    const base = compilationsPath(env.organization.id);
-    const responses = [
-      await createCompilation(env, env.owner, { intent: INTENT }),
-      await api(env).get(base).set(authHeaders(env.owner)),
-      await api(env).get(`${base}/${id}`).set(authHeaders(env.owner)),
-      await api(env).get(`${base}/${id}/result`).set(authHeaders(env.owner)),
-    ];
-    for (const response of responses) {
-      expect(response.status).toBe(404);
-      expect(ProblemDetailsSchema.parse(response.body).code).toBe('FEATURE_NOT_AVAILABLE');
-    }
   });
 });
 
@@ -248,7 +227,6 @@ describe('compilation limits', () => {
 
   beforeAll(async () => {
     env = await setupRunsEnv({
-      FEATURE_FLAGS: COMPILER_FLAGS_WITHOUT_LLM,
       COMPILER_MAX_PER_USER_HOUR: 2,
       COMPILER_MAX_PER_ORG_DAY: 4,
     });

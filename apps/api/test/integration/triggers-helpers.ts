@@ -22,12 +22,7 @@ import {
   type WorkflowsEnv,
 } from './workflows-helpers';
 
-export const TRIGGER_FLAGS =
-  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true,"triggers-enabled":true}';
-
-/** The same flags with `triggers-enabled` off. */
-export const NO_TRIGGER_FLAGS =
-  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true}';
+export const TRIGGER_FLAGS = '{}';
 
 /** A fixed master key for tests: 32 bytes of one value, never a real key. */
 export const TEST_MASTER_KEY = Buffer.alloc(32, 7);
@@ -73,7 +68,7 @@ export async function setupTriggersEnv(
     client: temporal,
     taskQueue,
     catchupWindowSeconds: 3600,
-    triggersEnabled: true,
+    triggersOn: true,
     logger: createLogger({ component: 'test-reconciler', level: 'silent' }),
   });
   return {
@@ -108,7 +103,7 @@ async function startWorker(
       publish: (channel, message) => valkey.publish(channel, message),
     },
     triggers: {
-      triggersEnabled: true,
+      triggersOn: true,
       llmEnabled: false,
       llmTaskQueue: 'unused-llm-queue',
       httpTaskQueue: 'unused-http-queue',

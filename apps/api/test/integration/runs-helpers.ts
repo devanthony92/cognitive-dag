@@ -18,11 +18,7 @@ import {
   type WorkflowsEnv,
 } from './workflows-helpers';
 
-export const RUN_FLAGS =
-  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true,"resilience-enabled":true,"llm-nodes-enabled":true}';
-/** Runs on, F4 recovery off. */
-export const RUN_FLAGS_WITHOUT_RESILIENCE =
-  '{"ping-enabled":true,"identity-enabled":true,"dag-editor-enabled":true,"execution-enabled":true}';
+export const RUN_FLAGS = '{}';
 
 export interface RunsEnv extends WorkflowsEnv {
   taskQueue: string;
@@ -32,7 +28,7 @@ export interface RunsEnv extends WorkflowsEnv {
   llmWorker?: RunningWorker;
 }
 
-/** The workflows environment with `execution-enabled` on and a real worker that records runs. */
+/** The workflows environment with a real worker that records runs. */
 export async function setupRunsEnv(
   overrides: Parameters<typeof startTestApp>[0] = {},
   options: { llm?: boolean; provider?: LlmProvider; compiler?: boolean } = {},

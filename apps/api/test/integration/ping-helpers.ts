@@ -10,10 +10,7 @@ export function uniqueTaskQueue(): string {
   return `test-${randomUUID()}`;
 }
 
-export async function startPingApi(
-  taskQueue: string,
-  flags = '{"ping-enabled":true}',
-): Promise<INestApplication> {
+export async function startPingApi(taskQueue: string, flags = '{}'): Promise<INestApplication> {
   return startTestApp({ TEMPORAL_TASK_QUEUE: taskQueue, FEATURE_FLAGS: flags });
 }
 
