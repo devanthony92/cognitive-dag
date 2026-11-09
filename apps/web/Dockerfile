@@ -20,6 +20,10 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lo
 RUN pnpm exec turbo run build --filter=@cognitive-dag/web...
 
 FROM ${DEBIAN_IMAGE} AS runtime
+# Caddy needs the system roots to reach Let's Encrypt (ACME); bookworm-slim ships none.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 COPY --from=caddy /usr/bin/caddy /usr/bin/caddy
 RUN groupadd --system --gid 10001 caddy \
  && useradd --system --uid 10001 --gid caddy --no-create-home --shell /usr/sbin/nologin caddy \

@@ -132,6 +132,24 @@ describe('Dockerfiles', () => {
     expect(text).not.toMatch(/^EXPOSE\s/m);
   });
 
+  it('installs ca-certificates in every Debian final image that runs Caddy (ACME needs the roots)', () => {
+    for (const file of DOCKERFILES) {
+      const stages = parse(file);
+      const final = stages.at(-1);
+      if (!final || !/bookworm-slim@/.test(final.image)) continue;
+      const runsCaddy = final.lines.some(
+        (line) => /caddy/i.test(line) && /^(CMD|ENTRYPOINT)/i.test(line),
+      );
+      if (!runsCaddy) continue;
+      const install = final.lines.find((line) => /apt-get install/.test(line));
+      expect(install, `${file} must apt-get install ca-certificates`).toMatch(
+        /\bca-certificates\b/,
+      );
+      const userAt = final.lines.findIndex((line) => /^USER\s/i.test(line));
+      expect(final.lines.indexOf(install ?? ''), 'installed before USER').toBeLessThan(userAt);
+    }
+  });
+
   it('builds the edge image on the official Caddy image pinned by digest', () => {
     const stages = parse('apps/web/Dockerfile');
     expect(stages.some((stage) => /^caddy:\S+@sha256:[0-9a-f]{64}$/.test(stage.image))).toBe(true);
