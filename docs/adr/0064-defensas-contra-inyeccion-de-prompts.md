@@ -26,6 +26,8 @@ Defensa en capas determinista (decisión 9A):
 - Respuestas bloqueadas por el proveedor fallan con `LLM_CONTENT_BLOCKED`, sin reparar. Una salida inválida se repara hasta dos veces con un resumen de errores que nunca incluye el texto del usuario.
 - Set de inyección (`packages/llm/test/injection/cases.json`, unos 30 casos). En CI cada caso se combina con una respuesta maliciosa del `FakeProvider` y se verifica que el guardián la rechaza o que lo entregado es válido y sin canary. Con Gemini, `pnpm eval:llm` repite el set contra el modelo real y falla si hay un escape.
 
+Resultado de F8 (2026-11-09, `gemini-3.5-flash-lite`, `pnpm eval:llm` una vez): 34 casos, 0 escapes, 0 errores de llamada, 0 válidos rechazados, 9 885 tokens de entrada y 709 de salida.
+
 ## Consecuencias
 
 - Bueno: ninguna salida llega al grafo sin pasar por el esquema; la defensa no depende del buen comportamiento del modelo.

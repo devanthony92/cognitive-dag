@@ -153,7 +153,8 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 - [X] T048 [US1] [US6] `docs/PLAN.md`: F8 completada con su criterio de aceptación; §6.1 y §6.2 corregidas (A07 sesiones opacas, A08 sin HMAC ni artefactos firmados, A09 eventos en logs, A03 sin SBOM por decisión); §9 con los requisitos de F9 de `research.md` R9 (incluida la razón y la fase de revisión de 8C y 9C); eliminar el párrafo "pendiente de decisión del autor" sobre viewers
 - [X] T049 [P] README (estado, "Next: F9") y `docs/adr/README` o índice si existe
 - [X] T050 [P] ADR-0087 (matriz, comprobador y estados) y ADR-0088 (riesgos aceptados y diferidos a F9, con 4A, 5A, 8C y 9C)
-- [ ] T051 [US9] Ejecutar `pnpm eval:llm` y `pnpm eval:compiler` contra Gemini una vez con el catálogo final; registrar resultado y modelo en la matriz y en el ADR de evals correspondiente
+- [X] T051 [US9] Ejecutar `pnpm eval:llm` y `pnpm eval:compiler` contra Gemini una vez con el catálogo final; registrar resultado y modelo en la matriz y en el ADR de evals correspondiente
+  - Corrida del 2026-11-09 con `gemini-3.5-flash-lite`: `eval:llm` 34 casos, 0 escapes; `eval:compiler` 0 escapes pero 26/37 (70,3 %), por debajo del 80 %. Registrado en ADR-0071 y ADR-0064; el ajuste queda como seguimiento.
 - [X] T052 Ejecutar los 21 escenarios de `quickstart.md` y registrar resultados en la PR
 - [X] T053 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX) y `checklists/security.md` revisado
 - [X] T054 Marcar T001–T053 como hechas en este archivo

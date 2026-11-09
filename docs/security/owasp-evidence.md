@@ -64,10 +64,15 @@ esta matriz y `docs/threat-model.md` sin red ([ADR-0087](../adr/0087-matriz-de-e
 
 ## Evals contra Gemini (T051, FR-024)
 
-Se registran al cerrar la fase en [ADR-0071](../adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md)
-(compilador) y [ADR-0066](../adr/0066-modelos-por-tipo-de-nodo-y-capa-gratuita-de-gemini.md) (nodos
-LLM). Con respuestas grabadas, `pnpm eval:compiler` da 37/37 (100 %) y 14 casos de inyección con 0
-escapes (2026-11-09).
+Corrida única del 2026-11-09 con `gemini-3.5-flash-lite`; el detalle está en
+[ADR-0071](../adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md) (compilador) y
+[ADR-0064](../adr/0064-defensas-contra-inyeccion-de-prompts.md) (nodos LLM).
+
+| Eval                                       | Resultado                                                                                                                                                                    |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm eval:llm`                            | 34 casos, 0 escapes, 0 errores de llamada, 0 válidos rechazados                                                                                                              |
+| `pnpm eval:compiler -- --provider gemini`  | 14 casos de inyección con 0 escapes; **26 de 37 intenciones (70,3 %), por debajo del umbral de 80 %** (10 intenciones sin `trigger.manual` y c35 con 4 nodos de 5 esperados) |
+| `pnpm eval:compiler` (respuestas grabadas) | 37/37 (100 %), 0 escapes                                                                                                                                                     |
 
 ## Alcance diferido
 
