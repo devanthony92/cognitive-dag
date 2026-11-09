@@ -96,7 +96,10 @@ Razón: los fallos de terceros son la norma, no la excepción.
   de imagen Docker.
 - Imágenes de contenedor sobre Debian (`bookworm-slim`), nunca Alpine (el worker de Temporal
   requiere glibc). Builds multi-arch `linux/amd64` y `linux/arm64`.
-- Despliegue portable: Docker Compose, aprovisionamiento por script y backups fuera de la VM.
+- Despliegue portable: Docker Compose y aprovisionamiento por script.
+- Backups fuera de la VM: pueden omitirse mientras el servicio solo admita datos de prueba (enmienda
+  1.1.0, decisión D5 de F9). Antes de admitir datos reales DEBE existir un backup cifrado fuera de la VM
+  con restauración probada.
 
 ## Flujo de desarrollo
 
@@ -120,4 +123,4 @@ Razón: los fallos de terceros son la norma, no la excepción.
   DEBE indicar qué principios aplican y cómo se cumplen. Toda excepción DEBE justificarse en
   la sección "Complexity Tracking" del plan.
 
-**Version**: 1.0.3 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-07
+**Version**: 1.1.0 | **Ratified**: 2026-10-28 | **Last Amended**: 2026-11-09
