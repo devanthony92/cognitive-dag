@@ -76,12 +76,12 @@ describe('startScheduledRun (requires docker compose up)', () => {
   };
 
   function activities(
-    overrides: { triggersEnabled?: boolean; llmEnabled?: boolean } = {},
+    overrides: { triggersOn?: boolean; llmEnabled?: boolean } = {},
   ): ScheduleActivities {
     return createScheduleActivities({
       withContext: database.withContext,
       logger: logger(),
-      triggersEnabled: overrides.triggersEnabled ?? true,
+      triggersOn: overrides.triggersOn ?? true,
       llmEnabled: overrides.llmEnabled ?? false,
       llmTaskQueue: 'llm-q',
       httpTaskQueue: 'http-q',
@@ -215,7 +215,7 @@ describe('startScheduledRun (requires docker compose up)', () => {
     const run = await seedRun(pool, SCHEDULED);
     await activate(run);
     warnings.length = 0;
-    const result = await activities({ triggersEnabled: false }).startScheduledRun(inputOf(run));
+    const result = await activities({ triggersOn: false }).startScheduledRun(inputOf(run));
     expect(result).toEqual({ status: 'skipped', reason: 'triggers_disabled' });
     expect(await runsOf(run)).toHaveLength(0);
     expect(warnings.some((w) => w['event'] === 'schedule.skipped')).toBe(true);

@@ -43,7 +43,7 @@ export interface RunRecordingOptions {
 /** What the main worker needs for the triggers and the human control of F7. */
 export interface TriggersWorkerOptions {
   /** `TRIGGERS_ENABLED`: the launcher skips every firing when false. */
-  triggersEnabled: boolean;
+  triggersOn: boolean;
   /** `LLM_ENABLED`: scheduled runs may include F5 nodes only if the LLM is on. */
   llmEnabled: boolean;
   llmTaskQueue: string;
@@ -124,7 +124,7 @@ export function createWorker(options: WorkerOptions): Promise<Worker> {
             ...createScheduleActivities({
               withContext: options.runs.withContext,
               logger,
-              triggersEnabled: options.triggers.triggersEnabled,
+              triggersOn: options.triggers.triggersOn,
               llmEnabled: options.triggers.llmEnabled,
               llmTaskQueue: options.triggers.llmTaskQueue,
               httpTaskQueue: options.triggers.httpTaskQueue,

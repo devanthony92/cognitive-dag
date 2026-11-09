@@ -46,7 +46,7 @@ export interface ScheduleActivityOptions {
   withContext: WithContext;
   logger: Logger;
   /** `TRIGGERS_ENABLED`: false skips every firing (the schedules stay in place, research R13). */
-  triggersEnabled: boolean;
+  triggersOn: boolean;
   /** `LLM_ENABLED`: the worker cannot read the API flag, so F5 nodes run only if the LLM is on. */
   llmEnabled: boolean;
   /** `TEMPORAL_LLM_TASK_QUEUE` and `TEMPORAL_HTTP_TASK_QUEUE`, carried in the input of the run. */
@@ -75,7 +75,7 @@ export function createScheduleActivities(options: ScheduleActivityOptions): Sche
         log.warn({ event: 'schedule.skipped', reason }, 'Scheduled firing skipped');
         return { status: 'skipped', reason };
       };
-      if (!options.triggersEnabled) return skip('triggers_disabled');
+      if (!options.triggersOn) return skip('triggers_disabled');
 
       /** Thrown inside the transaction so the run inserted for a version that cannot run is undone. */
       class Skip extends Error {

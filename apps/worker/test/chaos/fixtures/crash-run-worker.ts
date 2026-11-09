@@ -27,7 +27,7 @@ async function main(): Promise<void> {
     ...(httpQueue
       ? {
           triggers: {
-            triggersEnabled: true,
+            triggersOn: true,
             llmEnabled: false,
             llmTaskQueue: 'unused',
             httpTaskQueue: httpQueue,
