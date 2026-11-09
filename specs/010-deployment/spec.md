@@ -4,7 +4,7 @@
 
 **Created**: 2026-11-09
 
-**Status**: Decisiones D1 a D22 respondidas el 2026-11-09 (ver «Decisiones del autor»). Queda abierta la pregunta D23 (cierre del registro).
+**Status**: Decisiones D1 a D22 respondidas el 2026-11-09 (ver «Decisiones del autor»). D23 respondida: A (Caddy 404).
 
 **Input**: User description: "Fase F9 de docs/PLAN.md: VM Oracle Always Free (ARM), Compose de
 producción, Caddy, backups, observabilidad y todo lo que F7 y F8 difirieron al despliegue
@@ -567,7 +567,7 @@ probar en local sin ellos.
 | P7  | Entorno `production` de GitHub (sin revisores, D3C) y los secretos de CI que D1 y D3 exijan: token de OCIR y llave de despliegue                         | Publicación y despliegue      | D1, D3     |
 | P8  | Vault de OCI con una política que permita a la instancia leer solo sus secretos; una copia fuera de Oracle de lo que no pueda regenerarse (sin backups)   | Secretos                      | D4         |
 | P9  | Repositorio en OCIR (espacio de nombres y visibilidad) y un token de autenticación de Oracle para CI                                                    | Publicación                   | D1         |
-| P10 | Responder D23 (cierre del registro)                                                                                                                     | Demo                          | D13        |
+| P10 | _(cumplido: D23A elegida)_                                                                                                                              | —                             | D13        |
 
 ## Decisiones del autor (respondidas 2026-11-09)
 
@@ -621,11 +621,13 @@ Comparación completa de opciones en [research.md](./research.md) (R1 a R22).
 - **D13C:** LLM02 sigue `accepted`; ADR-0088 y PLAN §9 piden la capa de pago «antes de la demo pública»,
   así que la demo **no es pública**: solo con cuentas que el autor autoriza.
 
-### Pregunta abierta
+### D23 (respondida: **A**)
+
+El autor eligió **A**: Caddy responde 404 a `POST /api/v1/auth/register` y las cuentas las crea un script en la VM. Sin cambio de código en la API.
 
 | #   | Pregunta                                                                                          | Opciones                                                                                                                                                                                   | Recomendación |
 | --- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |
-| D23 | ¿Cómo se cierra la demo? Hoy `POST /api/v1/auth/register` está abierto a cualquiera con un correo | A) Caddy responde 404 a `register` y el autor crea cuentas con un script en la VM · B) variable de operación `REGISTRATION_ENABLED` en la API (cambio de código; kill switch, no flag de producto) · C) dejar el registro abierto | **A**         |
+| D23 | ¿Cómo se cierra la demo? Hoy `POST /api/v1/auth/register` está abierto a cualquiera con un correo | A) Caddy responde 404 a `register` y el autor crea cuentas con un script en la VM · B) variable de operación `REGISTRATION_ENABLED` en la API (cambio de código; kill switch, no flag de producto) · C) dejar el registro abierto | **A** (elegida) |
 
 ## Fuentes y trazabilidad
 

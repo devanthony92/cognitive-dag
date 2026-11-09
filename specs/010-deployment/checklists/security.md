@@ -42,5 +42,5 @@ medibles antes de implementar (pruebas de los requisitos, no de la implementaci�
 
 - [x] CHK022 Las 22 decisiones tienen opciones con ventajas y riesgos, y la respuesta del autor con su efecto (research R1–R22, spec)
 - [x] CHK023 Las cifras de planes de terceros están marcadas **(verificar)** y hay una tarea que las confirma (T002)
-- [ ] CHK024 D23 respondida y registrada. **Pendiente de la respuesta del autor**
+- [x] CHK024 D23 respondida (A: Caddy 404) y registrada
 - [ ] CHK025 Decidir si la constitución («backups fuera de la VM») se enmienda o si basta ADR-0094. **Pendiente del autor**
