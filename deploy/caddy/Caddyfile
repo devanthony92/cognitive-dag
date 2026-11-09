@@ -1,0 +1,19 @@
+# Edge image entry point (F9, D6A/D7A): the SPA and the API share one origin. This file is the
+# minimum that lets the image start on its own and be validated at build time; the production
+# configuration (TLS, HSTS, CSP, token redaction, SSE) replaces it in the Compose PR (T031).
+{
+	admin off
+}
+
+:8080 {
+	root * /srv
+
+	handle /api/* {
+		reverse_proxy api:3000
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

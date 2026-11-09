@@ -74,18 +74,18 @@ correo y demo cerrada, US9 cierre.
 
 ### Tests
 
-- [ ] T019 [P] [US5] `scripts/test/unit/images-config.test.ts`: todos los `FROM` de los Dockerfiles y las imágenes de Compose están fijados por digest, ninguna base es Alpine, el usuario final no es root, y ningún Dockerfile copia `.env` ni `node_modules` del anfitrión (FR-018)
-- [ ] T020 [P] [US5] `scripts/test/unit/workflows-permissions.test.ts`: `ci.yml` conserva `contents: read` y los 6 jobs requeridos; el permiso y el secreto de publicación solo aparecen en `release.yml`; todas las acciones fijadas por SHA (FR-022, FR-023)
+- [x] T019 [P] [US5] `scripts/test/unit/images-config.test.ts`: todos los `FROM` de los Dockerfiles y las imágenes de Compose están fijados por digest, ninguna base es Alpine, el usuario final no es root, y ningún Dockerfile copia `.env` ni `node_modules` del anfitrión (FR-018)
+- [x] T020 [P] [US5] `scripts/test/unit/workflows-permissions.test.ts`: `ci.yml` conserva `contents: read` y los 6 jobs requeridos; el permiso y el secreto de publicación solo aparecen en `release.yml`; todas las acciones fijadas por SHA (FR-022, FR-023)
 
 ### Implementation
 
-- [ ] T021 [US5] `packages/db/Dockerfile`: imagen `migrator` (migraciones como `app_migrator`, sin servidor, Debian `bookworm-slim`, multi-etapa, `pnpm install` dentro) (FR-026)
-- [ ] T022 [US1] [US5] `apps/web/Dockerfile`: imagen de borde (build de la SPA dentro + Caddy oficial fijado por digest; sin `VITE_API_URL` fijo al compilar) [D6A, D7A]
-- [ ] T023 [US5] `.github/workflows/release.yml`: build multi-arch de las 4 imágenes (arm64 en `ubuntu-24.04-arm`, sin QEMU), manifiesto combinado, etiqueta con el SHA, publicación en OCIR, salida por digest, permisos mínimos por job y solo en `main` [D1B] (autor: P7, P9)
-- [ ] T024 [US5] Escaneo de cada imagen en `release.yml` (falla la publicación ante altas y críticas con corrección disponible) y archivo versionado de excepciones con razón, dueño y fecha; el job `images` y los 6 checks no cambian [D11C]
-- [ ] T025 [US5] SBOM CycloneDX por imagen en `release.yml`, adjunto a lo publicado y consultable [D11C]
-- [ ] T026 [P] [US5] `shellcheck` en el job `quality` para `deploy/**/*.sh` y `scripts/**/*.sh` (sin job nuevo) [D16A]
-- [ ] T027 [US5] ADR-0089 (OCIR y etiquetado por digest), ADR-0090 (imagen de borde, mismo origen y URL relativa) y ADR-0096 (SBOM y escaneo al publicar)
+- [x] T021 [US5] `packages/db/Dockerfile`: imagen `migrator` (migraciones como `app_migrator`, sin servidor, Debian `bookworm-slim`, multi-etapa, `pnpm install` dentro) (FR-026)
+- [x] T022 [US1] [US5] `apps/web/Dockerfile`: imagen de borde (build de la SPA dentro + Caddy oficial fijado por digest; sin `VITE_API_URL` fijo al compilar) [D6A, D7A]
+- [x] T023 [US5] `.github/workflows/release.yml`: build multi-arch de las 4 imágenes (arm64 en `ubuntu-24.04-arm`, sin QEMU), manifiesto combinado, etiqueta con el SHA, publicación en OCIR, salida por digest, permisos mínimos por job y solo en `main` [D1B] (autor: P7, P9)
+- [x] T024 [US5] Escaneo de cada imagen en `release.yml` (falla la publicación ante altas y críticas con corrección disponible) y archivo versionado de excepciones con razón, dueño y fecha; el job `images` y los 6 checks no cambian [D11C]
+- [x] T025 [US5] SBOM CycloneDX por imagen en `release.yml`, adjunto a lo publicado y consultable [D11C]
+- [x] T026 [P] [US5] `shellcheck` en el job `quality` para `deploy/**/*.sh` y `scripts/**/*.sh` (sin job nuevo) [D16A]
+- [x] T027 [US5] ADR-0089 (OCIR y etiquetado por digest), ADR-0090 (imagen de borde, mismo origen y URL relativa) y ADR-0096 (SBOM y escaneo al publicar)
 
 ## Phase 4: Compose de producción y seguridad de datos (PR 3)
 
