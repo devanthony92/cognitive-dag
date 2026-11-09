@@ -154,7 +154,7 @@ cada uno: `triggers` → `nl-compiler` → `llm-nodes` → `resilience` → `exe
 - [X] T049 [P] README (estado, "Next: F9") y `docs/adr/README` o índice si existe
 - [X] T050 [P] ADR-0087 (matriz, comprobador y estados) y ADR-0088 (riesgos aceptados y diferidos a F9, con 4A, 5A, 8C y 9C)
 - [X] T051 [US9] Ejecutar `pnpm eval:llm` y `pnpm eval:compiler` contra Gemini una vez con el catálogo final; registrar resultado y modelo en la matriz y en el ADR de evals correspondiente
-  - Corrida del 2026-11-09 con `gemini-3.5-flash-lite`: `eval:llm` 34 casos, 0 escapes; `eval:compiler` 0 escapes pero 26/37 (70,3 %), por debajo del 80 %. Registrado en ADR-0071 y ADR-0064; el ajuste queda como seguimiento.
+  - `eval:llm` (2026-11-09, `gemini-3.5-flash-lite`): 34 casos, 0 escapes. `eval:compiler`: primera corrida 26/37 (70,3 %), 0 escapes; tras la regla del trigger por defecto en el prompt y `minNodes` 4 en c35, segunda corrida 37/37 (100 %), 0 escapes. Registrado en ADR-0071 y ADR-0064.
 - [X] T052 Ejecutar los 21 escenarios de `quickstart.md` y registrar resultados en la PR
 - [X] T053 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX) y `checklists/security.md` revisado
 - [X] T054 Marcar T001–T053 como hechas en este archivo

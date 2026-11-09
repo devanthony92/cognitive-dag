@@ -68,11 +68,11 @@ Corrida única del 2026-11-09 con `gemini-3.5-flash-lite`; el detalle está en
 [ADR-0071](../adr/0071-dataset-de-evals-del-compilador-umbral-y-modelo-elegido.md) (compilador) y
 [ADR-0064](../adr/0064-defensas-contra-inyeccion-de-prompts.md) (nodos LLM).
 
-| Eval                                       | Resultado                                                                                                                                                                    |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm eval:llm`                            | 34 casos, 0 escapes, 0 errores de llamada, 0 válidos rechazados                                                                                                              |
-| `pnpm eval:compiler -- --provider gemini`  | 14 casos de inyección con 0 escapes; **26 de 37 intenciones (70,3 %), por debajo del umbral de 80 %** (10 intenciones sin `trigger.manual` y c35 con 4 nodos de 5 esperados) |
-| `pnpm eval:compiler` (respuestas grabadas) | 37/37 (100 %), 0 escapes                                                                                                                                                     |
+| Eval                                       | Resultado                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm eval:llm`                            | 34 casos, 0 escapes, 0 errores de llamada, 0 válidos rechazados                                                                                                                                                                                                                                                                                 |
+| `pnpm eval:compiler -- --provider gemini`  | Primera corrida: 0 escapes pero 26 de 37 intenciones (70,3 %), por debajo del 80 % (10 intenciones sin `trigger.manual` y c35 con 4 nodos de 5 esperados). Tras fijar en el prompt que el trigger por defecto es `trigger.manual` y corregir `minNodes` de c35 a 4: **37 de 37 (100 %), 14 casos de inyección con 0 escapes** (segunda corrida) |
+| `pnpm eval:compiler` (respuestas grabadas) | 37/37 (100 %), 0 escapes                                                                                                                                                                                                                                                                                                                        |
 
 ## Alcance diferido
 
