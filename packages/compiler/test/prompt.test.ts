@@ -96,4 +96,15 @@ describe('compiler prompt with the nodes of F7 (F8, US3)', () => {
     expect(system).not.toContain(intent);
     expect(user).toBe(`<data-${tokens.nonce}>\n${intent}\n</data-${tokens.nonce}>`);
   });
+
+  it('names trigger.manual as the default trigger when other triggers are offered', () => {
+    const { system } = buildCompilerPrompt('cuando reciba un correo', f7, newGuardTokens(), limits);
+    expect(system).toMatch(/exactly one trigger node/i);
+    expect(system).toMatch(/unless the request .*webhook.*schedule.*use "trigger\.manual"/is);
+  });
+
+  it('does not add the default trigger rule when only trigger.manual exists', () => {
+    const { system } = buildCompilerPrompt('clasifica', catalog, newGuardTokens(), limits);
+    expect(system).not.toMatch(/use "trigger\.manual"/i);
+  });
 });
