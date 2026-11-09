@@ -17,7 +17,7 @@ export interface ScheduleReconcilerOptions {
   /** `SCHEDULE_CATCHUP_WINDOW_SECONDS`: how late a missed firing may still run. */
   catchupWindowSeconds: number;
   /** `TRIGGERS_ENABLED`: false pauses the reconciliation along with the firings (research R13). */
-  triggersEnabled: boolean;
+  triggersOn: boolean;
   logger: Logger;
   /** Rows handled per pass; the rest wait for the next one. */
   batchSize?: number;
@@ -142,7 +142,7 @@ export function createScheduleReconciler(options: ScheduleReconcilerOptions): Sc
   return {
     async reconcileOnce() {
       const result: ReconcileResult = { synced: 0, failed: 0 };
-      if (!options.triggersEnabled) return result;
+      if (!options.triggersOn) return result;
       // The reconciler does not know the organizations: the lookup key lets it read, and only read,
       // the rows not yet synced. Every write enters the context of the organization of the row.
       const rows = await options.withContext({ reconciler: 'schedules' }, (tx) =>

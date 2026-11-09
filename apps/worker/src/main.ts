@@ -100,7 +100,7 @@ async function run(): Promise<void> {
         rateLimits: config.rateLimits,
       },
       triggers: {
-        triggersEnabled: config.TRIGGERS_ENABLED,
+        triggersOn: config.TRIGGERS_ENABLED,
         llmEnabled: config.LLM_ENABLED,
         llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE,
         httpTaskQueue: config.TEMPORAL_HTTP_TASK_QUEUE,
@@ -162,7 +162,7 @@ async function run(): Promise<void> {
       client: new Client({ connection: clientConnection, namespace: config.TEMPORAL_NAMESPACE }),
       taskQueue: config.TEMPORAL_TASK_QUEUE,
       catchupWindowSeconds: config.SCHEDULE_CATCHUP_WINDOW_SECONDS,
-      triggersEnabled: config.TRIGGERS_ENABLED,
+      triggersOn: config.TRIGGERS_ENABLED,
       logger,
     });
     logger.info(
@@ -170,7 +170,7 @@ async function run(): Promise<void> {
         taskQueue: config.TEMPORAL_TASK_QUEUE,
         llmTaskQueue: config.TEMPORAL_LLM_TASK_QUEUE,
         httpTaskQueue: config.TEMPORAL_HTTP_TASK_QUEUE,
-        triggersEnabled: config.TRIGGERS_ENABLED,
+        triggersOn: config.TRIGGERS_ENABLED,
         httpEnabled: config.HTTP_ENABLED,
       },
       'Worker started',

@@ -47,7 +47,7 @@ describe('schedule reconciler (requires docker compose up)', () => {
       client: env.client,
       taskQueue: TASK_QUEUE,
       catchupWindowSeconds: CATCHUP_SECONDS,
-      triggersEnabled: true,
+      triggersOn: true,
       logger,
       ...overrides,
     });
@@ -274,7 +274,7 @@ describe('schedule reconciler (requires docker compose up)', () => {
 
   it('does nothing while triggers are disabled (the Schedules stay as they are)', async () => {
     const run = await schedule();
-    const result = await build({ triggersEnabled: false }).reconcileOnce();
+    const result = await build({ triggersOn: false }).reconcileOnce();
     expect(result).toEqual({ synced: 0, failed: 0 });
     expect(await rowOf(run)).toMatchObject({ sync_status: 'pending' });
     await reconcile();

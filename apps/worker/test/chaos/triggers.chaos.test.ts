@@ -61,7 +61,7 @@ describe('chaos: worker killed with F7 nodes in flight (requires docker compose 
         valkey: h.valkey,
       },
       triggers: {
-        triggersEnabled: true,
+        triggersOn: true,
         llmEnabled: false,
         llmTaskQueue: 'unused',
         httpTaskQueue: httpQueue,

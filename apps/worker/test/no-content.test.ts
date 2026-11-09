@@ -167,7 +167,7 @@ describe('no content in logs, events or tables (requires docker compose up)', ()
       logger,
       runs: { withContext: database.withContext, publish, valkey },
       triggers: {
-        triggersEnabled: true,
+        triggersOn: true,
         llmEnabled: false,
         llmTaskQueue: 'unused',
         httpTaskQueue: httpQueue,
