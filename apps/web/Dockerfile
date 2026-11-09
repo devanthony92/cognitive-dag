@@ -39,10 +39,10 @@ RUN groupadd --system --gid 10001 caddy \
  && mkdir -p /data /config /srv \
  && chown caddy:caddy /data /config
 COPY --from=build /repo/apps/web/dist /srv
-COPY deploy/caddy/Caddyfile /etc/caddy/Caddyfile
+COPY deploy/caddy/Caddyfile deploy/caddy/site.caddy /etc/caddy/
 # A broken Caddyfile fails the build, not the deploy.
 RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
 ENV XDG_DATA_HOME=/data XDG_CONFIG_HOME=/config
 USER caddy
-EXPOSE 8080
+EXPOSE 80 443
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"]

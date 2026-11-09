@@ -1,0 +1,29 @@
+# Local checks only (ZAP baseline, header review): the same site as production over plain HTTP on a
+# loopback port, because ZAP does not trust a local CA. Never used by the image or the Compose.
+# Output and redaction shared by the access log of the site and by the default logger, whose error
+# lines repeat the request (URI and headers) and would otherwise leak the webhook token.
+(redacted_log) {
+	output stdout
+	format filter {
+		wrap json
+		request>headers>Cookie delete
+		request>headers>Authorization delete
+		request>headers>X-Csrf-Token delete
+		resp_headers>Set-Cookie delete
+		request>uri regexp ^(/api/v1/hooks/[^/?]*)/[^?]* $1/REDACTED
+	}
+}
+
+{
+	admin off
+	auto_https off
+	log {
+		import redacted_log
+	}
+}
+
+import site.caddy
+
+http://127.0.0.1:{$LOCAL_PORT:8081} {
+	import site
+}

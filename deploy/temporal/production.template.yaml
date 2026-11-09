@@ -1,0 +1,128 @@
+# Temporal server of production (F9, D15A, ADR-0091). The password placeholder is replaced at start
+# by entrypoint.sh, from the secret file, into a tmpfs; this file holds no secret.
+log:
+  stdout: true
+  level: info
+
+persistence:
+  defaultStore: default
+  visibilityStore: visibility
+  numHistoryShards: 4
+  datastores:
+    default:
+      sql:
+        pluginName: postgres12_pgx
+        databaseName: temporal
+        connectAddr: postgres:5432
+        connectProtocol: tcp
+        user: temporal
+        password: '__TEMPORAL_DB_PASSWORD__'
+        maxConns: 10
+        maxIdleConns: 5
+        maxConnLifetime: 1h
+        tls:
+          enabled: true
+          caFile: /run/secrets/ca.crt
+          serverName: postgres
+          enableHostVerification: true
+    visibility:
+      sql:
+        pluginName: postgres12_pgx
+        databaseName: temporal_visibility
+        connectAddr: postgres:5432
+        connectProtocol: tcp
+        user: temporal
+        password: '__TEMPORAL_DB_PASSWORD__'
+        maxConns: 5
+        maxIdleConns: 2
+        maxConnLifetime: 1h
+        tls:
+          enabled: true
+          caFile: /run/secrets/ca.crt
+          serverName: postgres
+          enableHostVerification: true
+
+global:
+  membership:
+    maxJoinDuration: 30s
+    broadcastAddress: '__BROADCAST_ADDRESS__'
+  # mTLS on the frontend: the API, the worker, the UI and the system worker all present a
+  # certificate of the internal CA, and the frontend presents its own.
+  tls:
+    frontend:
+      server:
+        certFile: /run/secrets/temporal.crt
+        keyFile: /run/secrets/temporal.key
+        requireClientAuth: true
+        clientCaFiles:
+          - /run/secrets/ca.crt
+      client:
+        serverName: temporal
+        rootCaFiles:
+          - /run/secrets/ca.crt
+    systemWorker:
+      certFile: /run/secrets/temporal.crt
+      keyFile: /run/secrets/temporal.key
+      client:
+        serverName: temporal
+        rootCaFiles:
+          - /run/secrets/ca.crt
+
+services:
+  frontend:
+    rpc:
+      grpcPort: 7233
+      membershipPort: 6933
+      bindOnIP: 0.0.0.0
+      httpPort: 7243
+  matching:
+    rpc:
+      grpcPort: 7235
+      membershipPort: 6935
+      bindOnIP: 0.0.0.0
+  history:
+    rpc:
+      grpcPort: 7234
+      membershipPort: 6934
+      bindOnIP: 0.0.0.0
+  worker:
+    rpc:
+      grpcPort: 7239
+      membershipPort: 6939
+      bindOnIP: 0.0.0.0
+
+clusterMetadata:
+  enableGlobalNamespace: false
+  failoverVersionIncrement: 10
+  masterClusterName: active
+  currentClusterName: active
+  clusterInformation:
+    active:
+      enabled: true
+      initialFailoverVersion: 1
+      rpcName: frontend
+      rpcAddress: temporal:7233
+      httpAddress: temporal:7243
+
+dcRedirectionPolicy:
+  policy: noop
+
+archival:
+  history:
+    state: disabled
+  visibility:
+    state: disabled
+
+namespaceDefaults:
+  archival:
+    history:
+      state: disabled
+    visibility:
+      state: disabled
+
+publicClient:
+  hostPort: temporal:7233
+
+dynamicConfigClient:
+  filepath: /etc/temporal/dynamicconfig.yaml
+  pollInterval: 60s

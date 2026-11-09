@@ -25,6 +25,7 @@
   },
   "devDependencies": {
     "@cognitive-dag/config": "workspace:*",
-    "@types/pg": "8.23.1"
+    "@types/pg": "8.23.1",
+    "yaml": "2.9.1"
   }
 }
