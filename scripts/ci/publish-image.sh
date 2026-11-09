@@ -19,19 +19,24 @@ ORAS='ghcr.io/oras-project/oras:v1.3.6@sha256:9cfb578be975b762fd898b9d004243d800
 
 repository="${OCIR_REGISTRY}/${OCIR_NAMESPACE}/cognitive-dag/${image}"
 work="$(pwd)"
-mkdir -p out
+mkdir -p out .tool-home/tmp
 docker_config="$(mktemp -d)"
 trap 'rm -rf "${docker_config}"' EXIT
 
+# Every tool container runs as the runner's own user, so the config directory (mode 0700, owned by
+# the runner), out/ and the layouts are readable and writable. The tool images default to other
+# users (crane runs as nonroot, uid 65532). HOME and TMPDIR point inside the workspace (the images
+# have no writable /tmp for that user) so Grype and Syft can keep their database, cache and
+# scratch files there.
 run() { # run <image> <args...>: a tool container with the workspace and registry auth mounted
   local tool="$1"
   shift
-  docker run --rm -v "${work}:/work" -w /work -v "${docker_config}:/dockercfg" \
-    -e DOCKER_CONFIG=/dockercfg "${tool}" "$@"
+  docker run --rm -i --user "$(id -u):$(id -g)" \
+    -v "${work}:/work" -w /work -e HOME=/work/.tool-home -e TMPDIR=/work/.tool-home/tmp \
+    -v "${docker_config}:/dockercfg" -e DOCKER_CONFIG=/dockercfg "${tool}" "$@"
 }
 
-printf '%s' "${OCIR_TOKEN}" | docker run --rm -i -v "${docker_config}:/dockercfg" \
-  -e DOCKER_CONFIG=/dockercfg "${CRANE}" auth login "${OCIR_REGISTRY}" \
+printf '%s' "${OCIR_TOKEN}" | run "${CRANE}" auth login "${OCIR_REGISTRY}" \
   --username "${OCIR_USERNAME}" --password-stdin >/dev/null
 
 # 1. Scan and SBOM before anything is pushed: a blocked image never reaches the registry.
