@@ -1,15 +1,10 @@
 import { z } from 'zod';
 
-export const FEATURE_FLAGS = {
-  pingEnabled: 'ping-enabled',
-  identityEnabled: 'identity-enabled',
-  dagEditorEnabled: 'dag-editor-enabled',
-  executionEnabled: 'execution-enabled',
-  resilienceEnabled: 'resilience-enabled',
-  llmNodesEnabled: 'llm-nodes-enabled',
-  nlCompilerEnabled: 'nl-compiler-enabled',
-  triggersEnabled: 'triggers-enabled',
-} as const;
+/**
+ * Product flags exposed to the web app. F8 removed the eight that existed (each feature is simply
+ * on); the module stays for the next incomplete feature that must reach `main` (principle VIII).
+ */
+export const FEATURE_FLAGS = {} as const;
 
 /** Flags exposed to the web app through GET /api/v1/features. */
 export const PublicFeaturesSchema = z.record(z.string(), z.boolean());

@@ -101,12 +101,12 @@ export function nodeTypesExecutableIn(phases: readonly ExecutableFrom[]): NodeTy
 }
 
 /**
- * Types the compiler may offer to an organization: F3 and F7, plus F5 with `llm-nodes-enabled`
- * (F8 decision 3A; the nodes of F7 no longer depend on any flag). Destinations, headers, bodies and
- * credentials of `http.request` stay out of the model's hands through `sensitiveFields`.
+ * Types the compiler may offer: everything executable up to F7 (F8 decision 3A; no flag decides
+ * it). Destinations, headers, bodies and credentials of `http.request` stay out of the model's
+ * hands through `sensitiveFields`.
  */
-export function allowedNodeTypes(flags: { llmNodesEnabled: boolean }): NodeType[] {
-  return nodeTypesExecutableIn(flags.llmNodesEnabled ? ['F3', 'F5', 'F7'] : ['F3', 'F7']);
+export function allowedNodeTypes(): NodeType[] {
+  return nodeTypesExecutableIn(['F3', 'F5', 'F7']);
 }
 
 /** The catalog the prompt shows. Unknown types or types without a guide are a programming error. */

@@ -9,6 +9,7 @@ import {
   type CompileOutcome,
   type ExpectedProperties,
 } from '@cognitive-dag/compiler';
+import { NODE_CATALOG } from '@cognitive-dag/dag-schema';
 import {
   FakeProvider,
   GeminiProvider,
@@ -43,7 +44,7 @@ const EVALS_DIR = resolve(import.meta.dirname, '../../packages/compiler/evals');
 export interface IntentCase {
   id: string;
   intent: string;
-  /** Whether `llm-nodes-enabled` is on for this case (research R10). */
+  /** Whether the case offers the LLM nodes to the model (false keeps them out of the catalog). */
   llmNodes: boolean;
   expected: ExpectedProperties;
 }
@@ -173,7 +174,9 @@ export async function runCase(
 ): Promise<CaseResult> {
   const backoff = options.backoffMs ?? DEFAULT_BACKOFF_MS;
   const wait = options.sleep ?? sleep;
-  const allowedTypes = allowedNodeTypes({ llmNodesEnabled: testCase.llmNodes });
+  const allowedTypes = allowedNodeTypes().filter(
+    (type) => testCase.llmNodes || NODE_CATALOG[type].executableFrom !== 'F5',
+  );
   let spent = { inputTokens: 0, outputTokens: 0 };
   for (let attempt = 0; ; attempt++) {
     const provider = options.provider(testCase.id);

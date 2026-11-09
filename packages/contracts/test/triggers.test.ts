@@ -13,7 +13,6 @@ import {
   DecideApprovalUpdateInputSchema,
   DecideApprovalUpdateResultSchema,
   ExecuteDagInputSchema,
-  FEATURE_FLAGS,
   HTTP_ALLOWED_HOSTS_MAX,
   HTTP_STEP_ERROR_CODES,
   HttpAllowedHostListSchema,
@@ -40,12 +39,6 @@ const at = '2026-11-07T12:00:00.000Z';
 const person = () => ({ id: uuid(), name: 'Ana' });
 const base = { organizationId: uuid(), runId: uuid(), correlationId: uuid(), at };
 const node = { nodeId: 'approve_a', nodeType: 'human.approval' };
-
-describe('flag (F7)', () => {
-  it('declares triggers-enabled', () => {
-    expect(FEATURE_FLAGS.triggersEnabled).toBe('triggers-enabled');
-  });
-});
 
 describe('webhooks (contracts/api.openapi.yaml)', () => {
   const token = `cdw_${'A'.repeat(43)}`;

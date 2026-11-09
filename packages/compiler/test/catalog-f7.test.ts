@@ -24,22 +24,17 @@ describe('compiler catalog and the nodes of F7 (F8, US3)', () => {
     expect([...F7_TYPES].sort()).toEqual(EXPECTED_F7);
   });
 
-  it.each([false, true])('offers exactly the four F7 types with llm-nodes-enabled=%s', (llm) => {
-    const offered = allowedNodeTypes({ llmNodesEnabled: llm }).filter((type) =>
-      F7_TYPES.includes(type),
-    );
+  it('offers exactly the four F7 types', () => {
+    const offered = allowedNodeTypes().filter((type) => F7_TYPES.includes(type));
     expect([...offered].sort()).toEqual(EXPECTED_F7);
   });
 
-  it('takes no triggersEnabled parameter any more', () => {
-    // The signature no longer names the flag: it is accepted by TypeScript only as an excess key.
-    // @ts-expect-error triggersEnabled was removed (F7 ADR-0080, F8 ADR-0083)
-    const withFlag = allowedNodeTypes({ llmNodesEnabled: true, triggersEnabled: false });
-    expect(withFlag).toEqual(allowedNodeTypes({ llmNodesEnabled: true }));
+  it('takes no parameter: no flag decides what is offered', () => {
+    expect(allowedNodeTypes.length).toBe(0);
   });
 
   it('describes the four types in the prompt', () => {
-    const allowed = allowedNodeTypes({ llmNodesEnabled: true });
+    const allowed = allowedNodeTypes();
     const { system } = buildCompilerPrompt(
       'cuando llegue un webhook, pide aprobación y llama a la API',
       compilerCatalog(allowed),

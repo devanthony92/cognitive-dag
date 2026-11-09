@@ -8,7 +8,6 @@ import {
   CompilationSchema,
   CompileIntentInputSchema,
   CreateCompilationRequestSchema,
-  FEATURE_FLAGS,
 } from '../src/index.js';
 
 const compilation = {
@@ -30,12 +29,6 @@ const compilation = {
   createdAt: '2026-11-06T10:00:00.000Z',
   finishedAt: null,
 };
-
-describe('F6 flag', () => {
-  it('names the flag nl-compiler-enabled', () => {
-    expect(FEATURE_FLAGS.nlCompilerEnabled).toBe('nl-compiler-enabled');
-  });
-});
 
 describe('CreateCompilationRequest (research R1, R13)', () => {
   it('trims the intent and accepts an optional workflow', () => {
