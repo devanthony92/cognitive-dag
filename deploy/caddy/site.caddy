@@ -1,0 +1,63 @@
+# The site, shared by Caddyfile (production) and local.Caddyfile (checks). Contract:
+# specs/010-deployment/contracts/edge-headers.md. The snippet redacted_log is defined by each
+# Caddyfile (it must exist before the global options that use it).
+(site) {
+	# JSON access log on stdout, rotated by the container engine. The webhook token (last segment of
+	# /api/v1/hooks/{trigger}/{token}) and the credential headers never reach it; bodies are never
+	# logged.
+	log {
+		import redacted_log
+	}
+
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	}
+
+	# Not published: the metrics endpoint (if it ever exists) and the closed registration (D23A).
+	# Accepting an invitation is /api/v1/invitations/accept and does not go through register.
+	@closed {
+		path /api/v1/metrics /api/v1/metrics/* /api/v1/auth/register /api/v1/auth/register/*
+	}
+	handle @closed {
+		respond 404
+	}
+
+	# The API sets its own security headers (Helmet): only HSTS is added here.
+	handle /api/* {
+		request_body {
+			max_size 128KB
+		}
+		reverse_proxy api:3000 {
+			# Server-sent events: no buffering. The read timeout is above SSE_HEARTBEAT_MS (15 s).
+			flush_interval -1
+			transport http {
+				dial_timeout 5s
+				response_header_timeout 30s
+				read_timeout 60s
+			}
+		}
+	}
+
+	# The static web.
+	handle {
+		root * /srv
+		encode zstd gzip
+		header {
+			Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+			X-Frame-Options "DENY"
+			X-Content-Type-Options "nosniff"
+			Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()"
+			Cross-Origin-Embedder-Policy "require-corp"
+			Cross-Origin-Opener-Policy "same-origin"
+			Cross-Origin-Resource-Policy "same-origin"
+			Referrer-Policy "strict-origin-when-cross-origin"
+		}
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@pages not path /assets/*
+		header @pages Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

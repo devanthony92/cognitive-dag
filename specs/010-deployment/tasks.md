@@ -91,20 +91,20 @@ correo y demo cerrada, US9 cierre.
 
 ### Tests
 
-- [ ] T028 [P] [US1] `scripts/test/unit/deploy-config.test.ts`: contrato del Caddyfile según [contracts/edge-headers.md](./contracts/edge-headers.md): CSP sin `unsafe-inline` en `script-src`, `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Permissions-Policy`, COEP/COOP/CORP, HSTS, redirección HTTP→HTTPS, redacción del token de `/api/v1/hooks/*` y de `Cookie`/`Authorization` en el registro, y `/api/v1/metrics` y la UI de Temporal sin publicar
-- [ ] T029 [P] [US2] Misma prueba, parte de Compose: ningún servicio publica puertos salvo Caddy (80 y 443) y la UI de Temporal solo en `127.0.0.1`; cada servicio tiene `mem_limit`, `restart`, `healthcheck` y usuario no root; las imágenes de terceros por digest; PostgreSQL y Valkey sin puerto en claro; suma de límites ≤ 6 GB (FR-017, SC-010)
-- [ ] T030 [P] [US2] `scripts/test/integration/deploy-security.test.ts`: con certificados efímeros, el Compose de producción rechaza una conexión sin credenciales y sin TLS en PostgreSQL, Valkey y Temporal, rechaza una contraseña de desarrollo, y acepta las credenciales de la prueba; corre dentro del job `integration` (amd64 y arm64) sin check nuevo (FR-013)
+- [x] T028 [P] [US1] `scripts/test/unit/deploy-config.test.ts`: contrato del Caddyfile según [contracts/edge-headers.md](./contracts/edge-headers.md): CSP sin `unsafe-inline` en `script-src`, `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Permissions-Policy`, COEP/COOP/CORP, HSTS, redirección HTTP→HTTPS, redacción del token de `/api/v1/hooks/*` y de `Cookie`/`Authorization` en el registro, y `/api/v1/metrics` y la UI de Temporal sin publicar
+- [x] T029 [P] [US2] Misma prueba, parte de Compose: ningún servicio publica puertos salvo Caddy (80 y 443) y la UI de Temporal solo en `127.0.0.1`; cada servicio tiene `mem_limit`, `restart`, `healthcheck` y usuario no root; las imágenes de terceros por digest; PostgreSQL y Valkey sin puerto en claro; suma de límites ≤ 6 GB (FR-017, SC-010)
+- [x] T030 [P] [US2] `scripts/test/integration/deploy-security.test.ts`: con certificados efímeros, el Compose de producción rechaza una conexión sin credenciales y sin TLS en PostgreSQL, Valkey y Temporal, rechaza una contraseña de desarrollo, y acepta las credenciales de la prueba; corre dentro del job `integration` (amd64 y arm64) sin check nuevo (FR-013)
 
 ### Implementation
 
-- [ ] T031 [US1] `deploy/caddy/Caddyfile`: TLS automático, redirección, cabeceras, `/api/*` con SSE, límite de cuerpo, registro JSON con redacción, caché de la SPA [D6A]; ajustar la CSP al build real con una prueba de navegador y registrar cualquier excepción
-- [ ] T032 [US2] `deploy/provision/pki.sh`: CA interna con `openssl`, certificados de Temporal (servidor, API, worker), PostgreSQL y Valkey, vigencias acotadas y comando de rotación; la clave de la CA sale al Vault [D8A]
-- [ ] T033 [US2] `deploy/temporal/`: configuración del servidor de producción con PostgreSQL (bases `temporal` y `temporal_visibility`), mTLS en el frontend, namespace propio, search attribute `CorrelationId`, retención corta y tarea de esquema de un solo uso; UI en `127.0.0.1:8233` [D15A]
-- [ ] T034 [US2] `deploy/postgres/`: `postgresql.conf` (`ssl`, `scram-sha-256`), `pg_hba.conf` solo `hostssl`, inicializador de roles que lee contraseñas de archivos de secretos (sustituye al `01-roles.sql` de desarrollo en producción) (FR-009)
-- [ ] T035 [US2] `deploy/valkey/`: `port 0`, `tls-port`, ACL con el conjunto de comandos fijado en T007, `maxmemory` y `noeviction` (FR-010)
-- [ ] T036 [US2] `deploy/compose.prod.yaml`: servicios, redes internas, límites de memoria de [research.md](./research.md) (Presupuesto de memoria), salud, rotación de registros y archivos de secretos como `secrets`
-- [ ] T037 [US7] Levantar la imagen de borde y la API en local y ejecutar `scripts/security/zap-baseline.sh` (sin ampliar sus hosts, `zap-script.test.ts` intacto): 10038, 10020, 10021, 10063 y 90004 desaparecen; informe y decisión por alerta nueva en `docs/security/zap/` y `docs/security/zap.md` (FR-033, FR-034)
-- [ ] T038 [US2] ADR-0091 (Temporal en producción) y ADR-0092 (PostgreSQL y Valkey con TLS y ACL, y PKI interna)
+- [x] T031 [US1] `deploy/caddy/Caddyfile`: TLS automático, redirección, cabeceras, `/api/*` con SSE, límite de cuerpo, registro JSON con redacción, caché de la SPA [D6A]; ajustar la CSP al build real con una prueba de navegador y registrar cualquier excepción
+- [x] T032 [US2] `deploy/provision/pki.sh`: CA interna con `openssl`, certificados de Temporal (servidor, API, worker), PostgreSQL y Valkey, vigencias acotadas y comando de rotación; la clave de la CA sale al Vault [D8A]
+- [x] T033 [US2] `deploy/temporal/`: configuración del servidor de producción con PostgreSQL (bases `temporal` y `temporal_visibility`), mTLS en el frontend, namespace propio, search attribute `CorrelationId`, retención corta y tarea de esquema de un solo uso; UI en `127.0.0.1:8233` [D15A]
+- [x] T034 [US2] `deploy/postgres/`: `postgresql.conf` (`ssl`, `scram-sha-256`), `pg_hba.conf` solo `hostssl`, inicializador de roles que lee contraseñas de archivos de secretos (sustituye al `01-roles.sql` de desarrollo en producción) (FR-009)
+- [x] T035 [US2] `deploy/valkey/`: `port 0`, `tls-port`, ACL con el conjunto de comandos fijado en T007, `maxmemory` y `noeviction` (FR-010)
+- [x] T036 [US2] `deploy/compose.prod.yaml`: servicios, redes internas, límites de memoria de [research.md](./research.md) (Presupuesto de memoria), salud, rotación de registros y archivos de secretos como `secrets`
+- [x] T037 [US7] Levantar la imagen de borde y la API en local y ejecutar `scripts/security/zap-baseline.sh` (sin ampliar sus hosts, `zap-script.test.ts` intacto): 10038, 10020, 10021, 10063 y 90004 desaparecen; informe y decisión por alerta nueva en `docs/security/zap/` y `docs/security/zap.md` (FR-033, FR-034)
+- [x] T038 [US2] ADR-0091 (Temporal en producción) y ADR-0092 (PostgreSQL y Valkey con TLS y ACL, y PKI interna)
 
 ## Phase 5: Aprovisionamiento, secretos, despliegue, reversa y alertas (PR 4)
 
@@ -125,7 +125,7 @@ correo y demo cerrada, US9 cierre.
 - [ ] T048 [US7] `deploy/ops/check-headers.sh`: `curl` contra el dominio real que verifica HSTS, CSP, `X-Frame-Options`, `nosniff`, `Permissions-Policy`, COEP, COOP, CORP y la redirección HTTP→HTTPS; lo llama `deploy.sh` (FR-034)
 - [ ] T049 [US6] `deploy/ops/alerts.sh` y temporizador `systemd` de 5 minutos; rotación y compresión de los registros a 90 días; procedimiento de prueba de cada alerta (FR-027, FR-028) [D9C, D10A]
 - [ ] T050 (autor) Registros A/AAAA del dominio y SPF, DKIM y DMARC (`p=none` con informes y plan de subida a `quarantine`) con OCI Email Delivery; correo de prueba con las tres comprobaciones en `pass` (P2, P5) [D14A]
-- [ ] T051 [US8] **[D23A]** Caddy responde 404 a `POST /api/v1/auth/register` y un script en la VM crea las cuentas autorizadas; comprobar antes en el código si la aceptación de invitaciones pasa por `register`
+- [ ] T051 [US8] **[D23A]** Caddy responde 404 a `POST /api/v1/auth/register` y un script en la VM crea las cuentas autorizadas; comprobar antes en el código si la aceptación de invitaciones pasa por `register`. **Parte del Caddy hecha en la PR 3 (T031):** el 404 está en `deploy/caddy/site.caddy` y probado; la aceptación de invitaciones es `POST /api/v1/invitations/accept` y no pasa por `register` (ADR-0090). Queda para la PR 4 el script de la VM que crea las cuentas
 - [ ] T052 [US6] Medir el consumo real de memoria con la prueba de humo y ajustar los límites de [research.md](./research.md); registrar la tabla medida (SC-010)
 - [ ] T053 [US3] [US5] `docs/operations/`: aprovisionamiento, despliegue y reversa, rotación de secretos, reconstrucción desde cero, acceso a la UI de Temporal por `ssh -L`, kill switches, respuesta a alertas y baja de la VM (FR-038)
 - [ ] T054 [US3] [US5] [US6] ADR-0093 (secretos en OCI Vault), ADR-0094 (despliegue automático, reversa y ausencia de backups, riesgo aceptado) y ADR-0095 (registros, retención y alertas por script)

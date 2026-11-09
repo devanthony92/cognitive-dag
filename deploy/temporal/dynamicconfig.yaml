@@ -1,0 +1,6 @@
+# Dynamic configuration of the production server: small limits for a small VM. Values are the
+# defaults unless named.
+limit.maxIDLength:
+  - value: 255
+frontend.namespaceCount:
+  - value: 5

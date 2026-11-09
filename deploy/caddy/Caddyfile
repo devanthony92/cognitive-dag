@@ -1,19 +1,46 @@
-# Edge image entry point (F9, D6A/D7A): the SPA and the API share one origin. This file is the
-# minimum that lets the image start on its own and be validated at build time; the production
-# configuration (TLS, HSTS, CSP, token redaction, SSE) replaces it in the Compose PR (T031).
-{
-	admin off
+# Edge of production (F9, D6A/D7A): one origin for the web and the API. The domain is not in the
+# code: SITE_DOMAIN comes from the environment (the deployment sets it). Everything the site does
+# lives in site.caddy so the local files used for checks (local.Caddyfile) cannot drift from it.
+# Contract: specs/010-deployment/contracts/edge-headers.md.
+# Output and redaction shared by the access log of the site and by the default logger, whose error
+# lines repeat the request (URI and headers) and would otherwise leak the webhook token.
+(redacted_log) {
+	output stdout
+	format filter {
+		wrap json
+		request>headers>Cookie delete
+		request>headers>Authorization delete
+		request>headers>X-Csrf-Token delete
+		resp_headers>Set-Cookie delete
+		request>uri regexp ^(/api/v1/hooks/[^/?]*)/[^?]* $1/REDACTED
+	}
 }
 
-:8080 {
-	root * /srv
-
-	handle /api/* {
-		reverse_proxy api:3000
+{
+	admin off
+	# Errors repeat the request: same redaction as the access log.
+	log {
+		import redacted_log
 	}
-
-	handle {
-		try_files {path} /index.html
-		file_server
+	# HTTP/3 would need UDP 443; only TCP is published.
+	servers {
+		protocols h1 h2
+		timeouts {
+			read_header 10s
+			read_body 30s
+			idle 2m
+		}
 	}
+}
+
+import site.caddy
+
+# HTTP only redirects, keeping the path. No content and no cookie.
+http://{$SITE_DOMAIN:localhost} {
+	redir https://{host}{uri} 301
+}
+
+# Automatic TLS (Let's Encrypt) for the domain.
+{$SITE_DOMAIN:localhost} {
+	import site
 }

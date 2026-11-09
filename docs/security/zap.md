@@ -90,7 +90,27 @@ versionado tiene una regla en `.zap/rules.tsv` y una fila en esta tabla.
 | 10096 Timestamp Unix                   | Baja        | Falso positivo    | Un número del bundle minificado, no una marca de tiempo                |
 | 10027, 10109, 10049                    | Informativa | Sin acción        | Comentarios del bundle, aplicación moderna y caché de HTML/JS estático |
 
-## Qué debe repetirse en F9
+## Resultado de la corrida de F9 (T037)
+
+Fecha: 2026-11-09, ZAP 2.17.0 (misma imagen fijada por digest), pasivo, sin sesión y solo sobre loopback. El script y su prueba no cambian: no se amplía ningún host. Estado final de la PR 3 de F9.
+
+- **Web:** la imagen de borde real (`deploy/caddy/local.Caddyfile`, que importa `deploy/caddy/site.caddy`, el mismo sitio que usa producción) en `http://127.0.0.1:8081`, con la SPA de la imagen y `/api/*` hacia la API. Local y por HTTP porque ZAP no confía en una CA local; las cabeceras son las de producción (HSTS aparte, que solo cuenta sobre HTTPS y ZAP no evalúa aquí).
+- **API:** `http://127.0.0.1:3000`, directa, como en F8.
+- **Resultado:** 67 reglas pasaron sin alerta, **0 alertas bajas, medias o altas**. Quedan 4 informativas (10109 aplicación moderna, 10049 caché de contenido no almacenable o no cacheable), las mismas de F8 y sin acción.
+
+| Alerta de F8                   | Estado                                                                                                                           |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| 10038 CSP no definida          | **Cerrada**: `Content-Security-Policy` con `default-src 'self'` y sin `unsafe-inline` en `script-src`                            |
+| 10020 sin anti-clickjacking    | **Cerrada**: `frame-ancestors 'none'` y `X-Frame-Options: DENY`                                                                  |
+| 10021 `X-Content-Type-Options` | **Cerrada**: `nosniff`                                                                                                           |
+| 10063 `Permissions-Policy`     | **Cerrada**                                                                                                                      |
+| 90004 COEP, COOP y CORP        | **Cerrada**: `require-corp`, `same-origin`, `same-origin` (la web sigue funcionando aislada: `crossOriginIsolated` es verdadero) |
+
+No hay alertas nuevas, así que no hay decisión por alerta nueva. Las reglas de `.zap/rules.tsv` siguen en `WARN`: si alguna cabecera vuelve a faltar, aparece. Comprobaciones de navegador contra la misma imagen (SPA, inicio de sesión, lista de workflows y editor de React Flow): ninguna violación de CSP.
+
+El informe de esta corrida sustituye en `docs/security/zap/` al de F8 (que queda en el historial de git). Para repetirla: construir la imagen de borde, arrancarla con `local.Caddyfile` (`docker run -v $PWD/deploy/caddy/local.Caddyfile:/etc/caddy/Caddyfile:ro -p 127.0.0.1:8081:8081 --add-host api:host-gateway`), levantar la API como en el procedimiento anterior con `WEB_ORIGIN=http://127.0.0.1:8081` y ejecutar `ZAP_WEB_URL=http://127.0.0.1:8081 bash scripts/security/zap-baseline.sh`.
+
+## Qué quedaba para F9 (resuelto arriba, salvo el análisis activo)
 
 - Ejecutar el mismo script contra staging (`ZAP_API_URL` y `ZAP_WEB_URL` hoy solo admiten loopback; F9
   decide cómo ampliar la lista con una prueba que lo cubra) y confirmar que 10038, 10020, 10021,

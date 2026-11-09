@@ -1,0 +1,485 @@
+# Production Compose (F9, T036, FR-009, FR-010, FR-013, FR-017, ADR-0090..0092).
+#
+# Only Caddy publishes ports (80 and 443). The Temporal UI is published on 127.0.0.1:8233 and is
+# reached through `ssh -L` (D15A). PostgreSQL, Valkey and Temporal live on an internal network and
+# speak TLS only; every secret is a file mounted under /run/secrets.
+#
+# Variables the deployment supplies (names only; PR 4 fills them, deploy/env/ documents them):
+#   SITE_DOMAIN, SECRETS_DIR, PKI_DIR           domain; directories with the secret files and the PKI
+#   EDGE_IMAGE, API_IMAGE, WORKER_IMAGE,        our images as `bog.ocir.io/<namespace>/<name>@sha256:<digest>`,
+#   MIGRATOR_IMAGE                              resolved by the release (ADR-0089)
+#   SMTP_HOST, SMTP_PORT, SMTP_SECURE, MAIL_FROM
+#   LLM_PROVIDER, LLM_ENABLED, TRIGGERS_ENABLED, HTTP_ENABLED     (optional kill switches)
+#   FRONT_SUBNET                                subnet of the edge network (optional)
+# Secret files in SECRETS_DIR: postgres_superuser_password, app_migrator_password,
+# app_runtime_password, temporal_db_password, valkey_password, credentials_master_key,
+# gemini_api_key, smtp_user, smtp_password. PKI_DIR holds the output of deploy/provision/pki.sh.
+# Secret files are bind-mounted: Compose ignores uid/gid/mode, so the host permissions apply. The
+# directories are 0700 (host users stay out) and the files 0444 so the container users (999, 1000,
+# 10001) can read them; deploy/provision/pki.sh --key-mode 0444 writes the keys that way.
+# Third-party images are pinned by digest; Renovate bumps them.
+name: cognitive-dag-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+x-hardening: &hardening
+  security_opt:
+    - no-new-privileges:true
+  logging: *logging
+
+services:
+  edge:
+    <<: *hardening
+    image: ${EDGE_IMAGE:?set EDGE_IMAGE to the edge image with its digest}
+    user: '10001:10001'
+    read_only: true
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 128m
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?set SITE_DOMAIN}
+    ports:
+      - '80:80'
+      - '443:443'
+    sysctls:
+      # Lets the non-root caddy user bind 80 and 443 inside its own network namespace.
+      - net.ipv4.ip_unprivileged_port_start=0
+    volumes:
+      - edge-data:/data
+      - edge-config:/config
+    tmpfs:
+      - /tmp
+    networks:
+      front: {}
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - 'exec 3<>/dev/tcp/127.0.0.1/80 && printf "GET / HTTP/1.0\r\nHost: ${SITE_DOMAIN}\r\n\r\n" >&3 && head -c 12 <&3 | grep -q "HTTP/1.. 301"'
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  api:
+    <<: *hardening
+    image: ${API_IMAGE:?set API_IMAGE to the api image with its digest}
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 512m
+    environment:
+      NODE_ENV: production
+      API_PORT: '3000'
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WEB_ORIGIN: https://${SITE_DOMAIN:?set SITE_DOMAIN}
+      API_PUBLIC_URL: https://${SITE_DOMAIN}
+      APP_BASE_URL: https://${SITE_DOMAIN}
+      # The only hop whose X-Forwarded-For is believed: the network of Caddy.
+      TRUSTED_PROXIES: ${FRONT_SUBNET:-172.30.250.0/24}
+      DATABASE_URL: postgres://app_runtime@postgres:5432/cognitive_dag?sslmode=verify-full&sslrootcert=/run/secrets/ca.crt
+      DATABASE_PASSWORD_FILE: /run/secrets/app_runtime_password
+      VALKEY_URL: rediss://valkey:6379
+      VALKEY_USERNAME: cognitive_dag_app
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /run/secrets/ca.crt
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_NAMESPACE: cognitive-dag
+      TEMPORAL_TASK_QUEUE: cognitive-dag
+      TEMPORAL_TLS_CA_FILE: /run/secrets/ca.crt
+      TEMPORAL_TLS_CERT_FILE: /run/secrets/temporal-client-api.crt
+      TEMPORAL_TLS_KEY_FILE: /run/secrets/temporal-client-api.key
+      TEMPORAL_TLS_SERVER_NAME: temporal
+      CREDENTIALS_MASTER_KEY_FILE: /run/secrets/credentials_master_key
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER_FILE: /run/secrets/smtp_user
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM}
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_client_api_crt, target: temporal-client-api.crt }
+      - { source: temporal_client_api_key, target: temporal-client-api.key }
+      - { source: app_runtime_password }
+      - { source: valkey_password }
+      - { source: credentials_master_key }
+      - { source: smtp_user }
+      - { source: smtp_password }
+    tmpfs:
+      - /tmp
+    networks:
+      front: {}
+      backend: {}
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      temporal-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    <<: *hardening
+    image: ${WORKER_IMAGE:?set WORKER_IMAGE to the worker image with its digest}
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 768m
+    environment:
+      NODE_ENV: production
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      WORKER_HEALTH_PORT: '3001'
+      DATABASE_URL: postgres://app_runtime@postgres:5432/cognitive_dag?sslmode=verify-full&sslrootcert=/run/secrets/ca.crt
+      DATABASE_PASSWORD_FILE: /run/secrets/app_runtime_password
+      VALKEY_URL: rediss://valkey:6379
+      VALKEY_USERNAME: cognitive_dag_app
+      VALKEY_PASSWORD_FILE: /run/secrets/valkey_password
+      VALKEY_CA_FILE: /run/secrets/ca.crt
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_NAMESPACE: cognitive-dag
+      TEMPORAL_TASK_QUEUE: cognitive-dag
+      TEMPORAL_TLS_CA_FILE: /run/secrets/ca.crt
+      TEMPORAL_TLS_CERT_FILE: /run/secrets/temporal-client-worker.crt
+      TEMPORAL_TLS_KEY_FILE: /run/secrets/temporal-client-worker.key
+      TEMPORAL_TLS_SERVER_NAME: temporal
+      CREDENTIALS_MASTER_KEY_FILE: /run/secrets/credentials_master_key
+      LLM_PROVIDER: ${LLM_PROVIDER:-gemini}
+      GEMINI_API_KEY_FILE: /run/secrets/gemini_api_key
+      # Kill switches (docs/operations): set false and restart the worker to stop that capability.
+      LLM_ENABLED: ${LLM_ENABLED:-true}
+      TRIGGERS_ENABLED: ${TRIGGERS_ENABLED:-true}
+      HTTP_ENABLED: ${HTTP_ENABLED:-true}
+      SMTP_HOST: ${SMTP_HOST:?set SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER_FILE: /run/secrets/smtp_user
+      SMTP_PASSWORD_FILE: /run/secrets/smtp_password
+      MAIL_FROM: ${MAIL_FROM:?set MAIL_FROM}
+      APP_BASE_URL: https://${SITE_DOMAIN}
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_client_worker_crt, target: temporal-client-worker.crt }
+      - { source: temporal_client_worker_key, target: temporal-client-worker.key }
+      - { source: app_runtime_password }
+      - { source: valkey_password }
+      - { source: credentials_master_key }
+      - { source: gemini_api_key }
+      - { source: smtp_user }
+      - { source: smtp_password }
+    tmpfs:
+      - /tmp
+    networks:
+      front: {}
+      backend: {}
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+      temporal-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3001/health/live').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # One-shot: applies the migrations as app_migrator and exits (FR-026).
+  migrator:
+    <<: *hardening
+    image: ${MIGRATOR_IMAGE:?set MIGRATOR_IMAGE to the migrator image with its digest}
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: 'no'
+    mem_limit: 256m
+    environment:
+      NODE_ENV: production
+      DATABASE_MIGRATOR_URL: postgres://app_migrator@postgres:5432/cognitive_dag?sslmode=verify-full&sslrootcert=/run/secrets/ca.crt
+      DATABASE_PASSWORD_FILE: /run/secrets/app_migrator_password
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: app_migrator_password }
+    tmpfs:
+      - /tmp
+    networks:
+      backend: {}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    <<: *hardening
+    image: postgres:18.6-bookworm@sha256:5c4783a8cc3f0074912164f94dfa1be4e043438f0f707cf968d7af9a0d31a2c8
+    user: '999:999'
+    restart: unless-stopped
+    mem_limit: 768m
+    shm_size: 128m
+    entrypoint: ['/bin/sh', '/usr/local/bin/cdag-entrypoint.sh']
+    command: ['postgres', '-c', 'config_file=/etc/postgresql/postgresql.conf']
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_DB: cognitive_dag
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_superuser_password
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: postgres_crt, target: postgres.crt }
+      - { source: postgres_key, target: postgres.key }
+      - { source: postgres_superuser_password }
+      - { source: app_migrator_password }
+      - { source: app_runtime_password }
+      - { source: temporal_db_password }
+    tmpfs:
+      - /run/postgres-tls:uid=999,gid=999,mode=0700
+    volumes:
+      - postgres-data:/var/lib/postgresql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./postgres/entrypoint.sh:/usr/local/bin/cdag-entrypoint.sh:ro
+      # Creates the roles on an empty volume, with the passwords read from the secret files.
+      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    networks:
+      backend: {}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d cognitive_dag']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  valkey:
+    <<: *hardening
+    image: valkey/valkey:9.0.7-trixie@sha256:7e1deda01b64ece3167d370ab5be3452d29734feec22cbcbc69b3a64f6859d6d
+    user: '999:999'
+    read_only: true
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 192m
+    entrypoint: ['/bin/sh', '/usr/local/bin/cdag-entrypoint.sh']
+    environment:
+      VALKEY_USERNAME: cognitive_dag_app
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: valkey_crt, target: valkey.crt }
+      - { source: valkey_key, target: valkey.key }
+      - { source: valkey_password }
+    volumes:
+      - ./valkey/valkey.conf:/etc/valkey/valkey.conf:ro
+      - ./valkey/entrypoint.sh:/usr/local/bin/cdag-entrypoint.sh:ro
+    tmpfs:
+      - /run/valkey:uid=999,gid=999,mode=0700
+      - /data:uid=999,gid=999,mode=0700
+    networks:
+      backend: {}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'REDISCLI_AUTH="$$(cat /run/secrets/valkey_password)" valkey-cli --tls --cacert /run/secrets/ca.crt --no-auth-warning --user cognitive_dag_app ping | grep -q PONG'
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  temporal:
+    <<: *hardening
+    image: temporalio/server:1.31.5@sha256:2796f5d67fb5632771afe1fd13ae14d8ad1dddb2e56c8dedc6bf128b85cd448d
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 768m
+    entrypoint: ['/bin/sh', '/etc/temporal/entrypoint.sh']
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_crt, target: temporal.crt }
+      - { source: temporal_key, target: temporal.key }
+      - { source: temporal_db_password }
+    volumes:
+      - ./temporal/entrypoint.sh:/etc/temporal/entrypoint.sh:ro
+      - ./temporal/production.template.yaml:/etc/temporal/production.template.yaml:ro
+      - ./temporal/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
+    tmpfs:
+      - /run/temporal:uid=1000,gid=1000,mode=0700
+    networks:
+      backend: {}
+    depends_on:
+      temporal-schema:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 7233']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  # One-shot: creates or upgrades the two Temporal schemas over verified TLS.
+  temporal-schema:
+    <<: *hardening
+    image: temporalio/admin-tools:1.31.5@sha256:c48b48626c503660ef2b82811c702d24f17ba6f11a7d8e613ac7bcbfd9111fde
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: 'no'
+    mem_limit: 256m
+    entrypoint: ['/bin/sh', '/etc/temporal/schema.sh']
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_db_password }
+    volumes:
+      - ./temporal/schema.sh:/etc/temporal/schema.sh:ro
+    tmpfs:
+      - /tmp
+    networks:
+      backend: {}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # One-shot: the namespace (short retention) and the CorrelationId search attribute.
+  temporal-init:
+    <<: *hardening
+    image: temporalio/admin-tools:1.31.5@sha256:c48b48626c503660ef2b82811c702d24f17ba6f11a7d8e613ac7bcbfd9111fde
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    restart: 'no'
+    mem_limit: 256m
+    entrypoint: ['/bin/sh', '/etc/temporal/init.sh']
+    environment:
+      TEMPORAL_NAMESPACE: cognitive-dag
+      TEMPORAL_RETENTION: 72h
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_client_ui_crt, target: temporal-client-ui.crt }
+      - { source: temporal_client_ui_key, target: temporal-client-ui.key }
+    volumes:
+      - ./temporal/init.sh:/etc/temporal/init.sh:ro
+    tmpfs:
+      - /tmp
+    networks:
+      backend: {}
+    depends_on:
+      temporal:
+        condition: service_healthy
+
+  # Reached only through `ssh -L 8233:127.0.0.1:8233` (D15A): published on loopback, never on a
+  # public address, and Caddy does not proxy it.
+  temporal-ui:
+    <<: *hardening
+    image: temporalio/ui:2.58.1@sha256:ac3c13eddb4547d830991bb5eee93a5d97140134522b7297fdb2be1fe25ef925
+    user: '1000:1000'
+    cap_drop: [ALL]
+    restart: unless-stopped
+    mem_limit: 192m
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_DEFAULT_NAMESPACE: cognitive-dag
+      TEMPORAL_TLS_CA: /run/secrets/ca.crt
+      TEMPORAL_TLS_CERT: /run/secrets/temporal-client-ui.crt
+      TEMPORAL_TLS_KEY: /run/secrets/temporal-client-ui.key
+      TEMPORAL_TLS_SERVER_NAME: temporal
+      TEMPORAL_TLS_ENABLE_HOST_VERIFICATION: 'true'
+    ports:
+      - '127.0.0.1:8233:8080'
+    secrets:
+      - { source: pki_ca, target: ca.crt }
+      - { source: temporal_client_ui_crt, target: temporal-client-ui.crt }
+      - { source: temporal_client_ui_key, target: temporal-client-ui.key }
+    networks:
+      front: {}
+      backend: {}
+    depends_on:
+      temporal-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+networks:
+  # Public side: the edge, and the services that must reach the internet (mail, LLM, HTTP nodes).
+  front:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${FRONT_SUBNET:-172.30.250.0/24}
+  # Data side: no route out of the host.
+  backend:
+    driver: bridge
+    internal: true
+
+secrets:
+  pki_ca:
+    file: ${PKI_DIR:?set PKI_DIR}/ca.crt
+  postgres_crt:
+    file: ${PKI_DIR}/postgres.crt
+  postgres_key:
+    file: ${PKI_DIR}/postgres.key
+  valkey_crt:
+    file: ${PKI_DIR}/valkey.crt
+  valkey_key:
+    file: ${PKI_DIR}/valkey.key
+  temporal_crt:
+    file: ${PKI_DIR}/temporal.crt
+  temporal_key:
+    file: ${PKI_DIR}/temporal.key
+  temporal_client_api_crt:
+    file: ${PKI_DIR}/temporal-client-api.crt
+  temporal_client_api_key:
+    file: ${PKI_DIR}/temporal-client-api.key
+  temporal_client_worker_crt:
+    file: ${PKI_DIR}/temporal-client-worker.crt
+  temporal_client_worker_key:
+    file: ${PKI_DIR}/temporal-client-worker.key
+  temporal_client_ui_crt:
+    file: ${PKI_DIR}/temporal-client-ui.crt
+  temporal_client_ui_key:
+    file: ${PKI_DIR}/temporal-client-ui.key
+  postgres_superuser_password:
+    file: ${SECRETS_DIR:?set SECRETS_DIR}/postgres_superuser_password
+  app_migrator_password:
+    file: ${SECRETS_DIR}/app_migrator_password
+  app_runtime_password:
+    file: ${SECRETS_DIR}/app_runtime_password
+  temporal_db_password:
+    file: ${SECRETS_DIR}/temporal_db_password
+  valkey_password:
+    file: ${SECRETS_DIR}/valkey_password
+  credentials_master_key:
+    file: ${SECRETS_DIR}/credentials_master_key
+  gemini_api_key:
+    file: ${SECRETS_DIR}/gemini_api_key
+  smtp_user:
+    file: ${SECRETS_DIR}/smtp_user
+  smtp_password:
+    file: ${SECRETS_DIR}/smtp_password
+
+volumes:
+  postgres-data:
+  edge-data:
+  edge-config:
