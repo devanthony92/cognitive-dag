@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "id": "GO-2026-6860",
+    "package": "golang.org/x/net",
+    "image": "edge",
+    "reason": "Inside the official Caddy 2.11.9 binary (x/net 0.60.0, fixed in 0.62.0). 2.11.9 is the latest Caddy release and building Caddy ourselves is out of scope; bump Caddy as soon as a release includes the fix.",
+    "owner": "autor",
+    "date": "2026-11-09",
+    "expires": "2026-12-09"
+  },
+  {
+    "id": "GO-2026-6865",
+    "package": "github.com/klauspost/compress",
+    "image": "edge",
+    "reason": "Inside the official Caddy 2.11.9 binary (klauspost/compress 1.20.1, fixed in 1.20.2). 2.11.9 is the latest Caddy release and building Caddy ourselves is out of scope; bump Caddy as soon as a release includes the fix.",
+    "owner": "autor",
+    "date": "2026-11-09",
+    "expires": "2026-12-09"
+  }
+]

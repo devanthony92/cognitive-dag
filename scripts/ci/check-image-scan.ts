@@ -13,6 +13,8 @@ export interface ScanException {
   id: string;
   /** Optional package name; without it the exception covers every package with that id. */
   package?: string;
+  /** Optional image name (api, worker, edge, migrator); without it the exception covers all. */
+  image?: string;
   reason: string;
   owner: string;
   /** Day the exception was added (YYYY-MM-DD). */
@@ -72,10 +74,11 @@ export function parseExceptions(source: string): ScanException[] {
       expires: day(entry.expires, 'expires', where),
     };
     if (entry.package !== undefined) parsed.package = text(entry.package, 'package', where);
+    if (entry.image !== undefined) parsed.image = text(entry.image, 'image', where);
     if (parsed.expires <= parsed.date) {
       throw new Error(`${where}: "expires" must be after "date".`);
     }
-    const key = `${id}|${parsed.package ?? ''}`;
+    const key = `${id}|${parsed.package ?? ''}|${parsed.image ?? ''}`;
     if (seen.has(key)) throw new Error(`${where}: duplicate exception for ${key}.`);
     seen.add(key);
     return parsed;
@@ -103,6 +106,7 @@ export function evaluateScan(
   report: unknown,
   exceptions: readonly ScanException[],
   now: Date,
+  image?: string,
 ): ScanResult {
   if (!isRecord(report) || !Array.isArray(report.matches)) {
     throw new Error('Not a Grype report: the "matches" array is missing.');
@@ -115,7 +119,9 @@ export function evaluateScan(
     if (!finding) continue;
     const covered = live.some(
       (item) =>
-        item.id === finding.id && (item.package === undefined || item.package === finding.package),
+        item.id === finding.id &&
+        (item.package === undefined || item.package === finding.package) &&
+        (item.image === undefined || item.image === image),
     );
     (covered ? result.excepted : result.blocking).push(finding);
   }
@@ -128,13 +134,18 @@ function describeFinding(finding: Finding): string {
 }
 
 function main(argv: string[]): number {
-  const [reportPath, exceptionsPath] = argv;
+  const [reportPath, exceptionsPath, image] = argv;
   if (!reportPath) {
     console.error('Usage: check-image-scan.ts <grype-report.json> [exceptions.json]');
     return 2;
   }
   const exceptions = exceptionsPath ? parseExceptions(readFileSync(exceptionsPath, 'utf8')) : [];
-  const result = evaluateScan(JSON.parse(readFileSync(reportPath, 'utf8')), exceptions, new Date());
+  const result = evaluateScan(
+    JSON.parse(readFileSync(reportPath, 'utf8')),
+    exceptions,
+    new Date(),
+    image,
+  );
   for (const finding of result.excepted) console.log(`excepted: ${describeFinding(finding)}`);
   for (const finding of result.blocking) console.error(`blocking: ${describeFinding(finding)}`);
   if (result.blocking.length > 0) {

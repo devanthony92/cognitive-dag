@@ -33,3 +33,4 @@ docs/security/zap/*.html
 
 # Scratch home of the tool containers in scripts/ci/publish-image.sh
 .tool-home/
+.scan/

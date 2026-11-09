@@ -125,11 +125,32 @@ describe('Dockerfiles', () => {
     expect(text).not.toMatch(/VITE_API_URL=\S+/);
   });
 
-  it('runs the migrator with the migrations folder and without a server', () => {
+  it('runs the migrator with drizzle-orm only: no drizzle-kit, no esbuild, no server', () => {
     const text = read('packages/db/Dockerfile');
-    expect(text).toContain('migrations');
-    expect(text).toMatch(/drizzle-kit/);
+    const code = instructions(text).join('\n');
+    expect(code).toMatch(/migrate-cli/);
+    expect(code).toMatch(/pnpm deploy .*--prod/);
+    expect(code).not.toMatch(/drizzle-kit|esbuild/);
     expect(text).not.toMatch(/^EXPOSE\s/m);
+  });
+
+  it('removes npm, npx and corepack from every Node runtime stage', () => {
+    for (const file of DOCKERFILES) {
+      const final = parse(file).at(-1);
+      if (!final || !/^node:/.test(final.image)) continue;
+      const removal = final.lines
+        .filter((line) => /^RUN\s/.test(line) && /\brm\b/.test(line))
+        .join(' ');
+      for (const path of [
+        '/usr/local/lib/node_modules/npm',
+        '/usr/local/lib/node_modules/corepack',
+        '/usr/local/bin/npm',
+        '/usr/local/bin/npx',
+        '/usr/local/bin/corepack',
+      ]) {
+        expect(removal, `${file} must remove ${path}`).toContain(path);
+      }
+    }
   });
 
   it('installs ca-certificates in every Debian final image that runs Caddy (ACME needs the roots)', () => {
