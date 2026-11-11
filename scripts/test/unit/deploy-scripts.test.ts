@@ -21,6 +21,7 @@ const DOCTOR = 'deploy/ops/doctor.sh';
 const HEADERS = 'deploy/ops/check-headers.sh';
 const ACCOUNT = 'deploy/ops/create-account.sh';
 const LIB = 'deploy/ops/lib.sh';
+const SSH_DEPLOY = 'deploy/ops/ssh-deploy.sh';
 
 const SHA1 = 'a'.repeat(40);
 const SHA2 = 'b'.repeat(40);
@@ -44,9 +45,16 @@ const FULL_HEADERS = [
 
 describe('shellcheck', () => {
   it.skipIf(!hasCommand('shellcheck'))('is clean on the operation scripts', () => {
-    const files = [DEPLOY, ROLLBACK, DOCTOR, HEADERS, ACCOUNT, LIB, 'deploy/ops/alerts.sh'].map(
-      (f) => posix(join(ROOT, f)),
-    );
+    const files = [
+      DEPLOY,
+      ROLLBACK,
+      DOCTOR,
+      HEADERS,
+      ACCOUNT,
+      LIB,
+      SSH_DEPLOY,
+      'deploy/ops/alerts.sh',
+    ].map((f) => posix(join(ROOT, f)));
     const run = spawnSync('shellcheck', ['-x', ...files], { encoding: 'utf8' });
     expect(run.stdout + run.stderr).toBe('');
     expect(run.status).toBe(0);
@@ -463,6 +471,40 @@ esac`;
       rmSync(dir('run/cognitive-dag/secrets'), { recursive: true });
       const missing = sandbox.run(DOCTOR, [], env());
       expect(missing.status).not.toBe(0);
+    });
+  });
+
+  describe('ssh-deploy.sh (T047, forced command of the deploy key)', () => {
+    const ask = (command: string | undefined) =>
+      sandbox.run(
+        SSH_DEPLOY,
+        [],
+        env(command === undefined ? {} : { SSH_ORIGINAL_COMMAND: command }),
+      );
+
+    it.each([
+      undefined,
+      '',
+      'bash',
+      'deploy',
+      `deploy ${SHA1};id`,
+      `deploy main`,
+      `deploy ${SHA1.toUpperCase()}`,
+      `deploy ${SHA1} extra`,
+      `rollback`,
+    ])('refuses %j before touching anything', (command) => {
+      const result = ask(command);
+      expect(result.status).toBe(2);
+      expect(result.output).toMatch(/refused/);
+      expect(sandbox.calls()).toEqual([]);
+    });
+
+    it('runs deploy.sh with the SHA and nothing else', () => {
+      rmSync(dir('etc/cognitive-dag/local.env'));
+      const result = ask(`deploy ${SHA1}`);
+      // deploy.sh was reached: it stops at the missing configuration of this empty sandbox.
+      expect(result.status).toBe(1);
+      expect(result.output).toMatch(/missing .*local\.env/);
     });
   });
 

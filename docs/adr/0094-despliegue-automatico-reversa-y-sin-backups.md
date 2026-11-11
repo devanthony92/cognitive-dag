@@ -38,9 +38,13 @@ mismo que algo salió mal y vuelva atrás, y dejar escrito qué riesgo se acepta
   `create-account.sh` crea las cuentas). Antes de admitir datos reales debe existir un backup cifrado
   externo con restauración probada. El volcado previo cubre solo una migración que rompa la regla
   expand/contract, con pérdida de lo escrito desde el despliegue.
-- **Quién despliega:** la forma de disparar `deploy.sh` desde la publicación (empuje por SSH con llave
-  restringida o extracción por temporizador) se registra en el ADR de T047 cuando el autor la elija; el
-  núcleo (`deploy.sh`) es el mismo en ambos casos.
+- **Quién despliega (T047, elegido por el autor: empuje):** `deploy.yml` se dispara con `workflow_run` de
+  `Release` y entra por SSH como `cdag-deploy` con una llave cuya línea de `authorized_keys` es
+  `restrict,command="…/ssh-deploy.sh"`: solo acepta `deploy <40 hex>` y `deploy.sh` comprueba que sea de
+  `main`. Se descartó la extracción por temporizador porque no puede marcar el workflow como fallido (FR-024),
+  tarda hasta 5 minutos y depende de una API sin token. El job no tiene permisos, no hace _checkout_ y solo ve
+  el secreto `DEPLOY_SSH_KEY`, en el entorno `deploy` (no `production`, reservado a la publicación). Coste: una
+  llave en GitHub, el puerto 22 abierto a los runners y la rotación manual de la llave y de `known_hosts`.
 
 ## Consecuencias
 
