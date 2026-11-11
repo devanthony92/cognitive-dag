@@ -111,9 +111,9 @@ Prueba cada alerta una vez con el procedimiento de [alerts.md](./alerts.md).
 
 ### 9. Despliegue automático
 
-Pendiente de la decisión de T047 (empuje por SSH restringido o extracción por temporizador). Hasta
-entonces cada despliegue es `deploy.sh <sha>` a mano; el modo elegido se documenta en
-[deploy.md](./deploy.md).
+Configura la llave restringida y el entorno `deploy` de GitHub como indica
+[deploy.md](./deploy.md#configuración-una-vez). Desde entonces cada publicación correcta de `main` se
+despliega sola.
 
 ## Después de un reinicio de la VM
 

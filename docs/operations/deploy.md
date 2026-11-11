@@ -55,18 +55,45 @@ deploy/ops/compose.sh exec -T postgres pg_restore -U postgres -d cognitive_dag -
 deploy/ops/rollback.sh
 ```
 
-## Disparar un despliegue
+## Disparar un despliegue: empuje por SSH restringido (T047)
 
-`.github/workflows/deploy.yml` lo dispara cuando `release.yml` termina bien y se detiene si falla. Hasta
-decidir su forma (T047) se despliega a mano:
+`.github/workflows/deploy.yml` se dispara cuando `release.yml` termina bien en `main` y entra por SSH a la
+VM como `cdag-deploy` con una llave que **solo puede ejecutar `deploy <sha>`**: su línea de
+`authorized_keys` lleva `restrict,command="/opt/cognitive-dag/deploy/ops/ssh-deploy.sh"`, y ese script
+rechaza cualquier cosa que no sea `deploy` más 40 hexadecimales. `deploy.sh` además exige que el commit sea de
+`main` y que sus imágenes existan. Si el despliegue revierte, el job termina en rojo y el registro está en la
+ejecución de Actions. El entorno se llama `deploy` (no `production`: ese lo usa solo `release.yml`) y no
+lleva revisores.
+
+### Configuración (una vez)
+
+1. En la VM, una llave solo para esto (en tu máquina: `ssh-keygen -t ed25519 -f deploy_key -N ''`) y su parte
+   pública restringida:
+
+   ```bash
+   sudo install -d -m 700 -o cdag-deploy -g cdag-deploy /home/cdag-deploy/.ssh
+   echo 'restrict,command="/opt/cognitive-dag/deploy/ops/ssh-deploy.sh" <contenido de deploy_key.pub>'      | sudo -u cdag-deploy tee -a /home/cdag-deploy/.ssh/authorized_keys
+   sudo chmod 600 /home/cdag-deploy/.ssh/authorized_keys
+   ```
+
+2. En GitHub, entorno `deploy` (Settings → Environments), sin revisores: secreto `DEPLOY_SSH_KEY` (la
+   llave privada) y variables `DEPLOY_HOST` (`cognitive.devama.cloud`) y `DEPLOY_KNOWN_HOSTS` (la salida de
+   `ssh-keyscan -t ed25519 cognitive.devama.cloud` tomada desde una red de confianza, o el contenido de
+   `/etc/ssh/ssh_host_ed25519_key.pub` de la VM con el nombre delante). Borra la llave privada local.
+3. Comprobación: `ssh -i deploy_key cdag-deploy@cognitive.devama.cloud 'id'` responde `refused`, y
+   `... 'deploy <sha>'` despliega.
+
+### Rotar la llave
+
+Genera una nueva, sustituye su línea en `authorized_keys`, actualiza `DEPLOY_SSH_KEY` y borra la vieja. Si
+recreas la VM, su llave de host cambia: actualiza `DEPLOY_KNOWN_HOSTS`. Si cierras el puerto 22 a tu IP, el
+empuje deja de funcionar (los runners de GitHub no tienen IP fija): despliega entonces a mano.
+
+Despliegue a mano, siempre disponible:
 
 ```bash
 sudo -iu cdag-deploy /opt/cognitive-dag/deploy/ops/deploy.sh <sha-de-40-hex>
 ```
-
-> **Pendiente de decisión del autor (T047):** despliegue por empuje (el workflow entra por SSH con una
-> llave restringida a un comando) o por extracción (un temporizador en la VM). La opción elegida y su
-> procedimiento se anotan aquí al decidirla.
 
 ## Cabeceras: qué hacer si falla la comprobación
 

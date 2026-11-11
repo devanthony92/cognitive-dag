@@ -1,0 +1,46 @@
+name: Deploy
+
+# Deploys to the VM every time Release publishes the images of a commit of main (F9, T047, D3C,
+# ADR-0094). Push over SSH: the key in the `deploy` environment can only run `deploy <sha>` on the
+# VM (forced command, deploy/ops/ssh-deploy.sh); deploy.sh migrates, waits for health, checks the
+# headers and rolls back by itself, and then this job fails. The job holds no registry secret and
+# checks out nothing. Variables of the `deploy` environment: DEPLOY_HOST (the site's domain) and
+# DEPLOY_KNOWN_HOSTS (the host key line, so the first connection is not trusted blindly).
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: deploy to the VM
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: deploy
+    permissions: {}
+    steps:
+      - name: Run deploy.sh on the VM
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          [[ "$RELEASE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "unexpected commit SHA"; exit 1; }
+          : "${DEPLOY_HOST:?set the DEPLOY_HOST variable}" "${DEPLOY_KNOWN_HOSTS:?set the DEPLOY_KNOWN_HOSTS variable}"
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile=~/.ssh/known_hosts -o ServerAliveInterval=30 \
+            "cdag-deploy@$DEPLOY_HOST" "deploy $RELEASE_SHA"

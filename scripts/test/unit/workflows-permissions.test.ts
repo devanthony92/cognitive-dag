@@ -183,6 +183,31 @@ ${script}`;
   });
 });
 
+describe('deploy.yml', () => {
+  const deploy = read('deploy.yml');
+
+  it('runs only after a successful Release on main, and sets no permission', () => {
+    expect(deploy).toMatch(/workflow_run:\s+workflows: \[Release\]/);
+    expect(deploy).toMatch(/branches: \[main\]/);
+    expect(deploy).toContain("github.event.workflow_run.conclusion == 'success'");
+    expect(topPermissions(deploy)).toEqual(['{}']);
+    expect(deploy).not.toMatch(/:\s*write\b|id-token/);
+  });
+
+  it('holds only the deploy key, never a registry secret, and checks nothing out', () => {
+    expect(deploy).toContain('secrets.DEPLOY_SSH_KEY');
+    expect(deploy.match(/secrets\.\w+/g)).toEqual(['secrets.DEPLOY_SSH_KEY']);
+    expect(deploy).not.toMatch(/actions\/checkout/);
+  });
+
+  it('pins the host key, validates the SHA and never prints the key', () => {
+    expect(deploy).toContain('StrictHostKeyChecking=yes');
+    expect(deploy).toContain('DEPLOY_KNOWN_HOSTS');
+    expect(deploy).toMatch(/\[0-9a-f\]\{40\}/);
+    expect(deploy).not.toMatch(/echo.*DEPLOY_SSH_KEY|set -[a-z]*x/);
+  });
+});
+
 describe('every workflow', () => {
   it('has workflow files to check', () => {
     expect(files).toContain('ci.yml');
