@@ -2,7 +2,7 @@
 
 Estos pasos los hace el autor en la consola de Oracle (no se automatizan, FR-016) y ya están hechos; se
 dejan escritos para reconstruirlos. Los valores son identificadores y nombres, no secretos. **No se
-versiona la IP pública**: es efímera hasta que se reserve (paso 4).
+versiona la IP pública** (paso 3).
 
 ## Datos de la cuenta
 
@@ -46,18 +46,18 @@ En la lista de seguridad de la subred (o un grupo de seguridad de red), entrada 
 Nada más. Si la IP del autor es estable, conviene limitar el 22 a ella. La UI de Temporal **no** tiene
 regla de entrada: se llega por túnel ([temporal-ui.md](./temporal-ui.md)).
 
-## 3. Reservar la IP pública
+## 3. IP pública efímera
 
-La IP de una instancia nueva es efímera y cambia si se recrea. Antes de publicar el dominio:
+Decisión del autor: la IP pública **no se reserva**. En OCI una IP efímera persiste ante un reinicio, un
+`stop` y un `start` de la instancia; solo cambia si la instancia se **termina**. El registro A de
+`cognitive.devama.cloud` ya existe y resuelve a la IP actual.
 
-1. Networking → IP management → Reserved public IPs → Reserve public IP address (compartimento
-   `cognitive-dag`).
-2. Instancia → Attached VNICs → la VNIC principal → IPv4 addresses → Edit → «No public IP» y luego
-   «Reserved public IP» con la reservada.
-3. El registro A de `cognitive.devama.cloud` apunta a esa IP. Una IP reservada sin asignar puede costar:
-   se libera al dar de baja la VM ([decommission.md](./decommission.md)).
+- Si la VM se termina y se recrea (por ejemplo en una [reconstrucción](./rebuild.md)), la IP nueva es
+  distinta: hay que **actualizar el registro A** a la IP nueva antes del primer despliegue, porque Caddy
+  necesita que el nombre resuelva para obtener el certificado.
+- La IP no se versiona ni se escribe en el repositorio.
 
-Comprobación: `dig +short cognitive.devama.cloud` devuelve la IP reservada.
+Comprobación: `dig +short cognitive.devama.cloud` devuelve la IP pública actual de la instancia.
 
 ## 4. Vault y política de lectura
 

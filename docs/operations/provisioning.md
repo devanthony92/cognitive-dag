@@ -27,7 +27,7 @@ sudo /opt/cognitive-dag/deploy/provision/provision.sh
 Con `deploy/provision/cloud-init.yaml` como script de arranque ([oracle.md](./oracle.md), paso 1). En la VM:
 
 ```bash
-ssh ubuntu@<ip-reservada>
+ssh ubuntu@<ip-publica>
 cloud-init status --wait      # status: done
 ls /opt/cognitive-dag/deploy  # el repositorio está clonado
 systemctl is-enabled cognitive-dag-secrets.service cognitive-dag-alerts.timer
@@ -73,7 +73,7 @@ Si el Vault no responde, la unidad falla y **no deja nada**: revisa la política
 
 ### 5. DNS
 
-`dig +short cognitive.devama.cloud` debe devolver la IP reservada. Caddy pide el certificado a Let's
+`dig +short cognitive.devama.cloud` debe devolver la IP pública de la instancia. Caddy pide el certificado a Let's
 Encrypt al arrancar, así que el nombre ha de resolver ya y el 80 ha de estar abierto.
 
 ### 6. Primer despliegue
