@@ -1,0 +1,12 @@
+[Unit]
+Description=CognitiveDAG alert checks and log archive
+After=docker.service
+# Without the secrets there is no SMTP credential to send with.
+ConditionPathExists=/run/cognitive-dag/secrets/smtp_password
+
+[Service]
+Type=oneshot
+User=cdag-deploy
+# The archive must not stop the alerts: a failure there is in the journal, not a missed alert.
+ExecStart=-/opt/cognitive-dag/deploy/ops/alerts.sh archive
+ExecStart=/opt/cognitive-dag/deploy/ops/alerts.sh check

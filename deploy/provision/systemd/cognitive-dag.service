@@ -1,0 +1,14 @@
+[Unit]
+Description=Start the current CognitiveDAG version at boot
+Requires=cognitive-dag-secrets.service docker.service
+After=cognitive-dag-secrets.service docker.service network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=cdag-deploy
+ExecStart=/opt/cognitive-dag/deploy/ops/deploy.sh --resume
+TimeoutStartSec=600
+
+[Install]
+WantedBy=multi-user.target
