@@ -17,8 +17,8 @@ datos de prueba se pierden y las cuentas se vuelven a crear con `create-account.
 
 ## Procedimiento
 
-1. **Vault, OCIR y DNS siguen existiendo** (no dependen de la VM). Si la IP reservada sigue libre, se
-   reasigna a la VM nueva; si no, se actualiza el registro A.
+1. **Vault y OCIR siguen existiendo** (no dependen de la VM). La IP pública es efímera y la VM nueva tiene
+   una distinta: **actualiza el registro A de `cognitive.devama.cloud`** a esa IP antes del primer despliegue.
 2. Crea la instancia como en [oracle.md](./oracle.md) (mismo `cloud-init.yaml`). `provision.sh` corre solo.
 3. Crea `/etc/cognitive-dag/local.env` ([provisioning.md](./provisioning.md), paso 3).
 4. `sudo systemctl start cognitive-dag-secrets` trae los secretos del Vault. Los secretos del Vault no cambian

@@ -5,7 +5,7 @@ entrada para ella y el Compose la publica solo en `127.0.0.1:8233` de la VM. Se 
 tu máquina; el acceso queda en el registro de SSH de la VM.
 
 ```bash
-ssh -N -L 8233:127.0.0.1:8233 ubuntu@<ip-reservada>
+ssh -N -L 8233:127.0.0.1:8233 ubuntu@<ip-publica>
 ```
 
 Con el túnel abierto, abre `http://localhost:8233` en tu navegador (el namespace es `cognitive-dag`).
@@ -20,5 +20,5 @@ Comprobaciones:
 # en la VM: la UI escucha solo en loopback
 sudo ss -ltnp | grep 8233            # 127.0.0.1:8233, nunca 0.0.0.0
 # desde fuera, sin túnel, no responde
-curl -m 5 http://<ip-reservada>:8233/   # sin respuesta
+curl -m 5 http://<ip-publica>:8233/   # sin respuesta
 ```
