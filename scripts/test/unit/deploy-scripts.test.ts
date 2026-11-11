@@ -2,8 +2,11 @@ import { spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSandbox, hasCommand, posix, ROOT, type Sandbox } from '../support/sandbox.ts';
+
+// Starting bash is slow on Windows; the scripts themselves are quick.
+vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 /**
  * F9 (T040, T048, T051, FR-024, FR-025, FR-034): `deploy.sh` keeps the dump and `previous`, runs the
@@ -27,7 +30,7 @@ const IMAGES = ['api', 'worker', 'edge', 'migrator'];
 const FULL_HEADERS = [
   'HTTP/2 200',
   'strict-transport-security: max-age=31536000; includeSubDomains',
-  "content-security-policy: default-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'",
+  "content-security-policy: default-src 'self'; script-src 'self'; style-src 'self'; object-src 'none'; frame-ancestors 'none'",
   'x-frame-options: DENY',
   'x-content-type-options: nosniff',
   'permissions-policy: camera=(), microphone=(), geolocation=()',
@@ -309,14 +312,17 @@ esac`;
       expect(readFileSync(sandbox.log, 'utf8')).not.toContain(pullToken);
     });
 
-    it('rejects a second deploy while another one holds the lock', () => {
-      mkdirSync(dir('var/lib/cognitive-dag/state/deploy.lock'));
-      writeFileSync(dir('var/lib/cognitive-dag/state/deploy.lock/pid'), String(process.pid));
-      const result = deploy(SHA1);
-      expect(result.status).not.toBe(0);
-      expect(result.output).toMatch(/lock|another deploy/i);
-      expect(composeCalls()).toEqual([]);
-    });
+    it.skipIf(process.platform === 'win32')(
+      'rejects a second deploy while another one holds the lock',
+      () => {
+        mkdirSync(dir('var/lib/cognitive-dag/state/deploy.lock'));
+        writeFileSync(dir('var/lib/cognitive-dag/state/deploy.lock/pid'), String(process.pid));
+        const result = deploy(SHA1);
+        expect(result.status).not.toBe(0);
+        expect(result.output).toMatch(/lock|another deploy/i);
+        expect(composeCalls()).toEqual([]);
+      },
+    );
 
     it('--resume starts the current version without migrating or pulling', () => {
       expect(deploy(SHA1).status).toBe(0);

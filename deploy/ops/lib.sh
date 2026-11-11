@@ -24,6 +24,7 @@ STATE_DIR="$CDAG_STATE/state"
 DUMP_DIR="$CDAG_STATE/dumps"
 ALERT_DIR="$CDAG_STATE/alerts"
 WAIT_TIMEOUT="${DEPLOY_WAIT_TIMEOUT:-300}"
+export WAIT_TIMEOUT
 # The registry credential lives on the tmpfs too: `docker login` writes its config there.
 DOCKER_CONFIG="${DOCKER_CONFIG:-$(dirname "$CDAG_SECRETS")/docker}"
 export DOCKER_CONFIG
@@ -72,6 +73,9 @@ require_secrets() {
   [[ -s "$CDAG_SECRETS/postgres_superuser_password" ]] ||
     die "the secrets are not on the tmpfs: run 'systemctl start cognitive-dag-secrets' (the Vault must answer)"
 }
+
+# use_version <file>: the version file whose images the next compose commands use ("" = none).
+use_version() { VERSION_ENV="$1"; }
 
 # docker compose with the config files, the version in VERSION_ENV and the two directories.
 compose() {

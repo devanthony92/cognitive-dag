@@ -68,7 +68,7 @@ ${body}
         'bash',
         [
           '-c',
-          'PATH="$STUB_BIN:$PATH" exec bash "$@"',
+          'PATH="$(cygpath -u "$STUB_BIN" 2>/dev/null || printf %s "$STUB_BIN"):$PATH" exec bash "$@"',
           'bash',
           posix(resolve(ROOT, script)),
           ...args,
@@ -76,7 +76,6 @@ ${body}
         {
           env: {
             ...process.env,
-            MSYS_NO_PATHCONV: '1',
             STUB_BIN: posix(bin),
             STUB_LOG: posix(log),
             ...env,
@@ -97,6 +96,11 @@ ${body}
     clearCalls: () => writeFileSync(log, ''),
     cleanup: () => rmSync(root, { recursive: true, force: true }),
   };
+  // The tools that reach outside the machine fail unless a test stubs them: a test that forgets can
+  // never call the real OCI CLI or docker by accident.
+  for (const name of ['oci', 'docker']) {
+    sandbox.stub(name, 'echo "no stub for $(basename "$0") in this test" >&2; exit 99');
+  }
   return sandbox;
 }
 
