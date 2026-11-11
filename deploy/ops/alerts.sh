@@ -104,7 +104,7 @@ check_services() {
   local listing missing=() bad=() service line
   listing="$(compose ps --format '{{.Service}} {{.State}} {{.Health}}' 2>/dev/null || true)"
   for service in "${SERVICES[@]}"; do
-    line="$(grep -E "^$service " <<<"$listing" | head -n 1 || true)"
+    line="$(awk -v s="$service" '$1 == s { print; exit }' <<<"$listing")"
     if [[ -z "$line" ]]; then
       missing+=("$service")
     elif [[ "$line" != "$service running"* || "$line" == *unhealthy* ]]; then

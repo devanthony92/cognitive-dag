@@ -130,7 +130,10 @@ main() {
 
   # The dump comes first, while the old version still runs on its own schema.
   use_version "${old_sha:+$STATE_DIR/current.env}"
-  if [[ -n "$old_sha" ]] && compose ps --services --status running | grep -qx postgres; then
+  # The list goes to a variable first: `grep -q` closing the pipe could fail `compose ps` under pipefail.
+  local running=""
+  [[ -z "$old_sha" ]] || running="$(compose ps --services --status running)"
+  if grep -qx postgres <<<"$running"; then
     local dump
     dump="$DUMP_DIR/predeploy-$(date -u +%Y%m%dT%H%M%SZ)-${old_sha:-none}.dump"
     if ! compose exec -T postgres pg_dump -U postgres -Fc cognitive_dag >"$dump" || [[ ! -s "$dump" ]]; then

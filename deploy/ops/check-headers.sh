@@ -29,11 +29,12 @@ raw="$(curl --silent --show-error --max-time 20 --proto '=https' -D - -o /dev/nu
 # Lower-case names, no carriage returns.
 headers="$(printf '%s\n' "$raw" | tr -d '\r' | awk -F': ' 'NR == 1 { print; next } { n = tolower($1); sub(/^[^:]*: */, ""); print n ": " $0 }')"
 
-status="$(printf '%s\n' "$headers" | head -n 1)"
+# No `| head` under pipefail: the writer can get SIGPIPE and the script would exit silently.
+status="${headers%%$'\n'*}"
 [[ "$status" =~ ^HTTP/[0-9.]+\ 2[0-9][0-9] ]] || bad "https://$domain/ answered '${status}', not a 2xx"
 
 value() { # value <header>: the value of the first header with that name, lower-cased
-  printf '%s\n' "$headers" | sed -n "s/^$1: //p" | head -n 1 | tr '[:upper:]' '[:lower:]'
+  sed -n "/^$1: /{s/^$1: //;p;q;}" <<<"$headers" | tr '[:upper:]' '[:lower:]'
 }
 
 sts="$(value strict-transport-security)"
