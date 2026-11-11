@@ -1,0 +1,29 @@
+#cloud-config
+# First-boot configuration of the VM (F9, T044, D16A, ADR-0093). Paste it as the "cloud-init script"
+# when creating the instance in the Oracle console (docs/operations/oracle.md). It writes only
+# constants, none of them secret, clones the repository and runs the provisioning script. No secret
+# and no personal value goes here: SITE_DOMAIN and ALERT_EMAIL_TO live in /etc/cognitive-dag/local.env,
+# created on the VM by the operator (deploy/env/local.env.example), and the secrets live in the Vault.
+package_update: true
+packages:
+  - git
+  - ca-certificates
+
+write_files:
+  - path: /etc/cognitive-dag/cognitive-dag.env
+    permissions: '0644'
+    content: |
+      # Constants of this deployment (names and origin: deploy/env/cognitive-dag.env.example).
+      OCI_REGION=sa-bogota-1
+      VAULT_OCID=ocid1.vault.oc1.sa-bogota-1.i5vpjtjvaabti.abrgcljr5twomtfqy3a2arojhc4bbanqdkpfe6wahx2om3nqkw32fyrgptcq
+      OCIR_REGISTRY=bog.ocir.io
+      OCIR_NAMESPACE=axnl7xod1tm1
+      OCIR_PULL_USER=axnl7xod1tm1/Default/vm-ocir-pull
+      SMTP_HOST=smtp.email.sa-bogota-1.oci.oraclecloud.com
+      SMTP_PORT=587
+      SMTP_SECURE=starttls
+      MAIL_FROM="CognitiveDAG alertas <alertas@devama.cloud>"
+
+runcmd:
+  - git clone --branch main https://github.com/devanthony92/cognitive-dag.git /opt/cognitive-dag
+  - /opt/cognitive-dag/deploy/provision/provision.sh

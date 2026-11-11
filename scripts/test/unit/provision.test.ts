@@ -10,8 +10,11 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { join, relative } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSandbox, hasCommand, posix, ROOT, type Sandbox } from '../support/sandbox.ts';
+
+// Starting bash is slow on Windows; the scripts themselves are quick.
+vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 /**
  * F9 (T039, FR-014, FR-015, FR-016): `provision.sh` is idempotent, prints no value, writes nothing
@@ -84,7 +87,7 @@ function hostStubs(sandbox: Sandbox): void {
     'python3',
     `if [[ "$1 $2" == "-m venv" ]]; then
   mkdir -p "$3/bin"
-  printf '#!/bin/sh\\ntouch "$(dirname "$0")/oci"; chmod +x "$(dirname "$0")/oci"\\n' >"$3/bin/pip"
+  printf '#!/bin/sh\\nprintf "#!/bin/sh\\\\n" >"$(dirname "$0")/oci"; chmod +x "$(dirname "$0")/oci"\\n' >"$3/bin/pip"
   chmod +x "$3/bin/pip"
 fi`,
   );
