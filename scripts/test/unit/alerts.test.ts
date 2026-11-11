@@ -1,11 +1,12 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createServer, type Server, type Socket } from 'node:net';
-import { TLSSocket } from 'node:tls';
 import { join } from 'node:path';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSandbox, hasCommand, posix, ROOT, type Sandbox } from '../support/sandbox.ts';
+
+// Starting bash is slow on Windows; the scripts themselves are quick.
+vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 
 /**
  * F9 (T041, FR-027, FR-028): the alert counter of `auth.login_failed` and `auth.rate_limited` has a
@@ -17,7 +18,6 @@ import { createSandbox, hasCommand, posix, ROOT, type Sandbox } from '../support
 const ALERTS = 'deploy/ops/alerts.sh';
 const PKI = 'deploy/provision/pki.sh';
 
-/** A minimal SMTP server: STARTTLS, AUTH PLAIN, and it keeps what it receives. */
 interface Mail {
   from: string;
   to: string[];
@@ -26,91 +26,37 @@ interface Mail {
   password: string;
 }
 
-function startSmtp(
-  key: string,
-  cert: string,
-): Promise<{ server: Server; port: number; mails: Mail[] }> {
-  const mails: Mail[] = [];
-  const server = createServer((raw: Socket) => {
-    let socket: Socket = raw;
-    let buffer = '';
-    let inData = false;
-    let mail: Mail = { from: '', to: [], data: '', user: '', password: '' };
-    const send = (line: string): void => void socket.write(`${line}\r\n`);
-    const onData = (chunk: Buffer): void => {
-      buffer += chunk.toString('utf8');
-      for (;;) {
-        if (inData) {
-          const end = buffer.indexOf('\r\n.\r\n');
-          if (end === -1) return;
-          mail.data = buffer.slice(0, end);
-          buffer = buffer.slice(end + 5);
-          inData = false;
-          mails.push(mail);
-          mail = { from: '', to: [], data: '', user: mail.user, password: mail.password };
-          send('250 queued');
-          continue;
-        }
-        const eol = buffer.indexOf('\r\n');
-        if (eol === -1) return;
-        const line = buffer.slice(0, eol);
-        buffer = buffer.slice(eol + 2);
-        const [verb = '', ...rest] = line.split(' ');
-        switch (verb.toUpperCase()) {
-          case 'EHLO':
-            socket.write(
-              socket instanceof TLSSocket
-                ? '250-test\r\n250 AUTH PLAIN\r\n'
-                : '250-test\r\n250 STARTTLS\r\n',
-            );
-            break;
-          case 'STARTTLS': {
-            send('220 ready');
-            socket.removeListener('data', onData);
-            const secure = new TLSSocket(socket, { isServer: true, key, cert });
-            secure.on('data', onData);
-            secure.on('error', () => undefined);
-            socket = secure;
-            break;
-          }
-          case 'AUTH': {
-            const [user = '', password = ''] = Buffer.from(rest[1] ?? '', 'base64')
-              .toString('utf8')
-              .split('\0')
-              .slice(1);
-            mail.user = user;
-            mail.password = password;
-            send('235 ok');
-            break;
-          }
-          case 'MAIL':
-            mail.from = /<([^>]*)>/.exec(line)?.[1] ?? '';
-            send('250 ok');
-            break;
-          case 'RCPT':
-            mail.to.push(/<([^>]*)>/.exec(line)?.[1] ?? '');
-            send('250 ok');
-            break;
-          case 'DATA':
-            inData = true;
-            send('354 go');
-            break;
-          case 'QUIT':
-            send('221 bye');
-            socket.end();
-            return;
-          default:
-            send('250 ok');
-        }
-      }
-    };
-    raw.on('data', onData);
-    raw.on('error', () => undefined);
-  });
-  return new Promise((resolve) => {
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address();
-      resolve({ server, port: typeof address === 'object' && address ? address.port : 0, mails });
+/** The test SMTP server (`support/smtp-server.ts`) runs as its own process; mails are read from its file. */
+interface TestSmtp {
+  port: number;
+  readonly mails: Mail[];
+  reset: () => void;
+  stop: () => void;
+}
+
+function startSmtp(key: string, cert: string, out: string): Promise<TestSmtp> {
+  writeFileSync(out, '');
+  const child = spawn(
+    process.execPath,
+    [join(ROOT, 'scripts/test/support/smtp-server.ts'), key, cert, out],
+    { stdio: ['ignore', 'pipe', 'inherit'] },
+  );
+  return new Promise((resolve, reject) => {
+    child.once('error', reject);
+    child.stdout.on('data', (chunk: Buffer) => {
+      const port = /listening (\d+)/.exec(chunk.toString('utf8'))?.[1];
+      if (!port) return;
+      resolve({
+        port: Number(port),
+        get mails() {
+          return readFileSync(out, 'utf8')
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line) as Mail);
+        },
+        reset: () => writeFileSync(out, ''),
+        stop: () => void child.kill(),
+      });
     });
   });
 }
@@ -125,7 +71,7 @@ describe('shellcheck', () => {
 
 describe.skipIf(!hasCommand('openssl') || !hasCommand('curl'))('alerts.sh check (T041)', () => {
   let sandbox: Sandbox;
-  let smtp: { server: Server; port: number; mails: Mail[] };
+  let smtp: TestSmtp;
   let caFile: string;
   const smtpUser = `user-${randomBytes(4).toString('hex')}`;
   const smtpPassword = randomBytes(16).toString('base64url');
@@ -158,11 +104,11 @@ describe.skipIf(!hasCommand('openssl') || !hasCommand('curl'))('alerts.sh check 
       { encoding: 'utf8' },
     );
     expect(made.status, made.stderr).toBe(0);
-    smtp = await startSmtp(readFileSync(key, 'utf8'), readFileSync(cert, 'utf8'));
+    smtp = await startSmtp(key, cert, work.path('mails.jsonl'));
     caFile = cert;
   });
   afterAll(() => {
-    smtp.server.close();
+    smtp.stop();
   });
 
   const iso = (minutesAgo: number): string =>
@@ -179,7 +125,7 @@ describe.skipIf(!hasCommand('openssl') || !hasCommand('curl'))('alerts.sh check 
 
   beforeEach(() => {
     sandbox = createSandbox();
-    smtp.mails.length = 0;
+    smtp.reset();
     for (const folder of [
       'etc/cognitive-dag',
       'run/cognitive-dag/secrets',
@@ -301,7 +247,7 @@ esac`,
   it('mails when a service is not running or is missing', () => {
     expect(check({ STUB_STATE: 'restarting' }).status).toBe(0);
     expect(smtp.mails).toHaveLength(1);
-    smtp.mails.length = 0;
+    smtp.reset();
     rmState();
     expect(check({ STUB_SERVICES: 'edge api worker' }).status).toBe(0);
     expect(smtp.mails).toHaveLength(1);
