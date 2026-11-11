@@ -40,7 +40,7 @@ echo "$services"
 if grep -Eq ' (unhealthy|restarting|exited|dead)' <<<"$services"; then problem "a service is not healthy"; fi
 
 echo "== internal certificates"
-bash "$CDAG_ROOT/deploy/provision/pki.sh" status "$CDAG_PKI" --min-days "${ALERT_CERT_MIN_DAYS:-30}" ||
+bash "$here/../provision/pki.sh" status "$CDAG_PKI" --min-days "${ALERT_CERT_MIN_DAYS:-30}" ||
   problem "an internal certificate is close to expiring: see docs/operations/secrets.md"
 
 echo "== disk"
