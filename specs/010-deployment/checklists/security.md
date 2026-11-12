@@ -44,3 +44,16 @@ medibles antes de implementar (pruebas de los requisitos, no de la implementaci�
 - [x] CHK023 Las cifras de planes de terceros están marcadas **(verificar)** y hay una tarea que las confirma (T002)
 - [x] CHK024 D23 respondida (A: Caddy 404) y registrada
 - [x] CHK025 Constitución enmendada a 1.1.0: backups externos obligatorios solo antes de admitir datos reales
+
+## Revisión al cierre de F9 (2026-11-12)
+
+Las 25 casillas anteriores eran pruebas de los requisitos y siguen cumplidas. Al cerrar F9 se revisó que cada una tenga su implementación y su evidencia; lo que no se pudo comprobar consta aquí.
+
+- CHK001, CHK005: [ADR-0088](../../../docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md) fila por fila en [ADR-0099](../../../docs/adr/0099-cierre-de-f9-despliegue.md); `pnpm security:evidence` rechaza cualquier fila diferida.
+- CHK002 a CHK004: `deploy-config.test.ts`, `deploy-security.test.ts` y `deploy/ops/check-headers.sh`; cabeceras y 404 verificados con `curl` en producción.
+- CHK006 a CHK012: los siete riesgos constan como `accepted` con dueño y revisión en el [modelo de amenazas v3.0](../../../docs/threat-model.md) (sección 3.7).
+- CHK013 a CHK016: gitleaks, Vault, escaneo, SBOM y fijación por digest o SHA en CI y `release.yml`.
+- CHK017 y CHK018: retención y alertas verificadas (alerta de disco recibida); SPF, DKIM y DMARC configurados y correo entregado. **Falta anotar** el resultado `pass` de las tres comprobaciones en las cabeceras de un mensaje recibido (SC-009).
+- CHK019 a CHK021: registro cerrado en producción (404); acceso solo por SSH con llave; reversa por digests sin migraciones inversas.
+- **No medido:** consumo de memoria (T052, SC-010), reconstrucción en una VM limpia (T055) y las cifras de planes de terceros (T002, CHK023 sigue siendo una tarea abierta).
+
