@@ -4,7 +4,7 @@ Sin copias de seguridad (D5), perder la VM es perder la base de datos, pero el s
 en una VM limpia con el script de aprovisionamiento, los secretos del Vault y las imágenes del registro. Los
 datos de prueba se pierden y las cuentas se vuelven a crear con `create-account.sh`.
 
-> **Tiempo medido: pendiente.** Esta reconstrucción requiere una VM real y no se ha ejecutado todavía; no se
+> **Tiempo medido: pendiente (T055, no realizada).** La cuota Always Free está ocupada por la VM actual y no hay una segunda donde ensayar: es un riesgo aceptado con revisión al liberar cuota o antes de admitir datos reales ([ADR-0099](../adr/0099-cierre-de-f9-despliegue.md)). No se
 > inventa una cifra. Al hacerla por primera vez se anota aquí la fecha, el tiempo de cada paso y el total.
 
 | Paso                                                                | Tiempo medido |
