@@ -42,74 +42,74 @@ que no puede hacer un agente.
 
 ### Preparación
 
-- [ ] T001 Re-medir sobre `main` y versionar la línea base: auditoría de impeccable (`docs/ui/audit-baseline.md`),
+- [x] T001 Re-medir sobre `main` y versionar la línea base: auditoría de impeccable (`docs/ui/audit-baseline.md`),
       scroll horizontal por ruta a 375/768/1024/1440 (`docs/ui/widths-report.md`), recuento de colores fijos,
       `max-w-*`, textos `text-[10px]`/`text-[11px]`, 15 «Cargando…» y tamaño de JS inicial (SC-011)
-- [ ] T002 [P] Borradores de `docs/adr/0101-sistema-visual-linea-nocturna.md` y
+- [x] T002 [P] Borradores de `docs/adr/0101-sistema-visual-linea-nocturna.md` y
       `docs/adr/0102-redisenio-sin-flag-por-incrementos-coherentes.md` (estado `proposed`; 0102 explica la lectura
       del principio VIII)
-- [ ] T003 Añadir `@fontsource-variable/atkinson-hyperlegible-next` y `@fontsource-variable/atkinson-hyperlegible-mono`
+- [x] T003 Añadir `@fontsource-variable/atkinson-hyperlegible-next` y `@fontsource-variable/atkinson-hyperlegible-mono`
       a `apps/web/package.json` en versión exacta 5.3.0 (`pnpm add -E`); confirmar licencia OFL 1.1, tamaño de los WOFF2 de
       `latin` y `latin-ext` y que `pnpm audit` no falla; anotar en ADR-0101 (FR-033)
 
 ### Tests (escribir primero)
 
-- [ ] T004 [P] [US3] `scripts/test/unit/ui-contrast.test.ts`: parsea `apps/web/src/styles/tokens.css`, convierte
+- [x] T004 [P] [US3] `scripts/test/unit/ui-contrast.test.ts`: parsea `apps/web/src/styles/tokens.css`, convierte
       OKLCH→sRGB y exige ≥ 4,5:1 (texto) y ≥ 3:1 (texto grande, glifos, bordes, foco) para los pares declarados de
       [contracts/design-contract.md](./contracts/design-contract.md) en claro y oscuro; falla si un par baja (FR-005, SC-004)
-- [ ] T005 [P] [US3] `apps/web/test/theme.test.ts`: `system` por defecto, aplica `data-theme` solo con claro/oscuro,
+- [x] T005 [P] [US3] `apps/web/test/theme.test.ts`: `system` por defecto, aplica `data-theme` solo con claro/oscuro,
       escucha `prefers-color-scheme`, y con `localStorage` que lanza degrada a `system` sin errores (FR-001b)
-- [ ] T006 [P] [US2] `apps/web/test/route-states.test.tsx`: problema RFC 9457 muestra `detail` y `correlationId`
+- [x] T006 [P] [US2] `apps/web/test/route-states.test.tsx`: problema RFC 9457 muestra `detail` y `correlationId`
       copiable; 503 y fallo de red muestran «El servicio se está reiniciando» y reintentan con 1, 2 y 4 s (máx. 3)
       con temporizadores falsos; chunk ausente muestra «Hay una versión nueva» y **Recargar**; ruta inexistente;
       el texto «Something went wrong» no aparece nunca; el shell sigue presente; foco al `h1` del panel (FR-014 a FR-016)
-- [ ] T007 [P] [US2] `apps/web/test/route-pending.test.tsx`: el esqueleto aparece tras 150 ms y no antes, con
+- [x] T007 [P] [US2] `apps/web/test/route-pending.test.tsx`: el esqueleto aparece tras 150 ms y no antes, con
       `role="status"` y sin salto de maquetación (altura reservada) (FR-017)
-- [ ] T008 [P] [US1] `apps/web/test/shell.test.tsx`: cinco destinos en orden, destinos filtrados por rol, activo con
+- [x] T008 [P] [US1] `apps/web/test/shell.test.tsx`: cinco destinos en orden, destinos filtrados por rol, activo con
       `aria-current` y glifo relleno, «Saltar al contenido» primero en el orden de foco, un solo `main`, cabecera
       sin `whitespace-nowrap` (FR-008, FR-011)
-- [ ] T009 [P] [US5] Ampliar `apps/web/test/login.test.tsx` y `apps/web/test/guest-routes.test.tsx` (sin
+- [x] T009 [P] [US5] Ampliar `apps/web/test/login.test.tsx` y `apps/web/test/guest-routes.test.tsx` (sin
       debilitarlas): el login y el inicio no contienen «Crear cuenta», el login dice «El acceso es por
       invitación» y tiene un solo `h1` (FR-024, SC-012)
 
 ### Implementation
 
-- [ ] T010 [US3] `apps/web/src/styles/fonts.css` con `@font-face` desde `@fontsource-variable` (`latin`,
+- [x] T010 [US3] `apps/web/src/styles/fonts.css` con `@font-face` desde `@fontsource-variable` (`latin`,
       `latin-ext`, `font-display: swap`, ajuste de métricas de reserva) y `build.assetsInlineLimit: 0` en
       `apps/web/vite.config.ts` (los WOFF2 jamás como `data:`; research R3)
-- [ ] T011 [US3] `scripts/ui/contrast.ts` (función y CLI de contraste que usa T004) y `apps/web/src/styles/tokens.css` con los tokens de `DESIGN.md` (neutros, acción, 7 estados +
+- [x] T011 [US3] `scripts/ui/contrast.ts` (función y CLI de contraste que usa T004) y `apps/web/src/styles/tokens.css` con los tokens de `DESIGN.md` (neutros, acción, 7 estados +
       «Pendiente», 6 categorías, escala tipográfica, radios, espaciado, sombras flotantes, anillo de foco,
       duraciones y curva) en oscuro y claro, `:root[data-theme]` y `color-scheme`; `apps/web/src/index.css` los
       importa, los expone con `@theme inline` (`page-narrow` 640, `page-default` 1120) y deja los alias
       `--background`/`--primary`/… apuntando a los tokens nuevos hasta T049 (research R1, R13)
-- [ ] T012 [P] [US3] `apps/web/src/lib/theme.ts` y `apps/web/public/theme-init.js` (script externo bloqueante en
+- [x] T012 [P] [US3] `apps/web/src/lib/theme.ts` y `apps/web/public/theme-init.js` (script externo bloqueante en
       `<head>` de `apps/web/index.html`, sin script en línea) que aplican `data-theme` antes del primer render con
       try/catch (research R2)
-- [ ] T013 [P] [US1] `apps/web/src/components/shell/Logo.tsx` (anillo y cruz de registro, SVG propio) y
+- [x] T013 [P] [US1] `apps/web/src/components/shell/Logo.tsx` (anillo y cruz de registro, SVG propio) y
       `apps/web/public/favicon.svg`, legibles a 16 px en ambos modos (FR-013)
-- [ ] T014 [US1] `apps/web/src/components/shell/{AppShell,Header,NavRail,BottomBar,SkipLink,ThemeMenu}.tsx`:
+- [x] T014 [US1] `apps/web/src/components/shell/{AppShell,Header,NavRail,BottomBar,SkipLink,ThemeMenu}.tsx`:
       cabecera de 56 px, carril de 240 px (≥ 1024), de 72 px (768–1023) y barra inferior de 56 px (< 768) por
       utilidades responsive, `padding-bottom` y `env(safe-area-inset-bottom)`, selector de organización y menú de
       usuario con el selector de tema, controles de 44 px; sustituye a `features/session/AppHeader.tsx`
-- [ ] T015 [US1] `apps/web/src/components/route/Page.tsx` (`narrow`, `default`, `full`) y `staticData.width` en
+- [x] T015 [US1] `apps/web/src/components/route/Page.tsx` (`narrow`, `default`, `full`) y `staticData.width` en
       `apps/web/src/routes/__root.tsx`, sustituyendo a `fullWidth` en las 4 rutas que lo usan; `main` único y
       `DemoNotice` dentro del shell sin provocar desborde (FR-010, FR-029)
-- [ ] T016 [US2] `apps/web/src/components/route/{RouteError,RouteNotFound,RoutePending}.tsx` y la configuración de
+- [x] T016 [US2] `apps/web/src/components/route/{RouteError,RouteNotFound,RoutePending}.tsx` y la configuración de
       `createRouter` en `apps/web/src/main.tsx` (`defaultErrorComponent`, `defaultNotFoundComponent`,
       `defaultPendingComponent`, `defaultPendingMs: 150`, `defaultPreload: 'intent'`); backoff 1/2/4 s con
       `router.invalidate()`; respaldo mínimo si falla el propio layout raíz (research R5)
-- [ ] T017 [US2] Precarga y esqueleto de «Describir workflow»: `pendingComponent` con esqueleto del editor en la
+- [x] T017 [US2] Precarga y esqueleto de «Describir workflow»: `pendingComponent` con esqueleto del editor en la
       ruta del compilador y precarga al pasar o enfocar el enlace; medir antes y después (SC-006)
       (`apps/web/src/routes/orgs.$organizationId.workflows.new.tsx`)
-- [ ] T018 [US5] Quitar «Crear cuenta» de `apps/web/src/routes/index.tsx` y
+- [x] T018 [US5] Quitar «Crear cuenta» de `apps/web/src/routes/index.tsx` y
       `apps/web/src/features/auth/LoginForm.tsx`; el login muestra «El acceso es por invitación» y su único `h1`
       (FR-024); `/register` y el flujo de invitación no cambian
-- [ ] T019 [US3] `DESIGN.md`: sustituir «ambos siguen `prefers-color-scheme`» por el selector de tres opciones y
+- [x] T019 [US3] `DESIGN.md`: sustituir «ambos siguen `prefers-color-scheme`» por el selector de tres opciones y
       registrar «Pendiente» en la tabla de estados (clarificación 2026-11-12)
-- [ ] T020 [US8] Ejecutar `pnpm --filter @cognitive-dag/web typecheck test build`, `pnpm lint`, `pnpm format:check`
+- [x] T020 [US8] Ejecutar `pnpm --filter @cognitive-dag/web typecheck test build`, `pnpm lint`, `pnpm format:check`
       y el recorrido de [quickstart.md](./quickstart.md) §2 y §3; confirmar 33 archivos de prueba previos verdes y 0 scroll
       horizontal en las 20 rutas; pasar ADR-0101 y 0102 a `accepted`
-- [ ] T021 [US8] Abrir la PR 1 con capturas claro/oscuro a 375 y 1440 px, mapa de principios de la constitución
+- [x] T021 [US8] Abrir la PR 1 con capturas claro/oscuro a 375 y 1440 px, mapa de principios de la constitución
       y la lista de decisiones de ADR; CI en verde
 - [ ] T022 (autor) Merge de la PR 1 y comprobación en producción: consola sin violaciones de CSP, fuentes `.woff2`
       desde el propio origen, tema persistente sin parpadeo, `check-headers.sh` en verde
