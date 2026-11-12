@@ -80,4 +80,19 @@ describe('guest-only routes', () => {
     expect(await screen.findByRole('button', { name: button })).toBeDefined();
     expect(router.state.location.pathname).toBe(path);
   });
+
+  it.each(['/', '/login'])(
+    'has one h1 and no "Crear cuenta" on %s (FR-024, SC-012)',
+    async (path) => {
+      open(path, false);
+      await screen.findByRole('heading', { level: 1 });
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+      expect(screen.queryByText('Crear cuenta')).toBeNull();
+    },
+  );
+
+  it('says on the login that access is by invitation', async () => {
+    open('/login', false);
+    expect(await screen.findByText('El acceso es por invitación')).toBeDefined();
+  });
 });

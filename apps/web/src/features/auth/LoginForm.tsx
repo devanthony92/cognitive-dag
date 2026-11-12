@@ -11,7 +11,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '../../components/ui/card';
 import {
   Form,
@@ -54,8 +53,9 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (info: SessionInfo) => v
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Iniciar sesión</CardTitle>
+        <h1 className="text-headline font-bold tracking-tight">Iniciar sesión</h1>
         <CardDescription>Entra con tu correo y tu contraseña.</CardDescription>
+        <p className="text-body-sm text-ink-muted">El acceso es por invitación</p>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -97,10 +97,7 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (info: SessionInfo) => v
           </form>
         </Form>
       </CardContent>
-      <CardFooter className="justify-between text-sm">
-        <a href="/register" className="underline">
-          Crear cuenta
-        </a>
+      <CardFooter className="flex-wrap justify-between gap-x-4 gap-y-2 text-sm">
         <a href="/forgot-password" className="underline">
           Olvidé mi contraseña
         </a>

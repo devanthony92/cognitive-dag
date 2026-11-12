@@ -134,4 +134,14 @@ describe('LoginForm', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('30 segundos');
   });
+
+  it('is invitation-only: no sign-up link, one h1 and the explanation (FR-024, SC-012)', () => {
+    renderForm();
+    expect(screen.queryByRole('link', { name: 'Crear cuenta' })).toBeNull();
+    expect(screen.queryByText('Crear cuenta')).toBeNull();
+    expect(screen.getByText('El acceso es por invitación')).toBeDefined();
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    // Recovery links stay.
+    expect(screen.getByRole('link', { name: 'Olvidé mi contraseña' })).toBeDefined();
+  });
 });

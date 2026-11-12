@@ -6,6 +6,7 @@ import { homeRedirect } from '../features/session/guards';
 import { rememberSession, sessionQuery } from '../features/session/session';
 
 export const Route = createFileRoute('/login')({
+  staticData: { width: 'narrow' },
   beforeLoad: async ({ context }) => {
     const info = await context.queryClient.fetchQuery(sessionQuery);
     if (info)
