@@ -15,7 +15,7 @@ broadcast="$(getent hosts "$(hostname)" | awk '{print $1; exit}')"
 [ -n "$broadcast" ] || { echo "cannot resolve the address of this container" >&2; exit 1; }
 
 mkdir -p /run/temporal/config
-sed -e "s|__TEMPORAL_DB_PASSWORD__|$password|g" -e "s|__BROADCAST_ADDRESS__|$broadcast|g"   /etc/temporal/production.template.yaml >/run/temporal/config/production.yaml
+sed -e "s|__TEMPORAL_DB_PASSWORD__|$password|g" -e "s|__BROADCAST_ADDRESS__|$broadcast|g"   /etc/cdag/temporal/production.template.yaml >/run/temporal/config/production.yaml
 chmod 600 /run/temporal/config/production.yaml
 
 exec temporal-server --config-file /run/temporal/config/production.yaml --allow-no-auth start

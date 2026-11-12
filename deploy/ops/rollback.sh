@@ -27,9 +27,11 @@ was="$(state_value current.env GIT_SHA)"
 log "rolling back from ${was:-none} to $target"
 
 use_version "$STATE_DIR/previous.env"
+install_service_config
 if ! compose up -d --wait --wait-timeout "$WAIT_TIMEOUT" --remove-orphans; then
   log "the previous version did not become healthy: state untouched, bringing the current one back"
   use_version "$STATE_DIR/current.env"
+  install_service_config || true
   compose up -d --wait --wait-timeout "$WAIT_TIMEOUT" --remove-orphans || true
   die "rollback failed"
 fi

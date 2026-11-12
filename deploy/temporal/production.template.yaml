@@ -124,5 +124,5 @@ publicClient:
   hostPort: temporal:7233
 
 dynamicConfigClient:
-  filepath: /etc/temporal/dynamicconfig.yaml
+  filepath: /etc/cdag/temporal/dynamicconfig.yaml
   pollInterval: 60s

@@ -41,6 +41,13 @@ const env = (): NodeJS.ProcessEnv => ({
   MSYS_NO_PATHCONV: '1',
   SECRETS_DIR: posix(secrets),
   PKI_DIR: posix(pki),
+  // deploy.sh copies these directories to a stable path; the test mounts the repository's own.
+  VALKEY_CONFIG_DIR: posix(join(ROOT, 'deploy/valkey')),
+  POSTGRES_CONFIG_DIR: posix(join(ROOT, 'deploy/postgres')),
+  TEMPORAL_CONFIG_DIR: posix(join(ROOT, 'deploy/temporal')),
+  VALKEY_CONFIG_HASH: 'test',
+  POSTGRES_CONFIG_HASH: 'test',
+  TEMPORAL_CONFIG_HASH: 'test',
   SITE_DOMAIN: 'localhost',
   EDGE_IMAGE: UNUSED_IMAGE,
   API_IMAGE: UNUSED_IMAGE,
@@ -174,7 +181,7 @@ describe('Valkey of production', () => {
   });
 
   it('caps memory and never evicts', () => {
-    const result = exec('valkey', ['sh', '-c', 'cat /etc/valkey/valkey.conf']);
+    const result = exec('valkey', ['sh', '-c', 'cat /etc/cdag/valkey/valkey.conf']);
     expect(result.output).toMatch(/^maxmemory 128mb$/m);
     expect(result.output).toMatch(/^maxmemory-policy noeviction$/m);
     expect(result.output).toMatch(/^port 0$/m);

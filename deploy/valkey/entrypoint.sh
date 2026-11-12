@@ -19,4 +19,4 @@ umask 077
   echo "user $user on #$hash ~* resetchannels &run:* -@all$rules"
 } >/run/valkey/users.acl
 
-exec valkey-server /etc/valkey/valkey.conf
+exec valkey-server /etc/cdag/valkey/valkey.conf

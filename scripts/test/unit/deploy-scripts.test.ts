@@ -1,6 +1,15 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSandbox, hasCommand, posix, ROOT, type Sandbox } from '../support/sandbox.ts';
@@ -66,9 +75,15 @@ describe('shellcheck', () => {
   });
 });
 
+/** The services with state whose configuration deploy.sh keeps on a stable path (ADR-0100). */
+const CONFIG_SERVICES = ['valkey', 'postgres', 'temporal'] as const;
+type ConfigService = (typeof CONFIG_SERVICES)[number];
+
 interface ComposeCall {
   args: string;
   sha: string;
+  /** Directory and hash of each configuration, as the compose file receives them from the script. */
+  config: Record<ConfigService, { dir: string; hash: string }>;
 }
 
 describe('deploy scripts (T040)', () => {
@@ -100,6 +115,7 @@ for ((i = 0; i < \${#args[@]}; i++)); do
 done
 sha="$(grep -h '^GIT_SHA=' <<<"$envtext" | tail -n 1 | cut -d= -f2 || true)"
 printf '  env %s\\n' "$sha" >>"$STUB_LOG"
+printf '  cfg %s %s %s %s %s %s\\n' "$VALKEY_CONFIG_DIR" "$VALKEY_CONFIG_HASH" "$POSTGRES_CONFIG_DIR" "$POSTGRES_CONFIG_HASH" "$TEMPORAL_CONFIG_DIR" "$TEMPORAL_CONFIG_HASH" >>"$STUB_LOG"
 cmd="$*"
 if [[ -n "\${STUB_FAIL_CMD:-}" && "$cmd" == *"$STUB_FAIL_CMD"* && "$sha" == "\${STUB_FAIL_SHA:-}" ]]; then
   echo "stub failure" >&2; exit 1
@@ -169,7 +185,14 @@ if [[ " $* " == *" archive "* ]]; then tar -c -C "$STUB_REPO" deploy; fi`,
     lines.forEach((line, index) => {
       if (!line.startsWith('docker compose')) return;
       const sha = /^ {2}env (\S*)/.exec(lines[index + 1] ?? '')?.[1] ?? '';
-      calls.push({ args: line, sha });
+      const cfg = /^ {2}cfg (.*)$/.exec(lines[index + 2] ?? '')?.[1]?.split(' ') ?? [];
+      const config = Object.fromEntries(
+        CONFIG_SERVICES.map((svc, i) => [
+          svc,
+          { dir: cfg[i * 2] ?? '', hash: cfg[i * 2 + 1] ?? '' },
+        ]),
+      ) as ComposeCall['config'];
+      calls.push({ args: line, sha, config });
     });
     return calls;
   }
@@ -434,6 +457,108 @@ if [[ " $* " == *" archive "* ]]; then tar -c -C "$STUB_REPO" deploy; fi`,
       const out = spawnSync('find', [posix(state(`releases/${SHA1}`)), '!', '-perm', '-o=r'], {
         encoding: 'utf8',
       });
+      expect(out.stdout).toBe('');
+    });
+  });
+
+  describe('stable service configuration (ADR-0100)', () => {
+    const lastUp = (sha: string): ComposeCall => {
+      const ups = finalUps(sha);
+      expect(ups.length, `final up of ${sha}`).toBeGreaterThan(0);
+      return ups[ups.length - 1] as ComposeCall;
+    };
+    const installed = (svc: string, file: string): string =>
+      readFileSync(dir('var/lib/cognitive-dag/config', svc, file), 'utf8');
+    /** A copy of the repository's deploy/ whose valkey.conf differs: the commit the git stub exports. */
+    function changedRepo(): string {
+      const repo = dir('repo-changed');
+      mkdirSync(repo, { recursive: true });
+      cpSync(join(ROOT, 'deploy'), join(repo, 'deploy'), { recursive: true });
+      appendFileSync(join(repo, 'deploy/valkey/valkey.conf'), '\n# changed for the test\n');
+      return posix(repo);
+    }
+
+    it('gives valkey, postgres and temporal the same mount path and hash on two deploys with the same configuration', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      const first = lastUp(SHA1).config;
+      const second = lastUp(SHA2).config;
+      for (const svc of CONFIG_SERVICES) {
+        expect(first[svc].dir, svc).toBe(posix(dir('var/lib/cognitive-dag/config', svc)));
+        expect(first[svc].dir, svc).not.toContain(SHA1);
+        expect(first[svc].hash, svc).toMatch(/^[0-9a-f]{64}$/);
+        expect(second[svc], svc).toEqual(first[svc]);
+      }
+      expect(installed('valkey', 'valkey.conf')).toBe(
+        readFileSync(join(ROOT, 'deploy/valkey/valkey.conf'), 'utf8'),
+      );
+      expect(existsSync(dir('var/lib/cognitive-dag/config/postgres/initdb/10-roles.sh'))).toBe(
+        true,
+      );
+      // Nothing is left half copied beside the directories.
+      expect(readdirSync(dir('var/lib/cognitive-dag/config')).sort()).toEqual(
+        [...CONFIG_SERVICES].sort(),
+      );
+    });
+
+    it('changes only the hash of the service whose configuration changed', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const before = lastUp(SHA1).config;
+      sandbox.clearCalls();
+      expect(deploy(SHA2, { STUB_REPO: changedRepo() }).status).toBe(0);
+      const after = lastUp(SHA2).config;
+      expect(after.valkey.hash).not.toBe(before.valkey.hash);
+      expect(after.postgres).toEqual(before.postgres);
+      expect(after.temporal).toEqual(before.temporal);
+      expect(after.valkey.dir).toBe(before.valkey.dir);
+      expect(installed('valkey', 'valkey.conf')).toContain('# changed for the test');
+    });
+
+    it('rollback puts back the configuration and the hash of the version it returns to', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const original = lastUp(SHA1).config.valkey.hash;
+      expect(deploy(SHA2, { STUB_REPO: changedRepo() }).status).toBe(0);
+      expect(lastUp(SHA2).config.valkey.hash).not.toBe(original);
+      sandbox.clearCalls();
+      const result = sandbox.run(ROLLBACK, [], env());
+      expect(result.status, result.output).toBe(0);
+      expect(lastUp(SHA1).config.valkey.hash).toBe(original);
+      expect(installed('valkey', 'valkey.conf')).not.toContain('# changed for the test');
+    });
+
+    it('a deploy that fails goes back with the configuration and the hash it had', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const original = lastUp(SHA1).config.valkey.hash;
+      sandbox.clearCalls();
+      const result = deploy(SHA2, {
+        STUB_REPO: changedRepo(),
+        STUB_POSTGRES_RUNNING: '1',
+        STUB_FAIL_CMD: '--remove-orphans',
+        STUB_FAIL_SHA: SHA2,
+      });
+      expect(result.status).not.toBe(0);
+      expect(lastUp(SHA1).config.valkey.hash).toBe(original);
+      expect(installed('valkey', 'valkey.conf')).not.toContain('# changed for the test');
+    });
+
+    it('--resume installs the configuration of the current version before it starts it', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const original = lastUp(SHA1).config;
+      rmSync(dir('var/lib/cognitive-dag/config'), { recursive: true });
+      sandbox.clearCalls();
+      const result = sandbox.run(DEPLOY, ['--resume'], env());
+      expect(result.status, result.output).toBe(0);
+      const resumed = composeCalls().at(-1) as ComposeCall;
+      expect(resumed.config).toEqual(original);
+    });
+
+    it.skipIf(process.platform === 'win32')('installs files the container users can read', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const out = spawnSync(
+        'find',
+        [posix(dir('var/lib/cognitive-dag/config')), '!', '-perm', '-o=r'],
+        { encoding: 'utf8' },
+      );
       expect(out.stdout).toBe('');
     });
   });
