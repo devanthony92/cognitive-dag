@@ -9,22 +9,23 @@ import { basename, dirname, join, relative, resolve } from 'node:path';
  *   the repository).
  * - The matrix has one row per OWASP risk (LLM01-LLM10 and A01-A10), each with a state from a
  *   closed vocabulary; the threat model uses the same vocabulary.
- * - `verified` cites evidence, `accepted` names a reason, an owner and a review phase, `deferred:F9`
- *   names the requirement and `not-applicable` names what would activate it.
- * - No `planned:F4` or `planned:F8` survives, because those phases are closed.
+ * - `verified` cites evidence, `accepted` names a reason, an owner and a review phase, and
+ *   `not-applicable` names what would activate it.
+ * - No `planned:F4`, `planned:F8` or `deferred:F9` survives, because those phases are closed: F9
+ *   (T056) turned every deferred row into `verified` or `accepted`.
  */
 export const MATRIX_FILE = 'docs/security/owasp-evidence.md';
 export const THREAT_MODEL_FILE = 'docs/threat-model.md';
 
-export const STATES = ['verified', 'accepted', 'deferred:F9', 'not-applicable'] as const;
-const THREAT_MODEL_STATES = ['mitigated', 'accepted', 'deferred:F9', 'not-applicable'] as const;
+export const STATES = ['verified', 'accepted', 'not-applicable'] as const;
+const THREAT_MODEL_STATES = ['mitigated', 'accepted', 'not-applicable'] as const;
 
 const RISK_IDS = [
   ...Array.from({ length: 10 }, (_, index) => `LLM${String(index + 1).padStart(2, '0')}`),
   ...Array.from({ length: 10 }, (_, index) => `A${String(index + 1).padStart(2, '0')}`),
 ];
 
-const FORBIDDEN_STATES = /planned:(?:F[48]\b|<)/g;
+const FORBIDDEN_STATES = /planned:(?:F[48]\b|<)|deferred:F9/g;
 const FILE_TOKEN =
   /^(?:[\w.@-]+\/)*[\w.@-]+\.(?:ts|tsx|mts|md|json|ya?ml|sh|py|tsv|sql|toml)$|^(?:apps|packages|scripts|docs|specs|infra|\.github|\.zap)\/[\w./@-]+$/;
 const IGNORED_DIRECTORIES = new Set([
@@ -167,9 +168,6 @@ function checkStateRules(
   }
   if (state === 'accepted' && !(/Dueño:/.test(rowText) && /Revisión:/.test(rowText))) {
     errors.push(`${label}: \`accepted\` sin "Dueño:" y "Revisión:"`);
-  }
-  if (state === 'deferred:F9' && !/Requisito/.test(rowText)) {
-    errors.push(`${label}: \`deferred:F9\` sin "Requisito"`);
   }
   if (state === 'not-applicable' && !/Activaría:/.test(rowText)) {
     errors.push(`${label}: \`not-applicable\` sin "Activaría:"`);
