@@ -116,7 +116,8 @@ F9 adds:
 | Documentation | 99 architecture decision records ([ADR-0089](docs/adr/0089-ocir-como-registro-y-etiquetado-por-digest.md) to [ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)); threat model v3.0 and an evidence matrix with no deferred rows; constitution 1.1.0                                                                                      |
 
 Memory use in production was measured at idle only (the busiest service uses 27.7 % of its limit) and a rebuild on a clean VM has not been timed
-([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). **Next: F10**, listed in
+([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). **Next: F10** (frontend redesign, specified in
+[specs/011-frontend-redesign](specs/011-frontend-redesign/spec.md)); the former F10 (integrations) is now F11, both listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
 ## Architecture
