@@ -7,7 +7,7 @@ export function NavRail({ organizationId, role }: { organizationId: string; role
   return (
     <nav
       aria-label="Navegación principal"
-      className="sticky top-14 hidden h-[calc(100dvh-var(--header-height))] w-(--rail-width-compact) shrink-0 flex-col gap-1 overflow-y-auto border-r border-line bg-ground p-2 md:flex lg:w-(--rail-width) lg:p-3"
+      className="sticky top-14 hidden h-[calc(100dvh-var(--header-height))] w-(--rail-width-compact) shrink-0 flex-col gap-1 overflow-x-hidden overflow-y-auto border-r border-line bg-ground p-0.5 md:flex lg:w-(--rail-width) lg:p-3"
     >
       {destinationsFor(role).map((destination) =>
         destination.key === 'approvals' ? (

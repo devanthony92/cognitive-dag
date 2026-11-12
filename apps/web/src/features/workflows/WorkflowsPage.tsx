@@ -64,7 +64,7 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
   });
 
   return (
-    <div className="grid w-full gap-6">
+    <div className="grid w-full grid-cols-[minmax(0,1fr)] gap-6">
       <section>
         <h1 className="text-2xl font-semibold tracking-tight">Workflows</h1>
         <p className="text-muted-foreground">

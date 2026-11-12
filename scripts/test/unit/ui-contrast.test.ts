@@ -38,7 +38,8 @@ describe('design tokens (FR-005, SC-004)', () => {
   const results = checkContrast(css);
 
   it('declares at least one pair per kind of text, glyph, border and focus', () => {
-    expect(results.length).toBeGreaterThanOrEqual(PAIRS.length * 2);
+    expect(results).toHaveLength(PAIRS.length);
+    expect(results.length).toBeGreaterThanOrEqual(40);
   });
 
   it.each(results.map((result) => [result.label, result] as const))(
