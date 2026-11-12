@@ -219,7 +219,7 @@ Los pictogramas son SVG propios en el bundle (o los equivalentes de Lucide indic
 
 **Character:** Humanista de señalética: aperturas abiertas, caracteres inconfundibles (I/l/1, O/0). Es la voz de un panel que se lee con prisa, de lado, a las 3 a. m.
 
-Ambas fuentes se sirven desde `'self'`: archivos en el bundle con `@font-face`, sin Google Fonts ni CDN (CSP `font-src 'self'`).
+Ambas fuentes se sirven desde `'self'`: archivos en el bundle con `@font-face`, sin Google Fonts ni CDN (CSP `font-src 'self'`). Las caras `Atkinson Fallback` y `Atkinson Mono Fallback` (`fonts.css`) no son fuentes nuevas: son Arial/Consolas con `size-adjust` para que el cambio a la fuente real no mueva la maquetación.
 
 ### Hierarchy
 
