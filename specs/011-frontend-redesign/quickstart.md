@@ -15,12 +15,12 @@ Guía de comprobación para cada PR y para el cierre. No contiene código de imp
 pnpm --filter @cognitive-dag/web typecheck
 pnpm --filter @cognitive-dag/web test
 pnpm --filter @cognitive-dag/web build
-pnpm exec tsx scripts/ui/contrast.ts
+node scripts/ui/contrast.ts
 pnpm lint
 pnpm format:check
 ```
 
-Esperado: las 36 pruebas previas verdes más las nuevas; contraste ≥ 4,5 y ≥ 3 en ambos modos (desde la
+Esperado: los 33 archivos de prueba previos verdes más las nuevas; contraste ≥ 4,5 y ≥ 3 en ambos modos (desde la
 PR 1); prueba estática sin colores fijos (activa desde la PR 2, sin excepciones al final de la PR 4).
 
 ## 2. Recorrido de anchos y modos (navegador)

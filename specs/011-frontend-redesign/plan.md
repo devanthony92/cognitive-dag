@@ -21,7 +21,7 @@ en [contracts/](./contracts/).
 ## Technical Context
 
 **Language/Version**: TypeScript 6 sobre React 19.3, Vite 8, Tailwind 4.3 (`@theme`), Radix (`radix-ui`
-1.8), TanStack Router 1.170 / Query 5, `@xyflow/react` 12.12, `lucide-react` 1.62. Vitest 4 + Testing Library
+1.8), TanStack Router 1.170 / Query 5, `@xyflow/react` 12.12, `lucide-react` 1.62. Vitest 5 + Testing Library
 (jsdom).
 
 **Primary Dependencies**: las existentes. **Nuevas (ADR, versión exacta, OFL 1.1)**:
@@ -36,7 +36,7 @@ envuelto en try/catch (degrada a «Sistema»).
 de ruta con errores forzados (500, 503, red, chunk), prueba estática de colores fijos y `style=` en
 `apps/web/src`, script de contraste sobre los tokens (cálculo OKLCH → sRGB, WCAG 2.x), recorrido en
 navegador real (no en CI, que no tiene navegador) a 375/768/1024/1440 (+ 200 % de zoom) midiendo
-`scrollWidth`, con informe versionado en `docs/ui/widths-report.md`, y las 36 pruebas existentes sin
+`scrollWidth`, con informe versionado en `docs/ui/widths-report.md`, y los 33 archivos de prueba existentes sin
 debilitarlas. TDD solo donde la constitución lo exige (autorización, sin cambios aquí); en esta fase las
 pruebas se escriben antes en los componentes de reglas (mapa tipo→categoría, mapa estado→glifo, backoff 503).
 
@@ -52,7 +52,7 @@ maquetación (CLS ≈ 0) al sustituir esqueleto por contenido.
 despliegue; sin `<style>` ni atributos `style` en HTML propio; fuentes y pictogramas en el bundle; sin cambios
 de API (cualquier cambio imprescindible se marca **[API]** y se detiene).
 
-**Scale/Scope**: 20 rutas, ~85 componentes, 9 archivos con 46 usos de colores fijos, 15 «Cargando…», 36
+**Scale/Scope**: 20 rutas, ~85 componentes, 9 archivos con 46 usos de colores fijos, 15 «Cargando…», 33
 archivos de prueba; un autor y su equipo invitado.
 
 ## Constitution Check
@@ -61,7 +61,7 @@ archivos de prueba; un autor y su equipo invitado.
 | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
 | I. Seguridad           | CSP y cabeceras intactas; sin script ni estilo en línea; recursos propios; la autorización no cambia (controles ocultos al `viewer` siguen ocultos, `runs-roles`); sin secretos en capturas ni fixtures. LLM05: la salida del LLM sigue renderizándose como texto | PASS   |
 | II. Resiliencia        | Reintento automático con retroceso (máx. 3) ante 503/red; sin llamadas externas nuevas; un chunk caducado se recupera con recarga                                                                   | PASS   |
-| III. Pruebas           | Cada requisito tiene su prueba prevista; las 36 existentes no se debilitan; la prueba estática falla si reaparece un color fijo                                                                    | PASS   |
+| III. Pruebas           | Cada requisito tiene su prueba prevista; las existentes no se debilitan; la prueba estática falla si reaparece un color fijo                                                                    | PASS   |
 | IV. Contratos          | Sin endpoints ni esquemas nuevos; el mapa tipo de nodo → categoría se valida contra `NODE_CATALOG` de `packages/dag-schema`                                                                         | PASS   |
 | V. Errores             | El panel muestra `detail` y `correlationId` del problema RFC 9457; nunca stack ni detalle interno; los 5xx usan texto llano                                                                        | PASS   |
 | VI. Correlation-ID     | El id se muestra y se puede copiar en el panel de error                                                                                                                                             | PASS   |
