@@ -11,6 +11,12 @@
 #   SMTP_HOST, SMTP_PORT, SMTP_SECURE, MAIL_FROM
 #   LLM_PROVIDER, LLM_ENABLED, TRIGGERS_ENABLED, HTTP_ENABLED     (optional kill switches)
 #   FRONT_SUBNET                                subnet of the edge network (optional)
+#   VALKEY_CONFIG_DIR, POSTGRES_CONFIG_DIR,     stable directories with the configuration of the services
+#   TEMPORAL_CONFIG_DIR, *_CONFIG_HASH          with state, and the hash of their content (ADR-0100)
+# The configuration of Valkey, PostgreSQL and Temporal is mounted as a whole directory from a path
+# that deploy.sh keeps stable between commits, and each of those services carries the hash of it as
+# the label cdag.config-hash: Compose recreates a service when its image, its definition or that hash
+# changes, so a deploy with the same configuration leaves it running (Valkey keeps the sessions).
 # Secret files in SECRETS_DIR: postgres_superuser_password, app_migrator_password,
 # app_runtime_password, temporal_db_password, valkey_password, credentials_master_key,
 # gemini_api_key, smtp_user, smtp_password. PKI_DIR holds the output of deploy/provision/pki.sh.
@@ -238,8 +244,10 @@ services:
     restart: unless-stopped
     mem_limit: 768m
     shm_size: 128m
-    entrypoint: ['/bin/sh', '/usr/local/bin/cdag-entrypoint.sh']
-    command: ['postgres', '-c', 'config_file=/etc/postgresql/postgresql.conf']
+    entrypoint: ['/bin/sh', '/etc/cdag/postgres/entrypoint.sh']
+    command: ['postgres', '-c', 'config_file=/etc/cdag/postgres/postgresql.conf']
+    labels:
+      cdag.config-hash: ${POSTGRES_CONFIG_HASH:?set POSTGRES_CONFIG_HASH (deploy.sh does)}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: cognitive_dag
@@ -256,11 +264,9 @@ services:
       - /run/postgres-tls:uid=999,gid=999,mode=0700
     volumes:
       - postgres-data:/var/lib/postgresql
-      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
-      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
-      - ./postgres/entrypoint.sh:/usr/local/bin/cdag-entrypoint.sh:ro
+      - ${POSTGRES_CONFIG_DIR:?set POSTGRES_CONFIG_DIR (deploy.sh does)}:/etc/cdag/postgres:ro
       # Creates the roles on an empty volume, with the passwords read from the secret files.
-      - ./postgres/init-roles.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+      - ${POSTGRES_CONFIG_DIR}/initdb:/docker-entrypoint-initdb.d:ro
     networks:
       backend: {}
     healthcheck:
@@ -278,7 +284,9 @@ services:
     cap_drop: [ALL]
     restart: unless-stopped
     mem_limit: 192m
-    entrypoint: ['/bin/sh', '/usr/local/bin/cdag-entrypoint.sh']
+    entrypoint: ['/bin/sh', '/etc/cdag/valkey/entrypoint.sh']
+    labels:
+      cdag.config-hash: ${VALKEY_CONFIG_HASH:?set VALKEY_CONFIG_HASH (deploy.sh does)}
     environment:
       VALKEY_USERNAME: cognitive_dag_app
     secrets:
@@ -287,8 +295,7 @@ services:
       - { source: valkey_key, target: valkey.key }
       - { source: valkey_password }
     volumes:
-      - ./valkey/valkey.conf:/etc/valkey/valkey.conf:ro
-      - ./valkey/entrypoint.sh:/usr/local/bin/cdag-entrypoint.sh:ro
+      - ${VALKEY_CONFIG_DIR:?set VALKEY_CONFIG_DIR (deploy.sh does)}:/etc/cdag/valkey:ro
     tmpfs:
       - /run/valkey:uid=999,gid=999,mode=0700
       - /data:uid=999,gid=999,mode=0700
@@ -311,16 +318,16 @@ services:
     cap_drop: [ALL]
     restart: unless-stopped
     mem_limit: 768m
-    entrypoint: ['/bin/sh', '/etc/temporal/entrypoint.sh']
+    entrypoint: ['/bin/sh', '/etc/cdag/temporal/entrypoint.sh']
+    labels:
+      cdag.config-hash: ${TEMPORAL_CONFIG_HASH:?set TEMPORAL_CONFIG_HASH (deploy.sh does)}
     secrets:
       - { source: pki_ca, target: ca.crt }
       - { source: temporal_crt, target: temporal.crt }
       - { source: temporal_key, target: temporal.key }
       - { source: temporal_db_password }
     volumes:
-      - ./temporal/entrypoint.sh:/etc/temporal/entrypoint.sh:ro
-      - ./temporal/production.template.yaml:/etc/temporal/production.template.yaml:ro
-      - ./temporal/dynamicconfig.yaml:/etc/temporal/dynamicconfig.yaml:ro
+      - ${TEMPORAL_CONFIG_DIR:?set TEMPORAL_CONFIG_DIR (deploy.sh does)}:/etc/cdag/temporal:ro
     tmpfs:
       - /run/temporal:uid=1000,gid=1000,mode=0700
     networks:
@@ -344,12 +351,14 @@ services:
     cap_drop: [ALL]
     restart: 'no'
     mem_limit: 256m
-    entrypoint: ['/bin/sh', '/etc/temporal/schema.sh']
+    entrypoint: ['/bin/sh', '/etc/cdag/temporal/schema.sh']
+    labels:
+      cdag.config-hash: ${TEMPORAL_CONFIG_HASH}
     secrets:
       - { source: pki_ca, target: ca.crt }
       - { source: temporal_db_password }
     volumes:
-      - ./temporal/schema.sh:/etc/temporal/schema.sh:ro
+      - ${TEMPORAL_CONFIG_DIR}:/etc/cdag/temporal:ro
     tmpfs:
       - /tmp
     networks:
@@ -367,7 +376,9 @@ services:
     cap_drop: [ALL]
     restart: 'no'
     mem_limit: 256m
-    entrypoint: ['/bin/sh', '/etc/temporal/init.sh']
+    entrypoint: ['/bin/sh', '/etc/cdag/temporal/init.sh']
+    labels:
+      cdag.config-hash: ${TEMPORAL_CONFIG_HASH}
     environment:
       TEMPORAL_NAMESPACE: cognitive-dag
       TEMPORAL_RETENTION: 72h
@@ -376,7 +387,7 @@ services:
       - { source: temporal_client_ui_crt, target: temporal-client-ui.crt }
       - { source: temporal_client_ui_key, target: temporal-client-ui.key }
     volumes:
-      - ./temporal/init.sh:/etc/temporal/init.sh:ro
+      - ${TEMPORAL_CONFIG_DIR}:/etc/cdag/temporal:ro
     tmpfs:
       - /tmp
     networks:

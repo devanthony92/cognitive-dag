@@ -161,6 +161,8 @@ interface Service {
   cap_drop?: string[];
   networks?: Record<string, unknown> | string[];
   depends_on?: Record<string, { condition?: string }>;
+  volumes?: string[];
+  labels?: Record<string, string>;
 }
 interface ComposeFile {
   services: Record<string, Service>;
@@ -198,6 +200,20 @@ describe('Compose of production (T029)', () => {
         'worker',
       ].sort(),
     );
+  });
+
+  it('mounts the configuration of the stateful services from a stable directory, with its hash as a label (ADR-0100)', () => {
+    for (const name of ['valkey', 'postgres', 'temporal', 'temporal-schema', 'temporal-init']) {
+      const service = compose.services[name];
+      const upper = name.startsWith('temporal') ? 'TEMPORAL' : name.toUpperCase();
+      const binds = (service?.volumes ?? []).filter((v) => !/^[a-z-]+:/.test(v));
+      expect(binds.length, `${name} mounts its configuration`).toBeGreaterThan(0);
+      for (const bind of binds) {
+        expect(bind, `${name}: no path relative to the release`).not.toMatch(/^\./);
+        expect(bind.startsWith('${' + upper + '_CONFIG_DIR'), `${name}: ${bind}`).toBe(true);
+      }
+      expect(service?.labels?.['cdag.config-hash'], name).toContain(`${upper}_CONFIG_HASH`);
+    }
   });
 
   it('publishes nothing but 80 and 443 on Caddy and the Temporal UI on loopback', () => {
@@ -365,7 +381,7 @@ describe('Data stores of production (T033..T035)', () => {
   });
 
   it('creates the roles from secret files, with no password in the script', () => {
-    const script = read('deploy/postgres/init-roles.sh');
+    const script = read('deploy/postgres/initdb/10-roles.sh');
     expect(script).toContain('/run/secrets/');
     expect(script).toContain('NOBYPASSRLS');
     expect(script).not.toMatch(/PASSWORD\s+'[^']+'/);

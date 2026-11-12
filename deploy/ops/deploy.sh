@@ -52,7 +52,8 @@ revert() {
   if [[ -f "$STATE_DIR/current.env" ]]; then
     log "rolling back to $(state_value current.env GIT_SHA)"
     use_version "$STATE_DIR/current.env"
-    if up_all && check_headers; then
+    # The configuration of the version that ran goes back too, so its hash is the one it had.
+    if install_service_config && up_all && check_headers; then
       log "rolled back: the previous version is healthy"
       record "rolled back to $(state_value current.env GIT_SHA)"
     else
@@ -90,8 +91,8 @@ resolve_digest() { # resolve_digest <image> <sha>
   RESOLVED="$reference@$digest"
 }
 
-# Exports deploy/ of the commit to the releases directory (readable by the container users: the
-# compose file bind-mounts configuration files from it) and runs the deploy from there.
+# Exports deploy/ of the commit to the releases directory and runs the deploy from there. The
+# configuration of the services with state is copied from it to stable paths (install_service_config).
 stage_release() { # stage_release <sha>
   local sha="$1" release="$RELEASES_DIR/$1" tmp
   git -C "$CDAG_ROOT" fetch --quiet origin main
@@ -151,6 +152,7 @@ main() {
     use_version "$STATE_DIR/current.env"
     sha="$(state_value current.env GIT_SHA)"
     log "resuming $sha"
+    install_service_config
     up_all
     return
   fi
@@ -191,6 +193,7 @@ main() {
   fi
 
   use_version "$candidate"
+  install_service_config
   compose pull --quiet "${IMAGES[@]}" || revert "cannot pull the images"
   compose up -d --wait --wait-timeout "$WAIT_TIMEOUT" postgres || revert "postgres did not become healthy"
   compose run --rm migrator </dev/null || revert "the migration failed"

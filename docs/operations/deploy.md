@@ -35,6 +35,31 @@ y las cabeceras), anota el motivo en `deploy.log` y sale con error. Si es el pri
 volver: detiene `edge`, `api` y `worker`. Si ni la reversa queda sana lo dice como `ROLLBACK FAILED`:
 mira `doctor.sh` y [alerts.md](./alerts.md).
 
+## Qué se recrea en un despliegue y cuándo se pierden las sesiones
+
+ADR-0100. `deploy.sh` copia `deploy/{valkey,postgres,temporal}` a `/var/lib/cognitive-dag/config/<servicio>/`
+(ruta que no depende del commit) y Compose monta ese directorio; cada uno de esos servicios lleva la etiqueta
+`cdag.config-hash` con el hash de su contenido. Compose recrea un servicio solo si cambia su imagen, su
+definición o ese hash.
+
+| Servicio                           | Se recrea cuando…                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------------- |
+| `api`, `worker`, `edge`            | cambia su imagen (casi siempre: cada commit publica imágenes nuevas)            |
+| `valkey`, `postgres`, `temporal`   | cambia su imagen fijada en `compose.prod.yaml` **o** el contenido de su carpeta |
+| `temporal-schema`, `temporal-init` | son tareas de una sola ejecución; siguen a la configuración de `temporal`       |
+| `migrator`                         | cada despliegue lo ejecuta (`run --rm`)                                         |
+
+**Las sesiones de los usuarios viven en Valkey (`/data` en `tmpfs`, sin persistencia): se pierden solo
+cuando Valkey se recrea**, es decir, si un commit cambia `deploy/valkey/` o la imagen de Valkey, o si la VM
+se reinicia. Un despliegue normal (código, migraciones, otros servicios) no las toca. Para comprobarlo:
+
+```bash
+docker ps --format '{{.Names}}\t{{.Status}}' | grep -E 'valkey|postgres|temporal'
+```
+
+El `Up …` de esos tres no debe reiniciarse tras un despliegue que no los toque. `rollback.sh` y la reversa
+automática reinstalan la configuración de la versión a la que vuelven, con su hash.
+
 ## Reversa a mano
 
 ```bash
