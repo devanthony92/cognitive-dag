@@ -138,6 +138,34 @@ describe('checkEvidence', () => {
     expect(checkEvidence({ root }).errors.join('\n')).toContain(state);
   });
 
+  it('fails a matrix row left as deferred:F9 once F9 is closed', () => {
+    setup(
+      matrix({
+        A02: { state: '`deferred:F9`', result: 'Requisito de F9: algo. Prueba prevista: otra' },
+      }),
+    );
+    const errors = checkEvidence({ root }).errors.join('\n');
+    expect(errors).toContain('A02');
+    expect(errors).toContain('deferred:F9');
+  });
+
+  it('fails a matrix row that combines verified with deferred:F9', () => {
+    setup(matrix({ A09: { state: '`verified + deferred:F9`', result: 'Requisito de F9: x' } }));
+    expect(checkEvidence({ root }).errors.join('\n')).toContain('A09');
+  });
+
+  it('fails a threat model row left as deferred:F9 once F9 is closed', () => {
+    setup(matrix(), threatModel(['| S | Pendiente | `deferred:F9` | Requisito de F9: algo |']));
+    const errors = checkEvidence({ root }).errors.join('\n');
+    expect(errors).toContain('docs/threat-model.md');
+    expect(errors).toContain('deferred:F9');
+  });
+
+  it('fails a deferred:F9 mention anywhere in the threat model text', () => {
+    setup(matrix(), `${threatModel()}\n- Diferido: \`deferred:F9\` en la sección 3.7.\n`);
+    expect(checkEvidence({ root }).errors.join('\n')).toContain('deferred:F9');
+  });
+
   it('fails when the matrix file is missing', () => {
     put('docs/threat-model.md', threatModel());
     expect(checkEvidence({ root }).errors.join('\n')).toContain('owasp-evidence.md');
