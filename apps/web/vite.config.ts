@@ -21,6 +21,11 @@ export default defineConfig(({ command }) => ({
           ),
         }
       : {},
+  build: {
+    // Fonts must stay files: Vite would inline small assets as `data:` URIs and the production CSP
+    // (`font-src 'self'`) blocks them (F10, research R3).
+    assetsInlineLimit: 0,
+  },
   server: { port: 5173, strictPort: true, host: '127.0.0.1' },
   test: {
     environment: 'jsdom',

@@ -10,6 +10,8 @@ export default defineConfig(
       '**/node_modules/**',
       '**/dist/**',
       '**/coverage/**',
+      // Static files served as they are (the theme script runs before the bundle, in plain ES5).
+      'apps/web/public/**',
       '.specify/**',
       '**/*.config.*',
     ],
