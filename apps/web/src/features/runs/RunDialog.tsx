@@ -218,7 +218,7 @@ export function RunDialog({
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             disabled={start.isPending}
             onClick={() => onOpenChange(false)}
           >

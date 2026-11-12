@@ -52,7 +52,7 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
   return (
     <>
       {showHistory && (
-        <Button variant="outline" size="icon" asChild>
+        <Button variant="secondary" size="icon" asChild>
           <Link
             aria-label="Ejecuciones"
             title="Ejecuciones: historial de este workflow"

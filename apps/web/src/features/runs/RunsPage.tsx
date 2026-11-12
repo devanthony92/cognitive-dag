@@ -20,7 +20,7 @@ import { ProblemAlert } from '../auth/ProblemAlert';
 import { workflowQuery } from '../workflows/api';
 import { runsQuery } from './api';
 import { RunButton } from './RunButton';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge } from '../../components/status/StatusBadge';
 import { formatDateTime, originOf, formatDuration, isFinalRun, runDurationMs } from './status';
 import { useNow } from './useRunLive';
 
@@ -81,7 +81,7 @@ export function RunsPage({
             <div className="grid gap-2">
               <ProblemAlert error={runs.error} />
               <div>
-                <Button variant="outline" size="sm" onClick={() => void runs.refetch()}>
+                <Button variant="secondary" size="sm" onClick={() => void runs.refetch()}>
                   Reintentar
                 </Button>
               </div>
@@ -145,7 +145,7 @@ export function RunsPage({
           {runs.hasNextPage && (
             <div>
               <Button
-                variant="outline"
+                variant="secondary"
                 disabled={runs.isFetchingNextPage}
                 onClick={() => void runs.fetchNextPage()}
               >

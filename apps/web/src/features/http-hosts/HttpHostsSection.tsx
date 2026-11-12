@@ -94,7 +94,7 @@ export function HttpHostsSection({
                 {isOwner && (
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     aria-label={`Retirar ${host.pattern}`}
                     disabled={remove.isPending}

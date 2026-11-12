@@ -47,7 +47,7 @@ export function Header() {
             {session.isSuccess && (
               <Link
                 to="/login"
-                className={buttonVariants({ variant: 'outline', className: 'whitespace-normal' })}
+                className={buttonVariants({ variant: 'secondary', className: 'whitespace-normal' })}
               >
                 Iniciar sesión
               </Link>

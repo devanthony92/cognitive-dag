@@ -30,7 +30,7 @@ function OrganizationHome() {
         <Link
           to="/orgs/$organizationId/members"
           params={{ organizationId }}
-          className={buttonVariants({ variant: 'outline', className: 'mt-4' })}
+          className={buttonVariants({ variant: 'secondary', className: 'mt-4' })}
         >
           Miembros
         </Link>

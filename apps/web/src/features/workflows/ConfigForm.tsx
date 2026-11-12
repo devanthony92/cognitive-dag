@@ -153,7 +153,7 @@ export function ConfigForm({ node, definition, readOnly, errors, onChange, onRen
                 </p>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="secondary"
                   size="sm"
                   className="justify-self-start"
                   onClick={() =>

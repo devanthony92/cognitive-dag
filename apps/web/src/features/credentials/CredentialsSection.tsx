@@ -122,7 +122,7 @@ export function CredentialsSection({
                     <TableCell className="flex gap-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         aria-label={`Rotar ${credential.name}`}
                         onClick={() => setRotating(credential)}
@@ -131,7 +131,7 @@ export function CredentialsSection({
                       </Button>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         aria-label={`Archivar ${credential.name}`}
                         onClick={() => setArchiving(credential)}
@@ -173,12 +173,12 @@ export function CredentialsSection({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setArchiving(undefined)}>
+            <Button type="button" variant="secondary" onClick={() => setArchiving(undefined)}>
               Cancelar
             </Button>
             <Button
               type="button"
-              variant="destructive"
+              variant="danger"
               disabled={archive.isPending}
               onClick={() => archiving && archive.mutate(archiving)}
             >
@@ -338,7 +338,7 @@ function RotateDialog({
           </div>
           {rotate.isError && <ProblemAlert error={rotate.error} />}
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button type="button" variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
             <Button type="submit" disabled={rotate.isPending}>

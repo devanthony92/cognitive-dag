@@ -78,7 +78,7 @@ export function WebhookPanel({
               {fresh.url}
             </code>
             <div className="flex items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => void copy()}>
+              <Button type="button" variant="secondary" size="sm" onClick={() => void copy()}>
                 <Copy aria-hidden /> Copiar URL
               </Button>
               {copied && <span role="status">URL copiada.</span>}
@@ -122,7 +122,7 @@ export function WebhookPanel({
         <div>
           <Button
             type="button"
-            variant={state ? 'outline' : 'default'}
+            variant={state ? 'secondary' : 'primary'}
             size="sm"
             disabled={generate.isPending}
             onClick={() => (state ? setConfirming(true) : generate.mutate())}
@@ -142,7 +142,7 @@ export function WebhookPanel({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setConfirming(false)}>
+            <Button type="button" variant="secondary" onClick={() => setConfirming(false)}>
               Cancelar
             </Button>
             <Button type="button" disabled={generate.isPending} onClick={() => generate.mutate()}>

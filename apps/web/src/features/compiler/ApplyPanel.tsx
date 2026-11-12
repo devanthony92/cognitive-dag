@@ -222,7 +222,7 @@ function ReplaceDraft({
           )}
           {replace.isError && !conflict && <ProblemAlert error={replace.error} />}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
               {conflict ? 'Cerrar' : 'Cancelar'}
             </Button>
             {conflict ? (
@@ -236,7 +236,7 @@ function ReplaceDraft({
               </Button>
             ) : (
               <Button
-                variant="destructive"
+                variant="danger"
                 disabled={replace.isPending}
                 onClick={() => {
                   replace.mutate();

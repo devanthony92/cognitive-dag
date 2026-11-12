@@ -139,7 +139,7 @@ export function AcceptInvitationPanel({ token }: { token: string | undefined }) 
             <Link to="/login" className={buttonVariants()}>
               Iniciar sesión
             </Link>
-            <Link to="/register" className={buttonVariants({ variant: 'outline' })}>
+            <Link to="/register" className={buttonVariants({ variant: 'secondary' })}>
               Crear cuenta
             </Link>
           </>

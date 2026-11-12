@@ -455,7 +455,7 @@ function EditorSession({
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2 text-sm">
           {canWrite && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="icon"
               disabled={definition.nodes.length === 0}
               onClick={arrange}
@@ -466,7 +466,7 @@ function EditorSession({
             </Button>
           )}
           <Button
-            variant="outline"
+            variant="secondary"
             size="icon"
             onClick={exportJson}
             aria-label="Exportar JSON"
@@ -475,7 +475,7 @@ function EditorSession({
             <Download aria-hidden />
           </Button>
           {canWrite && (
-            <Button asChild variant="outline">
+            <Button asChild variant="secondary">
               <Link
                 to="/orgs/$organizationId/workflows/new"
                 params={{ organizationId }}
@@ -496,7 +496,7 @@ function EditorSession({
           {canWrite && (
             <>
               <Button
-                variant="outline"
+                variant="secondary"
                 disabled={!dirty || save.isPending}
                 onClick={() => save.mutate()}
               >
@@ -525,7 +525,7 @@ function EditorSession({
           {save.isError && <ProblemAlert error={save.error} />}
           {conflict && (
             <div>
-              <Button variant="outline" size="sm" onClick={onReload}>
+              <Button variant="secondary" size="sm" onClick={onReload}>
                 Recargar
               </Button>
               <span className="ml-2 text-sm text-muted-foreground">
@@ -673,10 +673,10 @@ function EditorSession({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={exportJson}>
+            <Button variant="secondary" onClick={exportJson}>
               Exportar mis cambios
             </Button>
-            <Button variant="outline" onClick={() => setConflictOpen(false)}>
+            <Button variant="secondary" onClick={() => setConflictOpen(false)}>
               Seguir editando
             </Button>
             <Button
@@ -712,10 +712,10 @@ function EditorSession({
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => blocker.reset?.()}>
+            <Button variant="secondary" onClick={() => blocker.reset?.()}>
               Seguir editando
             </Button>
-            <Button variant="destructive" onClick={() => blocker.proceed?.()}>
+            <Button variant="danger" onClick={() => blocker.proceed?.()}>
               Salir sin guardar
             </Button>
           </DialogFooter>

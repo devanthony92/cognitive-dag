@@ -9,7 +9,7 @@ import { ProblemAlert } from '../auth/ProblemAlert';
 import { errorMessage } from './error-messages';
 import { confidenceText, formatCostUsd, formatTokens } from '../llm/format';
 import { stepIoQuery } from './api';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge } from '../../components/status/StatusBadge';
 import {
   ERROR_CLASS_LABELS,
   WAITING_REASON_LABELS,
@@ -237,7 +237,7 @@ export function StepPanel({
       {onRerunFrom && (
         <div className="grid gap-1">
           <Button
-            variant="outline"
+            variant="secondary"
             size="sm"
             disabled={rerunning || rerunBlockedBy !== undefined}
             aria-describedby={rerunBlockedBy}
