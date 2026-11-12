@@ -9,7 +9,7 @@ export const Route = createFileRoute('/orgs/$organizationId/runs/')({
     status: RunStatusSchema.optional().catch(undefined),
     workflowId: z.uuid().optional().catch(undefined),
   }),
-  staticData: { fullWidth: true },
+  staticData: { width: 'full' },
   component: OrganizationRuns,
 });
 

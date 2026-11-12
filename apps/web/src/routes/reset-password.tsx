@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { ResetPasswordForm } from '../features/auth/PasswordResetForms';
 
 export const Route = createFileRoute('/reset-password')({
+  staticData: { width: 'narrow' },
   validateSearch: z.object({ token: z.string().optional().catch(undefined) }),
   component: ResetPasswordPage,
 });

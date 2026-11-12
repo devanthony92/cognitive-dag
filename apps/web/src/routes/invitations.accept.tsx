@@ -5,6 +5,7 @@ import { AcceptInvitationPanel } from '../features/invitations/AcceptInvitationP
 import { readPendingInvitation, rememberPendingInvitation } from '../features/invitations/pending';
 
 export const Route = createFileRoute('/invitations/accept')({
+  staticData: { width: 'narrow' },
   validateSearch: z.object({ token: z.string().optional().catch(undefined) }),
   component: AcceptInvitationPage,
 });

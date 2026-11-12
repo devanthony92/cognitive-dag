@@ -90,7 +90,8 @@ describe('organization runs (US6)', () => {
 
   it('is in the navigation', async () => {
     open([orgRun()]);
-    expect(await screen.findByRole('link', { name: 'Ejecuciones' })).toBeDefined();
+    const rail = await screen.findByRole('navigation', { name: 'Navegación principal' });
+    expect(within(rail).getByRole('link', { name: 'Ejecuciones' })).toBeDefined();
   });
 
   it('asks the API for the status and workflow chosen, and keeps them in the address', async () => {

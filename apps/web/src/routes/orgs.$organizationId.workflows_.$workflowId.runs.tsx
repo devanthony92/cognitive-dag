@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { RunsPage } from '../features/runs/RunsPage';
 
 export const Route = createFileRoute('/orgs/$organizationId/workflows_/$workflowId/runs')({
-  staticData: { fullWidth: true },
+  staticData: { width: 'full' },
   component: Runs,
 });
 

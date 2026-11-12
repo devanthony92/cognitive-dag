@@ -3,6 +3,7 @@ import { ChangePasswordForm } from '../features/account/ChangePasswordForm';
 import { requireSession } from '../features/session/guards';
 
 export const Route = createFileRoute('/account/password')({
+  staticData: { width: 'narrow' },
   beforeLoad: ({ context }) => requireSession(context.queryClient),
   component: ChangePasswordForm,
 });

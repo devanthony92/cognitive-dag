@@ -34,8 +34,12 @@ export function OrganizationSwitcher({ organizations, activeId, onSelect }: Prop
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" aria-label="Cambiar de organización">
-            {active?.name ?? 'Elegir organización'}
+          <Button
+            variant="outline"
+            aria-label="Cambiar de organización"
+            className="h-11 w-full min-w-0 justify-between whitespace-normal sm:w-auto sm:max-w-64"
+          >
+            <span className="min-w-0 truncate">{active?.name ?? 'Elegir organización'}</span>
             <ChevronsUpDown aria-hidden />
           </Button>
         </DropdownMenuTrigger>
@@ -44,7 +48,7 @@ export function OrganizationSwitcher({ organizations, activeId, onSelect }: Prop
           {organizations.map((organization) => (
             <DropdownMenuItem key={organization.id} onSelect={() => onSelect(organization.id)}>
               <span className="flex-1">{organization.name}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-body-sm text-ink-muted">
                 {organization.isPersonal ? 'Personal · ' : ''}
                 {ROLE_LABELS[organization.role]}
               </span>
