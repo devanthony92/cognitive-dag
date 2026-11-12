@@ -13,7 +13,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 
 ## Status
 
-**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler, F7 — triggers and human control and F8 — hardening: complete.** F8 removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
+**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler, F7 — triggers and human control, F8 — hardening and F9 — deployment: complete.** F8 removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -104,9 +104,19 @@ F8 adds:
 | ZAP           | Passive baseline run by hand against loopback; no medium or high alerts in the API, two medium web alerts accepted until F9 ([ADR-0086](docs/adr/0086-zap-baseline-pasivo-como-script-manual.md))                                                                                    |
 | Documentation | 88 architecture decision records ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md) to [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md)); threat model v2.0; accepted and F9 risks in [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md) |
 
-**Next: F9 — deployment.** Until F9 the system runs locally only and is not deployed
-publicly. F9 brings the Oracle Cloud VM, the production Compose file, Caddy (TLS and the web's
-security headers), backups and observability. Phases are listed in
+F9 adds:
+
+| Area          | What F9 delivers                                                                                                                                                                                                                                                                                                                            |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production    | A closed demo at `https://cognitive.devama.cloud` on an Oracle Always Free Ampere A1 VM (Docker Compose, Caddy as the only entry point); registration is closed (404) and accounts are created from the VM. **No backups and test data only** ([ADR-0094](docs/adr/0094-despliegue-automatico-reversa-y-sin-backups.md))                    |
+| Delivery      | Multi-arch images published to OCIR by digest with a CycloneDX SBOM and a vulnerability scan, then deployed on every merge to `main` over a restricted SSH key, with automatic rollback ([ADR-0089](docs/adr/0089-ocir-como-registro-y-etiquetado-por-digest.md), [ADR-0096](docs/adr/0096-sbom-y-escaneo-de-imagenes-al-publicar.md))      |
+| Transport     | TLS at the edge with the security headers checked after each deployment ([ADR-0098](docs/adr/0098-verificacion-de-cabeceras-sin-staging.md)); mTLS to Temporal and TLS with ACL for PostgreSQL and Valkey ([ADR-0091](docs/adr/0091-temporal-en-produccion.md), [ADR-0092](docs/adr/0092-postgresql-y-valkey-con-tls-acl-y-pki-interna.md)) |
+| Secrets       | OCI Vault, dumped to a `tmpfs` on boot and failing closed ([ADR-0093](docs/adr/0093-secretos-en-oci-vault.md))                                                                                                                                                                                                                              |
+| Operations    | Logs kept 90 days and mail alerts every 5 minutes ([ADR-0095](docs/adr/0095-registros-retencion-y-alertas-por-script.md)); the guide is in [docs/operations/](docs/operations/README.md)                                                                                                                                                    |
+| Documentation | 99 architecture decision records ([ADR-0089](docs/adr/0089-ocir-como-registro-y-etiquetado-por-digest.md) to [ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)); threat model v3.0 and an evidence matrix with no deferred rows; constitution 1.1.0                                                                                      |
+
+Memory use in production has not been measured yet and a rebuild on a clean VM has not been timed
+([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). **Next: F10**, listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
 ## Architecture
@@ -149,6 +159,8 @@ keeps sessions and rate-limit counters in Valkey.
 | [Constitution](.specify/memory/constitution.md)                        | Non-negotiable principles every spec, plan and PR must meet (es)           |
 | [docs/adr/](docs/adr/)                                                 | Architecture decision records, one per decision (es)                       |
 | [docs/threat-model.md](docs/threat-model.md)                           | Data-flow diagram, trust boundaries and STRIDE analysis (es)               |
+| [specs/010-deployment/](specs/010-deployment/)                         | F9 spec, plan, research, contracts, tasks and quickstart (es)              |
+| [docs/operations/](docs/operations/README.md)                          | Operations guide: provisioning, deploy, rollback, secrets, alerts (es)     |
 | [specs/001-foundations-skeleton/](specs/001-foundations-skeleton/)     | F0 spec, plan, research, tasks and quickstart (es)                         |
 | [specs/002-identity-tenancy/](specs/002-identity-tenancy/)             | F1 spec, plan, research, data model, contracts, tasks and quickstart (es)  |
 | [specs/005-resilience/](specs/005-resilience/)                         | F4 spec, plan, research, data model, tasks and quickstart (es)             |
@@ -287,7 +299,7 @@ The decisions are in [ADR-0055](docs/adr/0055-taxonomia-de-errores-y-clasificaci
 The editor offers the three LLM nodes, runs can
 execute them, and the run detail shows tokens and estimated cost. The worker uses the deterministic
 `LLM_PROVIDER=fake` by default. To use Gemini put `LLM_PROVIDER=gemini` and your key in your local
-`.env` (never commit it). The free tier may use what is sent: **use test data only** until F9.
+`.env` (never commit it). The free tier may use what is sent: **use test data only** (the production demo is closed and uses the free tier too).
 
 Budgets, models, prices and the queue of the LLM activities are set by the platform in the worker
 environment (see `.env.example`). Setting `LLM_ENABLED=false` makes every LLM node fail without calling
@@ -312,7 +324,7 @@ read-only preview. You can create a workflow with it or, from the editor, replac
 ("Regenerar borrador"). Nothing runs until a person publishes the workflow. Owners and editors can
 compile; limits are 10 compilations per person per hour and 50 per organization per day, and the
 model (`LLM_MODEL_COMPILER`) and token cap per compilation are set in the environment (see
-`.env.example`). The free tier of Gemini may use what is sent: **test data only** until F9.
+`.env.example`). The free tier of Gemini may use what is sent: **test data only** (the production demo is closed and uses the free tier too).
 
 `pnpm eval:compiler` compiles the intent dataset and the injection set. By default it replays recorded
 answers (deterministic, the same as in CI); with `--provider gemini` it calls the real model, needs
@@ -341,7 +353,7 @@ refuses the versions that contain its nodes with `UNSUPPORTED_NODES`.
   64 KiB. The API answers `202` with the `runId`; a repeated `X-Event-Id` answers `200` with
   `duplicate: true`. Regenerating the token invalidates the previous one at once. The token travels in
   the path and there is no HMAC signature: this is an accepted risk
-  ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md)). TLS and log redaction at the proxy are required before deployment (F9).
+  ([ADR-0072](docs/adr/0072-webhook-con-token-en-la-url-sin-hmac.md)). Caddy provides TLS and redacts the token in its logs in production (F9).
 - **Schedule:** `trigger.schedule` takes a cron expression and an IANA time zone. Activating the
   version creates the Temporal Schedule `sched-<workflowId>`; overlapping firings are skipped and
   firings missed for less than an hour run once.
@@ -405,8 +417,9 @@ Security is part of every spec's definition of done. The F0 controls (validated 
 Helmet and strict CORS, no stack traces in errors, log redaction, locked-down supply chain, secret
 scanning), the F1 controls (sessions, CSRF, rate limiting, tenant isolation with Row-Level Security,
 security events), the accepted deviation from NIST 800-63B-4 in the password length, the F7 controls
-(webhook token and replay checks, anti-SSRF, encrypted credentials, approval rules) and the risks
-deferred to later phases are catalogued in the
+(webhook token and replay checks, anti-SSRF, encrypted credentials, approval rules), the F9 controls
+(TLS, edge headers, internal mTLS, secrets in a vault, image scanning) and the accepted risks are
+catalogued in the
 [threat model](docs/threat-model.md). The OWASP evidence matrix is in
-[owasp-evidence.md](docs/security/owasp-evidence.md), and the risks accepted or deferred to F9 are
-listed in [ADR-0088](docs/adr/0088-riesgos-aceptados-y-diferidos-a-f9.md).
+[owasp-evidence.md](docs/security/owasp-evidence.md), and the risks accepted at the close of F9 are
+listed in [ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md).

@@ -1,5 +1,7 @@
 # Memoria: presupuesto y medición (T052, SC-010)
 
+> **Estado: pendiente de medir.** La tabla se completa con `docker stats --no-stream` y `free -m` en la VM (procedimiento más abajo).
+
 Los límites de `deploy/compose.prod.yaml` salen del presupuesto de `specs/010-deployment/research.md`. **El
 consumo real todavía no se ha medido: hace falta la VM real.** Esta tabla queda pendiente; no se inventan
 cifras. SC-010: el consumo medido debe quedar por debajo del 60 % de los límites y la suma de límites por

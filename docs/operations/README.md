@@ -1,7 +1,7 @@
 # Guía de operación (F9)
 
 Cómo se despliega, se opera y se da de baja la demo de CognitiveDAG en una VM de Oracle Cloud Always
-Free. Lo decidido y su razón están en los ADR-0089 a 0096; esta guía es el «cómo». Cada procedimiento
+Free. Lo decidido y su razón están en los ADR-0089 a 0099; esta guía es el «cómo». Cada procedimiento
 termina con un comando que comprueba que funcionó (FR-038).
 
 > **Aviso de datos:** no hay copias de seguridad (ADR-0094, constitución 1.1.0). La demo solo admite datos
