@@ -43,7 +43,7 @@ export function PublishDialog({ open, pending, error, onOpenChange, onPublish }:
         </div>
         {error !== undefined && error !== null && <ProblemAlert error={error} />}
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button disabled={pending} onClick={() => onPublish(note)}>

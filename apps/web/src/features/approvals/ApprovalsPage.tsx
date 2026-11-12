@@ -98,7 +98,7 @@ export function ApprovalsPage({
                 type="button"
                 role="tab"
                 aria-selected={tab === id}
-                variant={tab === id ? 'default' : 'outline'}
+                variant={tab === id ? 'primary' : 'secondary'}
                 size="sm"
                 onClick={() => setTab(id)}
               >
@@ -148,7 +148,7 @@ export function ApprovalsPage({
                     <TableCell>
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="secondary"
                         size="sm"
                         aria-label={`Ver solicitud de ${item.workflowName}`}
                         onClick={() => open(item.id)}
@@ -164,7 +164,7 @@ export function ApprovalsPage({
           {list.hasNextPage && (
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               disabled={list.isFetchingNextPage}
               onClick={() => void list.fetchNextPage()}
             >
@@ -286,14 +286,14 @@ function ApprovalDetailDialog({
         {decide.isError && <ProblemAlert error={decide.error} />}
 
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             Cerrar
           </Button>
           {canDecide && (
             <>
               <Button
                 type="button"
-                variant="destructive"
+                variant="danger"
                 disabled={decide.isPending}
                 onClick={() => decide.mutate('rejected')}
               >

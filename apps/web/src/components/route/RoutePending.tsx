@@ -1,8 +1,4 @@
-import { cn } from '../../lib/utils';
-
-function Bar({ className }: { className: string }) {
-  return <div aria-hidden className={cn('animate-pulse rounded-md bg-raised', className)} />;
-}
+import { Skeleton } from '../ui/skeleton';
 
 /**
  * `defaultPendingComponent`, shown by the router only after 150 ms. The skeleton has the height of a
@@ -16,12 +12,12 @@ export function RoutePending() {
       className="mx-auto grid min-h-[28rem] w-full max-w-page-default content-start gap-4 px-4 py-6 sm:px-6 md:py-8"
     >
       <span className="sr-only">Cargando</span>
-      <Bar className="h-8 w-1/3" />
-      <Bar className="h-4 w-2/3" />
+      <Skeleton className="h-8 w-1/3" />
+      <Skeleton className="h-4 w-2/3" />
       <div className="mt-4 grid gap-3">
-        <Bar className="h-13 w-full" />
-        <Bar className="h-13 w-full" />
-        <Bar className="h-13 w-full" />
+        <Skeleton className="h-13 w-full" />
+        <Skeleton className="h-13 w-full" />
+        <Skeleton className="h-13 w-full" />
       </div>
     </div>
   );

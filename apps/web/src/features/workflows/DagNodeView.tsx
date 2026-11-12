@@ -3,7 +3,7 @@ import { TriangleAlert } from 'lucide-react';
 import { memo } from 'react';
 import { NODE_CATALOG } from '@cognitive-dag/dag-schema';
 import { cn } from '../../lib/utils';
-import { StatusBadge } from '../runs/StatusBadge';
+import { StatusBadge } from '../../components/status/StatusBadge';
 import { WAITING_RATE_LIMIT_LABEL } from '../runs/status';
 import { HANDLE_LABELS, type FlowNode } from './flow';
 

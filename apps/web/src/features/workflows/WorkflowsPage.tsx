@@ -110,7 +110,7 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
             {create.isError && <ProblemAlert error={create.error} />}
             {canCreate && (
               <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
-                <Button asChild variant="outline">
+                <Button asChild variant="secondary">
                   <Link to="/orgs/$organizationId/workflows/new" params={{ organizationId }}>
                     <Sparkles aria-hidden />
                     Describir workflow

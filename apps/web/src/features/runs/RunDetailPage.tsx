@@ -21,7 +21,7 @@ import { cancelRun, rerunRun, runKey, runQuery, runsKey } from './api';
 import { errorMessage } from './error-messages';
 import { useRunPermission } from './permissions';
 import { RunGraph } from './RunGraph';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge } from '../../components/status/StatusBadge';
 import { formatCostUsd, formatTokens } from '../llm/format';
 import { StepPanel } from './StepPanel';
 import { formatDateTime, originOf, formatDuration, isFinalRun, runDurationMs } from './status';
@@ -98,7 +98,7 @@ export function RunDetailPage({
       <div className="mx-auto grid w-full max-w-xl gap-3 p-6">
         <ProblemAlert error={run.error} />
         <div>
-          <Button variant="outline" size="sm" onClick={() => void run.refetch()}>
+          <Button variant="secondary" size="sm" onClick={() => void run.refetch()}>
             Reintentar
           </Button>
         </div>
@@ -199,7 +199,7 @@ export function RunDetailPage({
           )}
           {!final && (
             <Button
-              variant="outline"
+              variant="secondary"
               disabled={cancel.isPending || !canExecute}
               aria-describedby={blockedReason ? REASON_ID : undefined}
               onClick={() => {
@@ -213,7 +213,7 @@ export function RunDetailPage({
           )}
           {final && (
             <Button
-              variant="outline"
+              variant="secondary"
               disabled={rerun.isPending || !canExecute}
               aria-describedby={blockedReason ? REASON_ID : undefined}
               onClick={() => rerun.mutate(undefined)}
@@ -313,17 +313,13 @@ export function RunDetailPage({
           )}
           <DialogFooter>
             <Button
-              variant="outline"
+              variant="secondary"
               disabled={cancel.isPending}
               onClick={() => setCancelOpen(false)}
             >
               Seguir ejecutando
             </Button>
-            <Button
-              variant="destructive"
-              disabled={cancel.isPending}
-              onClick={() => cancel.mutate()}
-            >
+            <Button variant="danger" disabled={cancel.isPending} onClick={() => cancel.mutate()}>
               {cancel.isPending ? 'Cancelando…' : 'Cancelar ejecución'}
             </Button>
           </DialogFooter>

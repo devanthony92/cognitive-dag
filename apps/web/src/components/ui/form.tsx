@@ -1,3 +1,4 @@
+import { CircleAlert } from 'lucide-react';
 import { Slot } from 'radix-ui';
 import * as React from 'react';
 import {
@@ -64,10 +65,8 @@ function FormItem({ className, ...props }: React.ComponentProps<'div'>) {
 }
 
 function FormLabel({ className, ...props }: React.ComponentProps<typeof Label>) {
-  const { error, formItemId } = useFormField();
-  return (
-    <Label className={cn(error && 'text-destructive', className)} htmlFor={formItemId} {...props} />
-  );
+  const { formItemId } = useFormField();
+  return <Label className={className} htmlFor={formItemId} {...props} />;
 }
 
 function FormControl(props: React.ComponentProps<typeof Slot.Root>) {
@@ -85,11 +84,7 @@ function FormControl(props: React.ComponentProps<typeof Slot.Root>) {
 function FormDescription({ className, ...props }: React.ComponentProps<'p'>) {
   const { formDescriptionId } = useFormField();
   return (
-    <p
-      id={formDescriptionId}
-      className={cn('text-sm text-muted-foreground', className)}
-      {...props}
-    />
+    <p id={formDescriptionId} className={cn('text-body-sm text-ink-muted', className)} {...props} />
   );
 }
 
@@ -98,7 +93,12 @@ function FormMessage({ className, children, ...props }: React.ComponentProps<'p'
   const body = error ? String(error.message ?? '') : children;
   if (!body) return null;
   return (
-    <p id={formMessageId} className={cn('text-sm text-destructive', className)} {...props}>
+    <p
+      id={formMessageId}
+      className={cn('flex items-start gap-1.5 text-body-sm text-state-failed', className)}
+      {...props}
+    >
+      <CircleAlert className="mt-0.5 size-4 shrink-0" aria-hidden />
       {body}
     </p>
   );

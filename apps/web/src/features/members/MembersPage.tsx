@@ -215,7 +215,7 @@ function MembersTable({
               {isOwner && (
                 <TableCell>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     size="sm"
                     aria-label={`Quitar a ${member.name}`}
                     onClick={() => {
@@ -246,11 +246,11 @@ function MembersTable({
           </DialogHeader>
           {remove.isError && <ProblemAlert error={remove.error} />}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRemoving(undefined)}>
+            <Button variant="secondary" onClick={() => setRemoving(undefined)}>
               Cancelar
             </Button>
             <Button
-              variant="destructive"
+              variant="danger"
               disabled={remove.isPending}
               onClick={() => removing && remove.mutate(removing.membershipId)}
             >
@@ -387,7 +387,7 @@ function InvitationsSection({
                   <TableCell>{new Date(invitation.expiresAt).toLocaleDateString('es')}</TableCell>
                   <TableCell>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       aria-label={`Revocar la invitación de ${invitation.email}`}
                       disabled={revoke.isPending}

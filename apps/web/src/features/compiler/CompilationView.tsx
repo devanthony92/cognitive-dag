@@ -94,7 +94,7 @@ export function CompilationView({ organizationId, compilationId, canWrite, onRet
         )}
         {compilation.status === 'failed' && !compilation.hasFallback && (
           <div>
-            <Button variant="outline" onClick={onRetry}>
+            <Button variant="secondary" onClick={onRetry}>
               Intentar de nuevo
             </Button>
           </div>
@@ -177,7 +177,7 @@ function Content({
         <Alert>
           <AlertDescription>
             <p>El resultado expiró: el motor ya no guarda el contenido de esta compilación.</p>
-            <Button className="mt-2" variant="outline" onClick={onRetry}>
+            <Button className="mt-2" variant="secondary" onClick={onRetry}>
               Volver a compilar
             </Button>
           </AlertDescription>

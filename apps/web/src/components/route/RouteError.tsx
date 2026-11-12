@@ -69,7 +69,7 @@ function CorrelationId({ id }: { id: string }) {
     <div className="flex flex-wrap items-center gap-2 text-body-sm text-ink-muted">
       <span>Id de correlación</span>
       <code className="rounded-sm bg-raised px-2 py-1 break-all text-ink select-all">{id}</code>
-      <Button type="button" variant="outline" size="sm" onClick={() => void copy()}>
+      <Button type="button" variant="secondary" size="sm" onClick={() => void copy()}>
         {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
         {copied ? 'Copiado' : 'Copiar'}
         <span className="sr-only"> id de correlación</span>
@@ -144,7 +144,7 @@ export function RouteError({ error, reset }: ErrorComponentProps) {
     </Button>
   );
   const back = (
-    <Link to="/" className={buttonVariants({ variant: 'outline' })}>
+    <Link to="/" className={buttonVariants({ variant: 'secondary' })}>
       Volver
     </Link>
   );

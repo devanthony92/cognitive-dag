@@ -75,7 +75,7 @@ export function RecentCompilations({ organizationId, workflowId, selectedId, onS
                   <TableCell>{item.nodeCount ?? '—'}</TableCell>
                   <TableCell>
                     <Button
-                      variant="outline"
+                      variant="secondary"
                       size="sm"
                       aria-pressed={item.id === selectedId}
                       onClick={() => onSelect(item.id)}

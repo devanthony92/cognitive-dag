@@ -57,19 +57,6 @@ const FINAL: ReadonlySet<RunStatus> = new Set(['succeeded', 'failed', 'cancelled
 
 export const isFinalRun = (status: RunStatus): boolean => FINAL.has(status);
 
-/** Tailwind classes of a status chip; the label always travels with the color. */
-export const STATUS_TONE: Record<RunStatus | StepStatus, string> = {
-  queued: 'border-slate-300 bg-slate-100 text-slate-800',
-  pending: 'border-slate-300 bg-slate-100 text-slate-800',
-  running: 'border-sky-300 bg-sky-100 text-sky-900',
-  succeeded: 'border-emerald-300 bg-emerald-100 text-emerald-900',
-  failed: 'border-red-300 bg-red-100 text-red-900',
-  cancelled: 'border-amber-300 bg-amber-100 text-amber-900',
-  timed_out: 'border-amber-300 bg-amber-100 text-amber-900',
-  skipped: 'border-dashed border-slate-300 bg-transparent text-slate-600',
-  reused: 'border-violet-300 bg-violet-100 text-violet-900',
-};
-
 /** "850 ms", "3,2 s", "2 min 5 s". */
 export function formatDuration(ms: number): string {
   if (ms < 1000) return `${Math.round(ms)} ms`;

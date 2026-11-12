@@ -35,7 +35,7 @@ export function OrganizationSwitcher({ organizations, activeId, onSelect }: Prop
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
-            variant="outline"
+            variant="secondary"
             aria-label="Cambiar de organización"
             className="h-11 w-full min-w-0 justify-between whitespace-normal sm:w-auto sm:max-w-64"
           >

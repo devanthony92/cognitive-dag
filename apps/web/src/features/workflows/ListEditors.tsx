@@ -122,7 +122,7 @@ function AddButton({
   return (
     <Button
       type="button"
-      variant="outline"
+      variant="secondary"
       size="sm"
       className="w-fit"
       aria-label={`Agregar a ${label}`}

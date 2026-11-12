@@ -214,7 +214,7 @@ function ConditionNode({
           <div className="ml-1 flex flex-wrap gap-2 pl-2">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               aria-label={`Agregar comparación a ${name}`}
               disabled={blockedAdd(newLeaf) !== undefined}
@@ -226,7 +226,7 @@ function ConditionNode({
             </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               size="sm"
               aria-label={`Agregar grupo a ${name}`}
               disabled={blockedAdd(newGroup) !== undefined}
@@ -352,7 +352,7 @@ function InRows({
       ))}
       <Button
         type="button"
-        variant="outline"
+        variant="secondary"
         size="sm"
         className="justify-self-start"
         aria-label={`Agregar opción a ${name}`}

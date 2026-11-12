@@ -106,7 +106,7 @@ export function VersionsPanel({
             <p>Recarga para ver la última revisión.</p>
             <Button
               size="sm"
-              variant="outline"
+              variant="secondary"
               className="mt-2"
               onClick={() => {
                 copy.reset();
@@ -148,7 +148,7 @@ export function VersionsPanel({
             <div className="mt-2 flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant="outline"
+                variant="secondary"
                 aria-label={`Exportar versión ${version.number} como JSON`}
                 disabled={exportVersion.isPending}
                 onClick={() => exportVersion.mutate(version.number)}
@@ -161,7 +161,7 @@ export function VersionsPanel({
                 {!version.active && (
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="secondary"
                     aria-label={`Activar versión ${version.number}`}
                     disabled={activate.isPending}
                     onClick={() => {
@@ -174,7 +174,7 @@ export function VersionsPanel({
                 )}
                 <Button
                   size="sm"
-                  variant="outline"
+                  variant="secondary"
                   aria-label={`Copiar versión ${version.number} al borrador`}
                   onClick={() => {
                     copy.reset();
@@ -200,7 +200,7 @@ export function VersionsPanel({
           </DialogHeader>
           {copy.isError && !isConflict(copy.error) && <ProblemAlert error={copy.error} />}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setCopying(undefined)}>
+            <Button variant="secondary" onClick={() => setCopying(undefined)}>
               Cancelar
             </Button>
             <Button

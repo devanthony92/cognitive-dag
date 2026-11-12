@@ -26,7 +26,7 @@ import {
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { workflowsQuery } from '../workflows/api';
 import { organizationRunsQuery, rerunRun, type OrganizationRunFilters } from './api';
-import { StatusBadge } from './StatusBadge';
+import { StatusBadge } from '../../components/status/StatusBadge';
 import {
   ERROR_CLASS_LABELS,
   formatDateTime,
@@ -147,7 +147,7 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
           </div>
           {filtered && (
             <Button
-              variant="outline"
+              variant="secondary"
               onClick={() => onFiltersChange({ status: undefined, workflowId: undefined })}
             >
               Limpiar filtros
@@ -177,7 +177,7 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
             <div className="grid gap-2">
               <ProblemAlert error={runs.error} />
               <div>
-                <Button variant="outline" size="sm" onClick={() => void runs.refetch()}>
+                <Button variant="secondary" size="sm" onClick={() => void runs.refetch()}>
                   Reintentar
                 </Button>
               </div>
@@ -229,7 +229,7 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
           {runs.hasNextPage && (
             <div>
               <Button
-                variant="outline"
+                variant="secondary"
                 disabled={runs.isFetchingNextPage}
                 onClick={() => void runs.fetchNextPage()}
               >
@@ -310,7 +310,7 @@ function RunRow({
           </Link>
           {final && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className="h-auto py-1.5 text-left whitespace-normal"
               disabled={busy}
@@ -323,7 +323,7 @@ function RunRow({
           )}
           {final && run.failedNodeId !== null && (
             <Button
-              variant="outline"
+              variant="secondary"
               size="sm"
               className="h-auto py-1.5 text-left whitespace-normal"
               disabled={busy}
