@@ -21,7 +21,7 @@ pnpm format:check
 ```
 
 Esperado: las 36 pruebas previas verdes más las nuevas; contraste ≥ 4,5 y ≥ 3 en ambos modos (desde la
-PR 1); prueba estática sin colores fijos (activa desde la PR 2, sin excepciones al final de la PR 3).
+PR 1); prueba estática sin colores fijos (activa desde la PR 2, sin excepciones al final de la PR 4).
 
 ## 2. Recorrido de anchos y modos (navegador)
 
