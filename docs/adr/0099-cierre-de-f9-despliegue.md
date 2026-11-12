@@ -87,14 +87,14 @@ Todos tienen como dueño al autor. La revisión «antes de admitir datos reales�
 | Cron sin frecuencia mínima (D21, #68)                                  | Posterior a F9                                                 |
 | Registro, secretos y correo en la misma cuenta de Oracle (D1, D4, D14) | Antes de admitir datos reales                                  |
 | Sin copia externa de los registros (D10)                               | Antes de admitir datos reales                                  |
-| Memoria de producción sin medir (T052)                                 | Al medirla con la prueba de humo                               |
+| Memoria de producción medida solo en reposo (T052)                     | Al medirla bajo la prueba de humo                              |
 | Reconstrucción en una VM limpia sin medir (T055)                       | Al liberar cuota Always Free o antes de datos reales           |
 
 ### Lo que no se midió
 
-- **T052, memoria:** no se ha medido el consumo real. `docs/operations/memory.md` y [PLAN §9](../PLAN.md) llevan la tabla marcada «pendiente de medir», con el procedimiento (`docker stats --no-stream` y `free -m`). SC-010 queda sin comprobar en su parte de consumo; la suma de límites (3 328 MB de permanentes) sí cumple ≤ 6 GB y lo fija `deploy-config.test.ts`.
+- **T052, memoria:** medida en producción el 2026-11-12 **en reposo y sin carga**, tras el despliegue de `deccebb` (`docker stats --no-stream`). El máximo es el worker con 212,5 MiB de 768 MiB (27,7 %), la suma de los siete servicios es 499,1 MiB (15,0 % de 3 328 MB) y la VM tiene 10 694 MiB disponibles de 11 925 y swap 0. SC-010 se cumple en reposo con margen holgado; falta repetirla bajo la prueba de humo. No se cambian límites. La suma de límites cumple ≤ 6 GB (`deploy-config.test.ts`). Tabla en `docs/operations/memory.md` y [PLAN §9](../PLAN.md).
 - **T055, reconstrucción en VM limpia:** no se hizo. La cuota Always Free está ocupada por la VM actual y no hay una segunda donde ensayar. El procedimiento está escrito en `docs/operations/rebuild.md`; el tiempo no está medido. Se acepta como riesgo, con revisión al liberar cuota.
-- **SC-009, SPF, DKIM y DMARC:** el correo de verificación se entregó por OCI Email Delivery con los tres registros configurados; el resultado `pass` de las tres comprobaciones en las cabeceras de un mensaje recibido debe confirmarlo el autor y anotarlo en la PR.
+- **SC-009, SPF, DKIM y DMARC:** cumplido. Un correo de alerta real recibido en un buzón mostró SPF `pass` (IP de envío de OCI Email Delivery), DKIM `pass` con el dominio `devama.cloud` y DMARC `pass`. DMARC está en `p=none` y sin `rua`; subirlo a `quarantine` (y añadir informes) queda como revisión pendiente.
 
 ### Lecciones del primer despliegue
 
@@ -113,7 +113,7 @@ Regla que queda: lo que solo existe en la VM (reglas del proveedor, IAM, red) se
 - Bueno: demo cerrada con TLS, cabeceras verificadas en cada despliegue, despliegue automático con reversa, secretos fuera del repositorio y del disco, y alertas por correo, todo sobre la capa gratuita.
 - Bueno: modelo de amenazas v3.0 y matriz OWASP sin filas diferidas; `pnpm security:evidence` rechaza cualquiera que reaparezca.
 - Bueno: los incidentes del primer despliegue quedan como lecciones con su corrección.
-- Malo: dos criterios de F9 sin medir (T052, T055) y una parte de SC-009 por confirmar.
+- Malo: la memoria se midió solo en reposo y la reconstrucción (T055) sigue sin medir; DMARC sigue en `p=none`.
 - Malo: sin backups, una VM perdida es una base perdida; la demo solo admite datos de prueba y el aviso está en la web.
 - Malo: un solo proveedor concentra imágenes, secretos, correo y VM.
 

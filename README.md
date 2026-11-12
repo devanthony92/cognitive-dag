@@ -115,7 +115,7 @@ F9 adds:
 | Operations    | Logs kept 90 days and mail alerts every 5 minutes ([ADR-0095](docs/adr/0095-registros-retencion-y-alertas-por-script.md)); the guide is in [docs/operations/](docs/operations/README.md)                                                                                                                                                    |
 | Documentation | 99 architecture decision records ([ADR-0089](docs/adr/0089-ocir-como-registro-y-etiquetado-por-digest.md) to [ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)); threat model v3.0 and an evidence matrix with no deferred rows; constitution 1.1.0                                                                                      |
 
-Memory use in production has not been measured yet and a rebuild on a clean VM has not been timed
+Memory use in production was measured at idle only (the busiest service uses 27.7 % of its limit) and a rebuild on a clean VM has not been timed
 ([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). **Next: F10**, listed in
 [docs/PLAN.md](docs/PLAN.md) §10.
 
