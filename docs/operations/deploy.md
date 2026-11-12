@@ -10,7 +10,13 @@ anterior; por eso las migraciones son expand/contract y no hay migraciones inver
 `deploy/ops/deploy.sh`, en la VM y como `cdag-deploy` (un solo despliegue a la vez, con cerrojo):
 
 1. Comprueba que el SHA es de 40 hexadecimales y **descendiente de `origin/main`**; si no, se niega. El
-   _checkout_ del repositorio pasa a ese commit (compose y scripts son los de esa versión).
+   _checkout_ de `/opt/cognitive-dag` **no se mueve** (sigue en `main`, y `git pull --ff-only` siempre
+   funciona): `deploy.sh` exporta `deploy/` de ese commit a
+   `/var/lib/cognitive-dag/state/releases/<sha>` (`git archive`) y se vuelve a ejecutar desde esa copia, de
+   modo que ni el script en marcha ni su compose cambian a mitad de ejecución. Compose, `rollback.sh` y
+   `compose.sh` usan el compose de la copia de la versión que corren; solo se conservan las copias de
+   `current` y `previous`. Las unidades de systemd (`firewall.sh`, `secrets.sh`, `alerts.sh`) siguen
+   corriendo desde `/opt/cognitive-dag`, a la versión de `main` que tenga el _checkout_.
 2. Entra en OCIR con el usuario de solo lectura (el token por entrada estándar; la sesión de `docker`
    vive en el `tmpfs`) y resuelve cada una de las 4 imágenes `cognitive-dag/{api,worker,edge,migrator}:<sha>`
    a su **digest**. Nunca usa una etiqueta móvil.
@@ -21,7 +27,7 @@ anterior; por eso las migraciones son expand/contract y no hay migraciones inver
    y espera a que todos los servicios estén sanos (`--wait`, 300 s).
 5. Ejecuta `check-headers.sh` contra el dominio real: HSTS, CSP, `X-Frame-Options`, `nosniff`,
    `Permissions-Policy`, COEP, COOP, CORP y la redirección de HTTP a HTTPS (FR-034).
-6. Solo si todo pasó, `previous.env` toma el `current.env` anterior y `current.env` la versión nueva
+6. Solo si todo pasó (y, tras ello, se borran las copias que ya no son `current` ni `previous`), `previous.env` toma el `current.env` anterior y `current.env` la versión nueva
    (los digests y el SHA, en `/var/lib/cognitive-dag/state/`).
 
 **Si falla la migración, la salud o las cabeceras, vuelve solo** a `current.env` (espera de nuevo la salud

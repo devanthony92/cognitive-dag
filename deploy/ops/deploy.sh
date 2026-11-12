@@ -4,6 +4,9 @@
 #   deploy.sh <git-sha>     the 40-hex SHA of a commit on main whose images the release published
 #   deploy.sh --resume      bring the current version up again (boot, after the secrets are back)
 #
+# The checkout in /opt/cognitive-dag is never moved: the commit is exported to
+# <state>/releases/<sha> and the script runs again from there, so the files bash is reading and the
+# compose file of the deploy cannot change underneath it, and `git pull --ff-only` keeps working.
 # Steps: check the SHA is on main, resolve the four images to digests in the registry, dump the
 # database (last 3 kept, on this VM only: it is a deployment safety net, not a backup), run the
 # migrator, start the services, wait for health, check the headers of the real site. If any step
@@ -87,6 +90,37 @@ resolve_digest() { # resolve_digest <image> <sha>
   RESOLVED="$reference@$digest"
 }
 
+# Exports deploy/ of the commit to the releases directory (readable by the container users: the
+# compose file bind-mounts configuration files from it) and runs the deploy from there.
+stage_release() { # stage_release <sha>
+  local sha="$1" release="$RELEASES_DIR/$1" tmp
+  git -C "$CDAG_ROOT" fetch --quiet origin main
+  git -C "$CDAG_ROOT" merge-base --is-ancestor "$sha" origin/main ||
+    die "$sha is not a commit of main: refusing to deploy it"
+  if [[ ! -f "$release/deploy/compose.prod.yaml" ]]; then
+    mkdir -p "$RELEASES_DIR"
+    tmp="$(mktemp -d "$RELEASES_DIR/.new.XXXXXX")"
+    if ! { git -C "$CDAG_ROOT" archive "$sha" deploy | (umask 022 && tar -x -C "$tmp"); }; then
+      rm -rf "$tmp"
+      die "cannot export $sha"
+    fi
+    chmod 0755 "$tmp"
+    rm -rf "$release"
+    mv "$tmp" "$release"
+  fi
+  CDAG_RELEASE_STAGE=1 exec bash "$release/deploy/ops/deploy.sh" "$sha"
+}
+
+# Keeps the exports of the current and the previous version only.
+prune_releases() {
+  local keep dir
+  keep=" $(state_value current.env GIT_SHA) $(state_value previous.env GIT_SHA) "
+  for dir in "$RELEASES_DIR"/*; do
+    [[ -d "$dir" ]] || continue
+    [[ "$keep" == *" $(basename "$dir") "* ]] || rm -rf "$dir"
+  done
+}
+
 prune_dumps() {
   local dumps index=0 file
   mapfile -t dumps < <(find "$DUMP_DIR" -maxdepth 1 -name 'predeploy-*.dump' | sort -r)
@@ -108,6 +142,7 @@ main() {
 
   require_config
   ensure_dirs
+  if [[ "$mode" != --resume && -z "${CDAG_RELEASE_STAGE:-}" ]]; then stage_release "$sha"; fi
   require_secrets
   lock
 
@@ -121,12 +156,6 @@ main() {
   fi
 
   : "${OCIR_REGISTRY:?}" "${OCIR_NAMESPACE:?}" "${OCIR_PULL_USER:?}"
-
-  # Only a commit that is on main can be deployed, whatever the caller asks for.
-  git -C "$CDAG_ROOT" fetch --quiet origin main
-  git -C "$CDAG_ROOT" merge-base --is-ancestor "$sha" origin/main ||
-    die "$sha is not a commit of main: refusing to deploy it"
-  git -C "$CDAG_ROOT" checkout --quiet --detach "$sha"
 
   docker login "$OCIR_REGISTRY" --username "$OCIR_PULL_USER" --password-stdin \
     <"$CDAG_SECRETS/ocir_pull_token" >/dev/null || die "cannot log in to $OCIR_REGISTRY"
@@ -171,9 +200,10 @@ main() {
   if [[ -f "$STATE_DIR/current.env" ]]; then cp "$STATE_DIR/current.env" "$STATE_DIR/previous.env"; fi
   mv "$candidate" "$STATE_DIR/current.env"
   record "deployed $sha"
+  prune_releases
   log "deployed $sha"
 }
 
-# The checkout in main() can replace this very file, and bash reads a script as it runs: the whole
-# call is one line so that nothing is read from the file after the checkout.
+# Bash reads a script as it runs: the whole call is one line so that nothing is read from the file
+# after main() ends (stage_release replaces this process by the exported copy).
 { main "$@"; exit; }
