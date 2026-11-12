@@ -5,7 +5,7 @@
 # temporary directory; on the VM the defaults apply. Nothing here prints a secret: files of the
 # secrets directory are only ever read to be sent to a command through its standard input.
 #
-#   CDAG_ROOT         the checkout of the repository (compose file, scripts)    /opt/cognitive-dag
+#   CDAG_ROOT         the checkout of the repository (never moved by a deploy)  /opt/cognitive-dag
 #   CDAG_STATE        state of the deployments, dumps, alert state              /var/lib/cognitive-dag
 #   CDAG_SECRETS      secret files, on a tmpfs                                  /run/cognitive-dag/secrets
 #   CDAG_PKI          internal PKI leaves, on a tmpfs                           /run/cognitive-dag/pki
@@ -19,8 +19,11 @@ CDAG_PKI="${CDAG_PKI:-/run/cognitive-dag/pki}"
 CDAG_CONFIG_DIR="${CDAG_CONFIG_DIR:-/etc/cognitive-dag}"
 CDAG_LOG_DIR="${CDAG_LOG_DIR:-/var/log/cognitive-dag}"
 
-COMPOSE_FILE="$CDAG_ROOT/deploy/compose.prod.yaml"
 STATE_DIR="$CDAG_STATE/state"
+# Each deployed commit runs from its own export of deploy/ (deploy.sh makes it); the checkout in
+# CDAG_ROOT is only the source of those exports and of the units that run from it.
+RELEASES_DIR="$STATE_DIR/releases"
+COMPOSE_FILE="$CDAG_ROOT/deploy/compose.prod.yaml"
 DUMP_DIR="$CDAG_STATE/dumps"
 ALERT_DIR="$CDAG_STATE/alerts"
 WAIT_TIMEOUT="${DEPLOY_WAIT_TIMEOUT:-300}"
@@ -75,7 +78,16 @@ require_secrets() {
 }
 
 # use_version <file>: the version file whose images the next compose commands use ("" = none).
-use_version() { VERSION_ENV="$1"; }
+# The compose file is the one of that version's commit when its export exists, else the checkout's.
+use_version() {
+  local sha=""
+  VERSION_ENV="$1"
+  COMPOSE_FILE="$CDAG_ROOT/deploy/compose.prod.yaml"
+  [[ -z "$1" || ! -f "$1" ]] || sha="$(sed -n 's/^GIT_SHA=//p' "$1" | tail -n 1)"
+  if [[ "$sha" =~ ^[0-9a-f]{40}$ && -f "$RELEASES_DIR/$sha/deploy/compose.prod.yaml" ]]; then
+    COMPOSE_FILE="$RELEASES_DIR/$sha/deploy/compose.prod.yaml"
+  fi
+}
 
 # docker compose with the config files, the version in VERSION_ENV and the two directories.
 compose() {

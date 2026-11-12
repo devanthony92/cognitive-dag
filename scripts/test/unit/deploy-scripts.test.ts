@@ -89,6 +89,7 @@ describe('deploy scripts (T040)', () => {
     DEPLOY_WAIT_TIMEOUT: '5',
     STUB_HEADERS: posix(dir('fixtures/headers.txt')),
     STUB_REDIRECT: posix(dir('fixtures/redirect.txt')),
+    STUB_REPO: posix(ROOT),
     ...extra,
   });
 
@@ -151,7 +152,8 @@ esac`;
     sandbox.stub('docker', dockerStub);
     sandbox.stub(
       'git',
-      `if [[ " $* " == *" merge-base "* && -n "\${STUB_NOT_ANCESTOR:-}" ]]; then exit 1; fi`,
+      `if [[ " $* " == *" merge-base "* && -n "\${STUB_NOT_ANCESTOR:-}" ]]; then exit 1; fi
+if [[ " $* " == *" archive "* ]]; then tar -c -C "$STUB_REPO" deploy; fi`,
     );
     sandbox.stub(
       'curl',
@@ -379,6 +381,60 @@ esac`;
       expect(calls.every((call) => call.sha === SHA1)).toBe(true);
       expect(calls.map((call) => call.args).join('\n')).not.toMatch(/migrator|pull/);
       expect(calls.some((call) => call.args.includes('up -d --wait'))).toBe(true);
+    });
+  });
+
+  describe('release export (the checkout is never moved)', () => {
+    const release = (sha: string): string => state(`releases/${sha}/deploy/compose.prod.yaml`);
+    const composeFiles = (sha: string): string[] =>
+      composeCalls()
+        .filter((call) => call.sha === sha)
+        .map((call) => / -f (\S+)/.exec(call.args)?.[1] ?? '');
+
+    it('exports the commit and runs compose from that export, never from the checkout', () => {
+      const result = deploy(SHA1);
+      expect(result.status, result.output).toBe(0);
+      expect(existsSync(release(SHA1))).toBe(true);
+      expect(existsSync(state(`releases/${SHA1}/deploy/ops/deploy.sh`))).toBe(true);
+      const files = composeFiles(SHA1);
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) expect(file).toBe(posix(release(SHA1)));
+      const git = sandbox.calls().filter((call) => call.startsWith('git'));
+      expect(git.some((call) => call.includes(`archive ${SHA1} deploy`))).toBe(true);
+    });
+
+    it('never checks out, resets or moves the checkout it deploys from', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      const git = sandbox.calls().filter((call) => call.startsWith('git'));
+      expect(git.length).toBeGreaterThan(0);
+      for (const call of git) expect(call).not.toMatch(/ (checkout|switch|reset|pull|merge) /);
+    });
+
+    it('keeps the exports of the current and the previous version only', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      expect(deploy('c'.repeat(40)).status).toBe(0);
+      expect(readdirSync(state('releases')).sort()).toEqual([SHA2, 'c'.repeat(40)].sort());
+    });
+
+    it('rollback and compose.sh use the compose file of the version they run', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      sandbox.clearCalls();
+      const result = sandbox.run(ROLLBACK, [], env());
+      expect(result.status, result.output).toBe(0);
+      const files = composeFiles(SHA1);
+      expect(files.length).toBeGreaterThan(0);
+      for (const file of files) expect(file).toBe(posix(release(SHA1)));
+    });
+
+    it.skipIf(process.platform === 'win32')('exports files the container users can read', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      const out = spawnSync('find', [posix(state(`releases/${SHA1}`)), '!', '-perm', '-o=r'], {
+        encoding: 'utf8',
+      });
+      expect(out.stdout).toBe('');
     });
   });
 

@@ -82,6 +82,8 @@ fetch() {
     die "cannot issue the internal certificates"
   rm -f "$stage/pki_ca_key" "$stage/pki_ca_crt"
 
+  # ca.crt was copied under umask 077 and pki.sh does not touch an existing CA: make it public.
+  chmod 0444 "$pki_stage/ca.crt"
   for name in "${GENERATED[@]}" "${DELIVERED[@]}"; do chmod 0444 "$stage/$name"; done
   chmod 0400 "$stage/ocir_pull_token"
 
@@ -93,6 +95,18 @@ fetch() {
     chmod 700 "$DOCKER_CONFIG"
     chown "$owner" "$DOCKER_CONFIG"
   fi
+
+  # Compose mounts these files into containers that run as other users (999, 1000, 10001): the mode
+  # of the file is what counts. Everything mounted must be readable by others; ocir_pull_token is
+  # only for docker login and is not mounted.
+  # (Git Bash on Windows, where the tests also run, has no Unix modes to check.)
+  local unreadable=() file mode
+  for file in "$stage"/* "$pki_stage"/*; do
+    [[ "$(basename "$file")" != ocir_pull_token && "$OSTYPE" != msys* && "$OSTYPE" != cygwin* ]] || continue
+    mode="$(stat -c %a "$file")"
+    (((8#$mode & 4) != 0)) || unreadable+=("$(basename "$file")")
+  done
+  ((${#unreadable[@]} == 0)) || die "not readable by the containers: ${unreadable[*]}. Nothing was installed"
 
   # Swap in only now that every secret was read: a failed fetch never leaves a partial set.
   rm -rf "$CDAG_SECRETS.old" "$CDAG_PKI.old"

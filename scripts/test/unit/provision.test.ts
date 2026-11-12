@@ -512,6 +512,42 @@ base64 <"$STUB_VAULT/$name" | tr -d '\\n'`,
     expect(statSync(join(secretsDir(), 'ocir_pull_token')).mode & 0o777).toBe(0o400);
   });
 
+  /** Every file Compose mounts into a container: all but the registry token, which docker login reads. */
+  const mounted = (): string[] => [
+    ...GENERATED.map((name) => join(secretsDir(), name)),
+    ...DELIVERED.filter((name) => name !== 'ocir_pull_token').map((name) =>
+      join(secretsDir(), name),
+    ),
+    ...readdirSync(sandbox.path('run/cognitive-dag/pki')).map((name) =>
+      join(sandbox.path('run/cognitive-dag/pki'), name),
+    ),
+  ];
+
+  it.skipIf(!POSIX_MODES)(
+    'leaves ca.crt and every mounted file readable by others, with the CA already in the Vault',
+    () => {
+      const result = sandbox.run(SECRETS, ['fetch'], env());
+      expect(result.status, result.output).toBe(0);
+      const pki = sandbox.path('run/cognitive-dag/pki');
+      expect(statSync(join(pki, 'ca.crt')).mode & 0o777).toBe(0o444);
+      for (const file of mounted()) {
+        expect(statSync(file).mode & 0o004, file).toBe(0o004);
+      }
+    },
+  );
+
+  it.skipIf(!POSIX_MODES)('fails and installs nothing when a mounted file is not readable', () => {
+    // A stub chmod that leaves ca.crt private stands for the regression this check guards.
+    sandbox.stub(
+      'chmod',
+      'if [[ "${*: -1}" == */ca.crt ]]; then exit 0; fi; exec /usr/bin/chmod "$@"',
+    );
+    const result = sandbox.run(SECRETS, ['fetch'], env());
+    expect(result.status).not.toBe(0);
+    expect(result.output).toContain('ca.crt');
+    expect(listed(secretsDir())).toEqual([]);
+  });
+
   it('is repeatable: a second fetch gives the same files', () => {
     expect(sandbox.run(SECRETS, ['fetch'], env()).status).toBe(0);
     const first = snapshot(secretsDir());

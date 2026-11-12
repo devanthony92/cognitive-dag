@@ -182,3 +182,15 @@ y repetir las comprobaciones; el reinicio solo arranca el stack cuando el Vault 
 `cognitive-dag-secrets.service` vuelca los secretos de nuevo y `cognitive-dag.service` levanta la versión
 actual (`deploy.sh --resume`). Si el Vault no responde, no arranca nada y no usa valores viejos: es el
 fallo cerrado esperado. Comprobación: `doctor.sh`.
+
+## Aplicar el arreglo de permisos de `ca.crt` y del despliegue por exportación
+
+Para una VM cuyo repositorio quedó en HEAD separado por un `deploy.sh` anterior (versión que hacía
+`checkout --detach`) y cuyo `ca.crt` quedó en `0600`. Tras mergear a `main`, en la VM:
+
+```bash
+sudo -u cdag-deploy git -C /opt/cognitive-dag checkout main
+sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only
+sudo systemctl restart cognitive-dag-secrets      # vuelve a volcar los secretos y deja ca.crt en 0444
+sudo -iu cdag-deploy /opt/cognitive-dag/deploy/ops/deploy.sh <sha-del-merge>
+```

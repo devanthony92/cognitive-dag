@@ -6,12 +6,12 @@ deja en `tmpfs`; el operador los carga desde su máquina (la VM no puede escribi
 
 ## Dónde está cada cosa
 
-| Qué                               | Dónde                                                                                                         |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| Valor de cada secreto             | Vault, secreto `cdag-<nombre>`                                                                                |
-| Archivos de los secretos en la VM | `/run/cognitive-dag/secrets/<nombre>` (`tmpfs`; directorio `0700`, archivos `0444`; `ocir_pull_token` `0400`) |
-| Certificados internos             | `/run/cognitive-dag/pki/` (`tmpfs`; la clave de la CA **no** queda en la VM)                                  |
-| Config no secreta                 | `/etc/cognitive-dag/cognitive-dag.env` y `local.env`                                                          |
+| Qué                               | Dónde                                                                                                                                                                                                                            |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Valor de cada secreto             | Vault, secreto `cdag-<nombre>`                                                                                                                                                                                                   |
+| Archivos de los secretos en la VM | `/run/cognitive-dag/secrets/<nombre>` (`tmpfs`; directorio `0700`, archivos `0444`, también `pki/ca.crt` y las claves de las hojas; `ocir_pull_token` `0400`; `fetch` falla si un archivo montado no lo puede leer otro usuario) |
+| Certificados internos             | `/run/cognitive-dag/pki/` (`tmpfs`; la clave de la CA **no** queda en la VM)                                                                                                                                                     |
+| Config no secreta                 | `/etc/cognitive-dag/cognitive-dag.env` y `local.env`                                                                                                                                                                             |
 
 Nada secreto se imprime, se versiona ni se escribe en disco. `docker inspect` solo muestra rutas
 (`*_FILE`), nunca valores. Si el Vault no responde al arrancar, `cognitive-dag-secrets.service` falla y no
