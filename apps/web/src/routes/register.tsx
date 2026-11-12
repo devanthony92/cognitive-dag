@@ -3,6 +3,7 @@ import { RegisterForm } from '../features/auth/RegisterForm';
 import { requireGuest } from '../features/session/guards';
 
 export const Route = createFileRoute('/register')({
+  staticData: { width: 'narrow' },
   // For visitors only: a signed-in user is sent to their organization.
   beforeLoad: ({ context }) => requireGuest(context.queryClient),
   component: RegisterForm,

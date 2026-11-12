@@ -3,7 +3,7 @@ import { WorkflowEditor } from '../features/workflows/WorkflowEditor';
 
 export const Route = createFileRoute('/orgs/$organizationId/workflows/$workflowId')({
   // The canvas needs the whole window, not the narrow column of the other screens.
-  staticData: { fullWidth: true },
+  staticData: { width: 'full' },
   component: Editor,
 });
 
