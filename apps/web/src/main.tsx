@@ -5,13 +5,23 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { setApiEventHandlers } from './api/client';
 import { forgetSession, sessionQuery } from './features/session/session';
+import { resetRouteRetries } from './components/route/RouteError';
+import { routerDefaults } from './components/route/router-defaults';
+import { initTheme } from './lib/theme';
 import { routeTree } from './routeTree.gen';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 });
 
-const router = createRouter({ routeTree, context: { queryClient } });
+initTheme();
+
+const router = createRouter({ routeTree, context: { queryClient }, ...routerDefaults });
+
+// A navigation that ends without error starts the retry count of the next outage from zero.
+router.subscribe('onResolved', () => {
+  if (!router.state.matches.some((match) => match.status === 'error')) resetRouteRetries();
+});
 
 // A 401 anywhere means the session is gone (expired, revoked, Valkey emptied): back to login.
 setApiEventHandlers({
