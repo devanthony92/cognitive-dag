@@ -16,6 +16,14 @@ export class ApiProblemError extends Error {
   }
 }
 
+/** The API answered with an error that is not an RFC 9457 problem (a proxy page during a restart). */
+export class UnexpectedResponseError extends Error {
+  constructor(readonly status: number) {
+    super(`Unexpected response ${status}`);
+    this.name = 'UnexpectedResponseError';
+  }
+}
+
 /** The CSRF token of the current session; the session query keeps it up to date. */
 let csrfToken: string | null = null;
 
@@ -65,8 +73,13 @@ export async function request<T>(
   // The session lives in an HttpOnly cookie that has to travel with every call.
   const response = await fetch(apiUrl(path), { ...init, headers, credentials: 'include' });
   const correlationId = response.headers.get(CORRELATION_ID_HEADER);
-  // 204 answers carry no body.
-  const body: unknown = response.status === 204 ? undefined : await response.json();
+  // 204 answers carry no body. An error answer may not be JSON at all (the proxy during a restart).
+  const body: unknown =
+    response.status === 204
+      ? undefined
+      : response.ok
+        ? await response.json()
+        : await response.json().catch(() => undefined);
 
   if (!response.ok) {
     const contentType = response.headers.get('Content-Type') ?? '';
@@ -75,7 +88,7 @@ export async function request<T>(
       notify(path, problem.data);
       throw new ApiProblemError(problem.data);
     }
-    throw new Error(`Unexpected response ${response.status}`);
+    throw new UnexpectedResponseError(response.status);
   }
 
   return { data: schema.parse(body), correlationId };
