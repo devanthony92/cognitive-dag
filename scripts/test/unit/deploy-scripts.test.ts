@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,6 +27,11 @@ const SHA1 = 'a'.repeat(40);
 const SHA2 = 'b'.repeat(40);
 const DOMAIN = 'demo.example.test';
 const IMAGES = ['api', 'worker', 'edge', 'migrator'];
+/** The digest of the index the docker stub serves with `--raw`: the SHA-256 of its exact bytes. */
+const stubDigest = (image: string, sha: string): string => {
+  const body = `{"stub":"bog.ocir.io/testns/cognitive-dag/${image}:${sha}"}`;
+  return `sha256:${createHash('sha256').update(body).digest('hex')}`;
+};
 
 const FULL_HEADERS = [
   'HTTP/2 200',
@@ -99,7 +104,17 @@ if [[ -n "\${STUB_FAIL_CMD:-}" && "$cmd" == *"$STUB_FAIL_CMD"* && "$sha" == "\${
   echo "stub failure" >&2; exit 1
 fi
 case "$cmd" in
-  *"buildx imagetools inspect"*) printf 'sha256:%s\\n' "$(printf '%s' "$cmd" | sha256sum | cut -c1-64)" ;;
+  *"buildx imagetools inspect"*)
+    # Like buildx 0.30.1: --format is ignored for an index, only --raw gives the index itself.
+    ref="\${args[-1]}"; image="\${ref##*/}"; image="\${image%%:*}"
+    if [[ -n "\${STUB_INSPECT_FAIL:-}" && "$image" == "$STUB_INSPECT_FAIL" ]]; then
+      echo "ERROR: $ref: not found" >&2; exit 1
+    fi
+    if [[ "$cmd" == *" --raw "* ]]; then
+      [[ -n "\${STUB_INSPECT_EMPTY:-}" ]] || printf '{"stub":"%s"}' "$ref"
+    else
+      printf 'Name:      %s\\nMediaType: application/vnd.oci.image.index.v1+json\\nDigest:    sha256:fc31d0034acf\\n\\nManifests:\\n' "$ref"
+    fi ;;
   *"ps --services --status running"*) [[ -z "\${STUB_POSTGRES_RUNNING:-}" ]] || echo postgres ;;
   *pg_dump*) echo "DUMP-CONTENT" ;;
   *"login"*) cat >/dev/null ;;
@@ -207,6 +222,11 @@ esac`;
           ),
         );
       }
+      for (const image of IMAGES) {
+        expect(current).toContain(
+          `${image.toUpperCase()}_IMAGE=bog.ocir.io/testns/cognitive-dag/${image}@${stubDigest(image, SHA1)}\n`,
+        );
+      }
       expect(current).toContain(`GIT_SHA=${SHA1}`);
       expect(readState('previous.env')).toBe('');
 
@@ -223,6 +243,24 @@ esac`;
       expect(headers).toBeGreaterThan(up);
       // No dump on a first deploy: there is no database yet.
       expect(calls.join('\n')).not.toMatch(/pg_dump/);
+    });
+
+    it.each([
+      ['fails', { STUB_INSPECT_FAIL: 'worker' }],
+      ['is empty', { STUB_INSPECT_EMPTY: '1' }],
+    ])('stops before the dump and any service when resolving an image %s', (_name, extra) => {
+      expect(deploy(SHA1).status).toBe(0);
+      const before = readState('current.env');
+      sandbox.clearCalls();
+
+      const result = deploy(SHA2, { STUB_POSTGRES_RUNNING: '1', ...extra });
+      expect(result.status).not.toBe(0);
+      expect(result.output).toMatch(/cannot resolve/);
+      expect(existsSync(state('candidate.env'))).toBe(false);
+      expect(readdirSync(dir('var/lib/cognitive-dag/dumps'))).toEqual([]);
+      expect(sandbox.calls().join('\n')).not.toMatch(/pg_dump/);
+      expect(composeCalls()).toEqual([]);
+      expect(readState('current.env')).toBe(before);
     });
 
     it('keeps the dump and previous, runs migrator after the dump and before the new services', () => {
