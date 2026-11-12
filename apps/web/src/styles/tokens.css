@@ -1,0 +1,110 @@
+/*
+ * Design tokens of "Línea Nocturna" (DESIGN.md is normative). Every colour is defined here and nowhere
+ * else (the static design test fails on a fixed colour outside this file). A colour that changes with
+ * the mode is `light-dark(<day>, <night>)`: it follows `prefers-color-scheme` by default and the
+ * selector of the user menu forces one mode through `:root[data-theme]`, which only sets `color-scheme`.
+ * `scripts/ui/contrast.ts` reads this file and fails CI if a declared pair drops below WCAG AA.
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Neutral: enamel (night) and porcelain (day), tinted toward hue 268, never pure black or white. */
+  --ground: light-dark(oklch(0.975 0.006 250), oklch(0.19 0.05 268));
+  --surface: light-dark(oklch(1 0 0), oklch(0.235 0.055 268));
+  --raised: light-dark(oklch(0.955 0.01 255), oklch(0.285 0.06 268));
+  /* Decorative divider; a border that identifies a control uses `line-strong` (3:1). */
+  --line: light-dark(oklch(0.84 0.02 262), oklch(0.4 0.06 268));
+  --line-strong: light-dark(oklch(0.62 0.03 262), oklch(0.6 0.05 265));
+  --ink: light-dark(oklch(0.22 0.05 268), oklch(0.96 0.01 255));
+  --ink-muted: light-dark(oklch(0.44 0.04 265), oklch(0.78 0.04 262));
+
+  /* Action: inverted ink. No line hue, so it is never mistaken for a state. */
+  --action: light-dark(oklch(0.22 0.05 268), oklch(0.96 0.01 255));
+  --on-action: light-dark(oklch(0.985 0.004 250), oklch(0.19 0.05 268));
+  --focus: light-dark(oklch(0.22 0.05 268), oklch(0.96 0.01 255));
+
+  /* Service state: reserved, never decorative. Always paired with a glyph and a label. */
+  --state-running: light-dark(oklch(0.46 0.12 235), oklch(0.79 0.12 225));
+  --state-succeeded: light-dark(oklch(0.46 0.14 155), oklch(0.8 0.16 155));
+  --state-failed: light-dark(oklch(0.5 0.2 27), oklch(0.72 0.19 25));
+  --state-waiting: light-dark(oklch(0.48 0.12 70), oklch(0.85 0.15 85));
+  --state-cancelled: light-dark(oklch(0.45 0.02 262), oklch(0.72 0.02 262));
+  --state-skipped: light-dark(oklch(0.5 0.03 262), oklch(0.62 0.03 262));
+  --state-reused: light-dark(oklch(0.46 0.1 155), oklch(0.8 0.1 155));
+
+  /* Node category (line colour). Always paired with a pictogram and a label. */
+  --node-trigger: light-dark(oklch(0.5 0.18 350), oklch(0.74 0.15 350));
+  --node-logic: light-dark(oklch(0.48 0.16 258), oklch(0.74 0.13 255));
+  --node-llm: light-dark(oklch(0.48 0.17 300), oklch(0.76 0.14 300));
+  --node-http: light-dark(oklch(0.5 0.14 55), oklch(0.78 0.14 60));
+  --node-approval: light-dark(oklch(0.45 0.13 125), oklch(0.82 0.15 112));
+  --node-mock: light-dark(oklch(0.46 0.03 262), oklch(0.72 0.03 262));
+
+  /* Floating surfaces only (Flat-Until-Floating). */
+  --shadow-color: light-dark(oklch(0.3 0.04 268 / 0.18), oklch(0.1 0.04 268 / 0.5));
+  --ring-focus: 0 0 0 2px var(--ground), 0 0 0 4px var(--focus);
+
+  /* Layout. */
+  --header-height: 3.5rem;
+  --bottom-bar-height: 3.5rem;
+  --rail-width: 15rem;
+  --rail-width-compact: 4.5rem;
+
+  /* Motion: only opacity and transform are animated. */
+  --duration-state: 120ms;
+  --duration-panel: 200ms;
+  --duration-route: 320ms;
+}
+
+/* Non-colour theme values: Tailwind turns them into utilities (font-sans, text-title, rounded-md,
+   max-w-page-default, shadow-float...). `static` emits them all, also the ones only CSS reads. */
+@theme static {
+  --font-sans: 'Atkinson Hyperlegible Next Variable', 'Atkinson Fallback', system-ui, sans-serif;
+  --font-mono:
+    'Atkinson Hyperlegible Mono Variable', 'Atkinson Mono Fallback', ui-monospace, monospace;
+
+  /* Type scale (ratio about 1.25; 12 px is the floor). */
+  --text-display: 2rem;
+  --text-display--line-height: 1.2;
+  --text-headline: 1.5rem;
+  --text-headline--line-height: 1.25;
+  --text-title: 1.125rem;
+  --text-title--line-height: 1.4;
+  --text-body: 0.9375rem;
+  --text-body--line-height: 1.6;
+  --text-body-sm: 0.8125rem;
+  --text-body-sm--line-height: 1.5;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1.33;
+
+  /* Shape. */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-station: 999px;
+
+  --shadow-float: 0 8px 24px var(--shadow-color);
+
+  /* The three page widths (DESIGN.md Layout). */
+  --container-page-narrow: 40rem;
+  --container-page-default: 70rem;
+
+  --ease-line: cubic-bezier(0.2, 0, 0, 1);
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-state: 0ms;
+    --duration-panel: 0ms;
+    --duration-route: 0ms;
+  }
+}

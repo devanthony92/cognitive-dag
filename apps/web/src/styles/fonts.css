@@ -1,0 +1,27 @@
+/*
+ * Self-hosted variable fonts (CSP `font-src 'self'`, no CDN). @fontsource ships WOFF2 files for the
+ * `latin` and `latin-ext` subsets only (enough for Spanish) with `font-display: swap`; Vite emits them
+ * to `assets/` with a hash. `build.assetsInlineLimit: 0` keeps them as files: an inlined `data:` font
+ * would be blocked. The fallback faces below give the system font the size of Atkinson so the swap
+ * does not move the layout.
+ */
+@import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
+@import '@fontsource-variable/atkinson-hyperlegible-mono/wght.css';
+
+@font-face {
+  font-family: 'Atkinson Fallback';
+  src: local('Arial'), local('Helvetica'), local('Liberation Sans');
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Atkinson Mono Fallback';
+  src: local('Consolas'), local('Menlo'), local('Courier New'), local('Liberation Mono');
+  size-adjust: 104%;
+  ascent-override: 92%;
+  descent-override: 24%;
+  line-gap-override: 0%;
+}

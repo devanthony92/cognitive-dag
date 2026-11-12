@@ -1,9 +1,47 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import './styles/fonts.css';
+@import './styles/tokens.css';
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+/* `dark:` follows the effective theme: the forced one, or the system preference when nothing is forced. */
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+}
 
+/* The semantic tokens of tokens.css as utilities: bg-surface, text-ink-muted, text-state-failed... */
 @theme inline {
+  --color-ground: var(--ground);
+  --color-surface: var(--surface);
+  --color-raised: var(--raised);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
+  --color-focus: var(--focus);
+  --color-state-running: var(--state-running);
+  --color-state-succeeded: var(--state-succeeded);
+  --color-state-failed: var(--state-failed);
+  --color-state-waiting: var(--state-waiting);
+  --color-state-cancelled: var(--state-cancelled);
+  --color-state-skipped: var(--state-skipped);
+  --color-state-reused: var(--state-reused);
+  --color-node-trigger: var(--node-trigger);
+  --color-node-logic: var(--node-logic);
+  --color-node-llm: var(--node-llm);
+  --color-node-http: var(--node-http);
+  --color-node-approval: var(--node-approval);
+  --color-node-mock: var(--node-mock);
+
+  /* Aliases of the former shadcn names, kept until every screen uses the tokens above (T049). */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -22,61 +60,63 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: oklch(0.985 0.002 250);
-  --foreground: oklch(0.21 0.02 255);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.02 255);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.02 255);
-  --primary: oklch(0.45 0.16 265);
-  --primary-foreground: oklch(0.985 0.002 250);
-  --secondary: oklch(0.95 0.008 255);
-  --secondary-foreground: oklch(0.28 0.03 255);
-  --muted: oklch(0.95 0.006 255);
-  --muted-foreground: oklch(0.48 0.02 255);
-  --accent: oklch(0.94 0.012 260);
-  --accent-foreground: oklch(0.28 0.03 255);
-  --destructive: oklch(0.52 0.2 27);
-  --border: oklch(0.9 0.008 255);
-  --input: oklch(0.88 0.01 255);
-  --ring: oklch(0.55 0.15 265);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: oklch(0.17 0.015 255);
-    --foreground: oklch(0.96 0.005 255);
-    --card: oklch(0.21 0.018 255);
-    --card-foreground: oklch(0.96 0.005 255);
-    --popover: oklch(0.21 0.018 255);
-    --popover-foreground: oklch(0.96 0.005 255);
-    --primary: oklch(0.72 0.13 265);
-    --primary-foreground: oklch(0.17 0.015 255);
-    --secondary: oklch(0.27 0.02 255);
-    --secondary-foreground: oklch(0.96 0.005 255);
-    --muted: oklch(0.27 0.02 255);
-    --muted-foreground: oklch(0.72 0.015 255);
-    --accent: oklch(0.3 0.025 260);
-    --accent-foreground: oklch(0.96 0.005 255);
-    --destructive: oklch(0.7 0.17 25);
-    --border: oklch(0.32 0.02 255);
-    --input: oklch(0.36 0.02 255);
-    --ring: oklch(0.65 0.13 265);
-  }
+  --background: var(--ground);
+  --foreground: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --popover: var(--raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--action);
+  --primary-foreground: var(--on-action);
+  --secondary: var(--raised);
+  --secondary-foreground: var(--ink);
+  --muted: var(--raised);
+  --muted-foreground: var(--ink-muted);
+  --accent: var(--raised);
+  --accent-foreground: var(--ink);
+  --destructive: var(--state-failed);
+  --border: var(--line);
+  --input: var(--line-strong);
+  --ring: var(--focus);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    font-family: var(--font-sans);
+  }
   body {
     @apply bg-background text-foreground antialiased;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--ring-focus);
+  }
+  code,
+  kbd,
+  samp,
+  pre {
+    font-family: var(--font-mono);
+  }
+  /* Digits that change (durations, counters, hours) keep their width. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
