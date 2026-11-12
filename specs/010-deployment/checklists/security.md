@@ -53,7 +53,7 @@ Las 25 casillas anteriores eran pruebas de los requisitos y siguen cumplidas. Al
 - CHK002 a CHK004: `deploy-config.test.ts`, `deploy-security.test.ts` y `deploy/ops/check-headers.sh`; cabeceras y 404 verificados con `curl` en producción.
 - CHK006 a CHK012: los siete riesgos constan como `accepted` con dueño y revisión en el [modelo de amenazas v3.0](../../../docs/threat-model.md) (sección 3.7).
 - CHK013 a CHK016: gitleaks, Vault, escaneo, SBOM y fijación por digest o SHA en CI y `release.yml`.
-- CHK017 y CHK018: retención y alertas verificadas (alerta de disco recibida); SPF, DKIM y DMARC configurados y correo entregado. **Falta anotar** el resultado `pass` de las tres comprobaciones en las cabeceras de un mensaje recibido (SC-009).
+- CHK017 y CHK018: retención y alertas verificadas (alerta de disco recibida); correo de alerta recibido con SPF, DKIM y DMARC en `pass` (SC-009). DMARC sigue en `p=none` y sin `rua`: subirlo a `quarantine` es una revisión pendiente.
 - CHK019 a CHK021: registro cerrado en producción (404); acceso solo por SSH con llave; reversa por digests sin migraciones inversas.
-- **No medido:** consumo de memoria (T052, SC-010), reconstrucción en una VM limpia (T055) y las cifras de planes de terceros (T002, CHK023 sigue siendo una tarea abierta).
+- **No medido:** reconstrucción en una VM limpia (T055), las cifras de planes de terceros (T002, CHK023 sigue siendo una tarea abierta) y la memoria bajo carga (T052 se midió en reposo: máximo 27,7 % del límite).
 
