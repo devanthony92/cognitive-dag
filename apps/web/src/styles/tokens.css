@@ -91,6 +91,9 @@
   --container-page-default: 70rem;
 
   --ease-line: cubic-bezier(0.2, 0, 0, 1);
+
+  /* The "En curso" arc turns slowly; reduced motion stops it (index.css). */
+  --animate-spin-slow: spin 2s linear infinite;
 }
 
 :root[data-theme='light'] {
