@@ -43,8 +43,8 @@ correo y demo cerrada, US9 cierre.
 
 ## Phase 1: Setup
 
-- [ ] T001 (autor) Entregar los prerrequisitos P1, P2, P5 a P9 de la spec; anotar en esta lista cuál ya está listo
-- [ ] T002 [P] Confirmar contra la fuente oficial, y anotar fecha y URL en `research.md`, cada cifra marcada **(verificar)**: capa gratuita de Oracle (OCIR, Vault, Email Delivery, política de instancias inactivas, capacidad A1) y condiciones de datos de la capa gratuita de Gemini
+- [x] T001 (autor) Entregar los prerrequisitos P1, P2, P5 a P9 de la spec; anotar en esta lista cuál ya está listo **Hecha por el autor:** P1, P2, P5 a P9 entregados y usados en producción (instancia, dominio, correo, OCIR y secreto de publicación, `docs/operations/oracle.md`); no se anotó la lista por prerrequisito
+- [ ] T002 [P] Confirmar contra la fuente oficial, y anotar fecha y URL en `research.md`, cada cifra marcada **(verificar)**: capa gratuita de Oracle (OCIR, Vault, Email Delivery, política de instancias inactivas, capacidad A1) y condiciones de datos de la capa gratuita de Gemini **NO realizada:** las cifras de `research.md` siguen marcadas «verificar», sin fecha ni URL de la fuente oficial. Producción ya funciona con la capa gratuita, pero la confirmación queda pendiente; se acepta como deuda documental (ADR-0099)
 
 ## Phase 2: Aplicación lista para producción (PR 1)
 
@@ -117,35 +117,35 @@ correo y demo cerrada, US9 cierre.
 
 ### Implementation
 
-- [ ] T043 (autor) Crear la instancia Ampere A1, la red y las reglas de entrada 22, 80 y 443, el Vault y la política de lectura de la instancia en Oracle; anotar los pasos reales en `docs/operations/oracle.md` (P1, P8) [D16A]. **Hecho por el autor; los pasos y los datos están en `docs/operations/oracle.md` (PR 4). Pendiente: reservar la IP pública**
+- [x] T043 (autor) Crear la instancia Ampere A1, la red y las reglas de entrada 22, 80 y 443, el Vault y la política de lectura de la instancia en Oracle; anotar los pasos reales en `docs/operations/oracle.md` (P1, P8) [D16A]. **Hecho por el autor; los pasos y los datos están en `docs/operations/oracle.md` (PR 4). Pendiente: reservar la IP pública** **Hecha por el autor.** La IP pública quedó efímera (ver `docs/operations/oracle.md`)
 - [x] T044 [US3] `deploy/provision/{provision.sh,secrets.sh,harden.sh,cloud-init.yaml}`: Docker, cortafuegos, SSH endurecido (solo llaves), `fail2ban`, usuario de despliegue, directorios, servicio `systemd` que vuelca los secretos del Vault a `tmpfs` y falla cerrado si no responde [D4B, D15A, D16A]
 - [x] T045 [US3] `deploy/env/*.example`: solo nombres de variables y su origen; comprobar que gitleaks sigue pasando sobre todo el historial
 - [x] T046 [US5] `deploy/ops/{deploy.sh,rollback.sh,doctor.sh}`: resolver digests, volcado previo en la VM (últimos 3), `migrator`, arranque, espera de salud, reversa automática, `current`/`previous` [D17A]
 - [x] T047 [US5] **[D3C]** `.github/workflows/deploy.yml`: se dispara con la publicación correcta; evaluar con el autor despliegue por empuje (SSH restringido con `command=`) frente a extracción (temporizador en la VM) y elegir una; entorno `production` sin revisores (P7)
 - [x] T048 [US7] `deploy/ops/check-headers.sh`: `curl` contra el dominio real que verifica HSTS, CSP, `X-Frame-Options`, `nosniff`, `Permissions-Policy`, COEP, COOP, CORP y la redirección HTTP→HTTPS; lo llama `deploy.sh` (FR-034)
 - [x] T049 [US6] `deploy/ops/alerts.sh` y temporizador `systemd` de 5 minutos; rotación y compresión de los registros a 90 días; procedimiento de prueba de cada alerta (FR-027, FR-028) [D9C, D10A]
-- [ ] T050 (autor) Registros A/AAAA del dominio y SPF, DKIM y DMARC (`p=none` con informes y plan de subida a `quarantine`) con OCI Email Delivery; correo de prueba con las tres comprobaciones en `pass` (P2, P5) [D14A]
+- [x] T050 (autor) Registros A/AAAA del dominio y SPF, DKIM y DMARC (`p=none` con informes y plan de subida a `quarantine`) con OCI Email Delivery; correo de prueba con las tres comprobaciones en `pass` (P2, P5) [D14A] **Hecha por el autor** con OCI Email Delivery: el correo de verificación se entregó desde producción. Falta anotar el resultado `pass` de SPF, DKIM y DMARC de las cabeceras de un mensaje recibido (SC-009)
 - [x] T051 [US8] **[D23A]** Caddy responde 404 a `POST /api/v1/auth/register` y un script en la VM crea las cuentas autorizadas; comprobar antes en el código si la aceptación de invitaciones pasa por `register`. **Hecha en la PR 4 con `deploy/ops/create-account.sh`.** Parte del Caddy hecha en la PR 3 (T031): el 404 está en `deploy/caddy/site.caddy` y probado; la aceptación de invitaciones es `POST /api/v1/invitations/accept` y no pasa por `register` (ADR-0090). Queda para la PR 4 el script de la VM que crea las cuentas
-- [ ] T052 [US6] Medir el consumo real de memoria con la prueba de humo y ajustar los límites de [research.md](./research.md); registrar la tabla medida (SC-010)
+- [ ] T052 [US6] Medir el consumo real de memoria con la prueba de humo y ajustar los límites de [research.md](./research.md); registrar la tabla medida (SC-010) **NO realizada: pendiente de medir.** Necesita la prueba de humo en la VM; `docs/operations/memory.md` y PLAN §9 llevan la tabla marcada «pendiente de medir» con `docker stats --no-stream` y `free -m`. La suma de límites (3 328 MB) sí cumple ≤ 6 GB. Se completará con los números de la orquestación
 - [x] T053 [US3] [US5] `docs/operations/`: aprovisionamiento, despliegue y reversa, rotación de secretos, reconstrucción desde cero, acceso a la UI de Temporal por `ssh -L`, kill switches, respuesta a alertas y baja de la VM (FR-038)
 - [x] T054 [US3] [US5] [US6] ADR-0093 (secretos en OCI Vault), ADR-0094 (despliegue automático, reversa y ausencia de backups, riesgo aceptado) y ADR-0095 (registros, retención y alertas por script)
-- [ ] T055 [US4] Reconstruir el servicio en una VM limpia con el script y las imágenes del registro, con una base vacía, y registrar el tiempo en `docs/operations/rebuild.md` (US4 escenario 3)
+- [ ] T055 [US4] Reconstruir el servicio en una VM limpia con el script y las imágenes del registro, con una base vacía, y registrar el tiempo en `docs/operations/rebuild.md` (US4 escenario 3) **NO realizada.** La cuota Always Free está ocupada por la VM actual; riesgo aceptado con revisión al liberar cuota o antes de datos reales (ADR-0099)
 
 ## Phase 6: Cierre (PR 5)
 
 ### Tests
 
-- [ ] T056 [P] [US9] `scripts/test/unit/check-evidence.test.ts`: el comprobador rechaza cualquier fila `deferred:F9` en la matriz y en el modelo de amenazas tras el cierre de F9
+- [x] T056 [P] [US9] `scripts/test/unit/check-evidence.test.ts`: el comprobador rechaza cualquier fila `deferred:F9` en la matriz y en el modelo de amenazas tras el cierre de F9
 
 ### Implementation
 
-- [ ] T057 [US9] `docs/threat-model.md` v3.0: sin `deferred:F9`; Caddy, registro de imágenes y alertas como elementos reales; pasan a `accepted` con dueño, razón y revisión: pérdida de datos sin copias (D5), ZAP sin staging ni activo (D2, #65), LLM02 con la capa gratuita y demo cerrada (D13), cron sin mínimo (#68), disparos descartados sin métrica (#67), alerta de costo ausente (D9C)
-- [ ] T058 [US9] `docs/security/owasp-evidence.md` regenerado: A02 (TLS y cabeceras), A03 (SBOM y escaneo al publicar), A04 (TLS interno), A05 y A09 (retención y alertas) pasan a `verified`; LLM02 sigue `accepted`; `pnpm security:evidence` en verde (FR-036)
-- [ ] T059 [US9] Tratamiento de issues: #62, #63 y #64 se cierran con la PR (`Closes`); #61, #65, #66, #67 y #68 quedan abiertos con su fase de revisión y razón vigente según D18, D19, D20, D21 y D12 (FR-035)
-- [ ] T060 [P] [US9] `docs/PLAN.md` §7 (observabilidad = registros y alertas), §9 (topología real, tabla de memoria medida, sin backups) y §10 (F9 completada con su criterio ajustado: «demo cerrada con TLS, cabeceras verificadas y despliegue con reversa»); README (estado y enlace a la guía de operación) e índice de ADR
-- [ ] T061 [US9] ADR-0097 (verificación de cabeceras sin staging; #65 `accepted`) y ADR-0098 (cierre de F9: D1 a D23, riesgos aceptados y su revisión, y la enmienda 1.1.0 de la constitución ya aplicada); ADR-0088 marcado cumplido o reabierto fila por fila
-- [ ] T062 Ejecutar los escenarios de `quickstart.md` en producción y registrar resultados en la PR (SC-001 a SC-011)
-- [ ] T063 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX), `checklists/security.md` revisado y marcar T001–T062 como hechas en este archivo
+- [x] T057 [US9] `docs/threat-model.md` v3.0: sin `deferred:F9`; Caddy, registro de imágenes y alertas como elementos reales; pasan a `accepted` con dueño, razón y revisión: pérdida de datos sin copias (D5), ZAP sin staging ni activo (D2, #65), LLM02 con la capa gratuita y demo cerrada (D13), cron sin mínimo (#68), disparos descartados sin métrica (#67), alerta de costo ausente (D9C)
+- [x] T058 [US9] `docs/security/owasp-evidence.md` regenerado: A02 (TLS y cabeceras), A03 (SBOM y escaneo al publicar), A04 (TLS interno), A05 y A09 (retención y alertas) pasan a `verified`; LLM02 sigue `accepted`; `pnpm security:evidence` en verde (FR-036)
+- [x] T059 [US9] Tratamiento de issues: #62, #63 y #64 se cierran con la PR (`Closes`); #61, #65, #66, #67 y #68 quedan abiertos con su fase de revisión y razón vigente según D18, D19, D20, D21 y D12 (FR-035) Se cierran #62, #63 y #64 con `Closes` en la PR; #61, #65, #66, #67 y #68 quedan abiertos con su fase y razón (ADR-0099)
+- [x] T060 [P] [US9] `docs/PLAN.md` §7 (observabilidad = registros y alertas), §9 (topología real, tabla de memoria medida, sin backups) y §10 (F9 completada con su criterio ajustado: «demo cerrada con TLS, cabeceras verificadas y despliegue con reversa»); README (estado y enlace a la guía de operación) e índice de ADR
+- [x] T061 [US9] ADR-0097 (verificación de cabeceras sin staging; #65 `accepted`) y ADR-0098 (cierre de F9: D1 a D23, riesgos aceptados y su revisión, y la enmienda 1.1.0 de la constitución ya aplicada); ADR-0088 marcado cumplido o reabierto fila por fila **Renumerado:** el 0097 lo usó #81 (cortafuegos), así que la verificación de cabeceras es ADR-0098 y el cierre, ADR-0099
+- [x] T062 Ejecutar los escenarios de `quickstart.md` en producción y registrar resultados en la PR (SC-001 a SC-011) Verificado por `curl` público: 301, cabeceras, 404 de `register` y de `metrics`, 401 de `/auth/session`; el resto, por el autor (ver la PR)
+- [x] T063 Checklist de Security Considerations en la PR (principios I, III, VII, VIII y IX), `checklists/security.md` revisado y marcar T001–T062 como hechas en este archivo. **Estado real al cerrar:** T001 y T003–T051, T053, T054 y T056–T063 hechas; **T002, T052 y T055 NO realizadas** (ver sus notas y ADR-0099)
 
 ---
 
