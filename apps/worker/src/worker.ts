@@ -26,6 +26,16 @@ import { createCredentialResolver } from './http/credentials';
 import { createScheduleActivities } from './schedules/activities';
 
 /** Opaque per-process id: it reaches API clients in the ping result, so it must not leak host data. */
+/**
+ * Long polls each Worker keeps open against the Temporal namespace. They are pinned (not left to the
+ * SDK default) because the server caps concurrent pollers per namespace with
+ * `frontend.namespaceCount` (deploy/temporal/dynamicconfig.yaml), which must stay above their sum:
+ * main Worker 10 workflow (sticky included) + 10 activity, LLM Worker 10 activity, HTTP Worker 10
+ * activity = 40. deploy-config.test.ts checks the sum against that limit.
+ */
+export const WORKFLOW_TASK_POLLS = 10;
+export const ACTIVITY_TASK_POLLS = 10;
+
 export function createWorkerId(): string {
   return `worker-${randomUUID()}`;
 }
@@ -91,6 +101,8 @@ export function createWorker(options: WorkerOptions): Promise<Worker> {
     connection: options.connection,
     namespace: options.namespace,
     taskQueue: options.taskQueue,
+    maxConcurrentWorkflowTaskPolls: WORKFLOW_TASK_POLLS,
+    maxConcurrentActivityTaskPolls: ACTIVITY_TASK_POLLS,
     workflowsPath: path.resolve(__dirname, 'workflows'),
     activities: {
       ...createPingActivities({
@@ -236,6 +248,7 @@ export function createLlmWorker(options: LlmWorkerOptions): Promise<Worker> {
     connection: options.connection,
     namespace: options.namespace,
     taskQueue: options.taskQueue,
+    maxConcurrentActivityTaskPolls: ACTIVITY_TASK_POLLS,
     activities: { ...activities, ...compiler },
     maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
     ...(options.shutdownGraceTime === undefined
@@ -323,6 +336,7 @@ export function createHttpWorker(options: HttpWorkerOptions): Promise<Worker> {
     connection: options.connection,
     namespace: options.namespace,
     taskQueue: options.taskQueue,
+    maxConcurrentActivityTaskPolls: ACTIVITY_TASK_POLLS,
     activities,
     maxConcurrentActivityTaskExecutions: options.maxConcurrentActivities,
     ...(options.shutdownGraceTime === undefined
