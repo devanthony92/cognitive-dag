@@ -386,3 +386,23 @@ describe('Data stores of production (T033..T035)', () => {
     expect(hours).toBeLessThanOrEqual(168);
   });
 });
+
+describe('Temporal poller limit', () => {
+  const worker = read('apps/worker/src/worker.ts');
+  const constant = (name: string): number =>
+    Number(new RegExp(`${name} = (\\d+);`).exec(worker)?.[1]);
+  const dynamic = read('deploy/temporal/dynamicconfig.yaml');
+  const limit = Number(/frontend\.namespaceCount:\s+- value: (\d+)/.exec(dynamic)?.[1]);
+
+  it('pins the polls of every Worker the process creates', () => {
+    expect(worker.match(/Worker\.create\(/g)).toHaveLength(3);
+    expect(worker.match(/maxConcurrentActivityTaskPolls: ACTIVITY_TASK_POLLS/g)).toHaveLength(3);
+    expect(worker.match(/maxConcurrentWorkflowTaskPolls: WORKFLOW_TASK_POLLS/g)).toHaveLength(1);
+  });
+
+  it('keeps frontend.namespaceCount above the pollers the worker opens, with margin', () => {
+    const polls = constant('WORKFLOW_TASK_POLLS') + 3 * constant('ACTIVITY_TASK_POLLS');
+    expect(polls).toBeGreaterThan(0);
+    expect(limit).toBeGreaterThanOrEqual(polls * 2);
+  });
+});

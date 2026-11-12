@@ -2,5 +2,9 @@
 # defaults unless named.
 limit.maxIDLength:
   - value: 255
+# Concurrent long polls per namespace. The worker opens 40 (apps/worker/src/worker.ts: main Worker
+# 10 workflow + 10 activity, LLM 10 activity, HTTP 10 activity); 5 starved them with
+# "ResourceExhausted: namespace concurrent poller limit exceeded". 100 leaves room for a second
+# worker replica's restart overlap. The server default is 1200.
 frontend.namespaceCount:
-  - value: 5
+  - value: 100
