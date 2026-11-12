@@ -540,6 +540,11 @@ cabeceras, y la suite completa de `apps/web`.
 - El registro sigue cerrado; no se añade ni cambia ningún flujo de autenticación (MFA y registro quedan fuera).
 - Se conserva el stack: React 19, Vite, Tailwind 4, Radix, TanStack Router/Query y `@xyflow/react`; sin
   librería de componentes nueva.
+- Los estados de la API (`RunStatus` de 6 valores, `StepStatus` de 7 y `waitingReason`) se reconcilian con los
+  7 estados de diseño en [contracts/design-contract.md](./contracts/design-contract.md); se añade el glifo
+  «Pendiente» para `pending` y se conservan las 6 clases de error del contrato.
+- La lista de ejecuciones no trae pasos: la tira de servicio se carga por fila visible con el detalle ya
+  existente (research R15); si no basta, el resumen en la lista sería un cambio **[API]** sujeto a aprobación.
 - Los hallazgos de la auditoría y los números del «estado de partida» se leyeron en `main` fa0595a y se
   re-miden en la PR 1 antes de empezar para fijar la línea base.
 - Fuera de alcance: integraciones (pasan a **F11**), nuevas funciones de producto, cambios de copy más allá de
