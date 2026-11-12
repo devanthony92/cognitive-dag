@@ -10,7 +10,7 @@ y OCIR). Es **el orden exacto del primer despliegue**; cada paso termina con su 
 Docker (paquetes de Ubuntu), `ufw`, `fail2ban` y las herramientas; crea el usuario `cdag-deploy` y los
 directorios; clona el repositorio en `/opt/cognitive-dag`; instala la CLI de OCI en `/opt/oci-cli`
 (versión fijada); endurece SSH (solo llaves, sin `root`, `AllowUsers`), activa `fail2ban` y deja el
-cortafuegos en 22, 80 y 443 (`harden.sh`); e instala y habilita las unidades de `systemd`
+cortafuegos en 22, 80 y 443 y sin metadatos para los contenedores (`harden.sh`, `firewall.sh`); e instala y habilita las unidades de `systemd`
 (`cognitive-dag-secrets`, `cognitive-dag` y el temporizador de alertas) y la rotación de registros a 90
 días. **No** trae secretos ni imprime ningún valor, y no escribe nada dentro del árbol del repositorio.
 
@@ -18,6 +18,29 @@ Lo primero lo hace `cloud-init` al crear la instancia; si hay que repetirlo a ma
 
 ```bash
 sudo /opt/cognitive-dag/deploy/provision/provision.sh
+```
+
+## Cortafuegos
+
+Dos capas, ambas dejadas por `harden.sh` ([ADR-0097](../adr/0097-reglas-de-cortafuegos-fuera-de-ufw.md)):
+
+- `ufw`: niega lo entrante y abre 22 (con límite), 80 y 443. Instalarlo desinstala `iptables-persistent`
+  y `netfilter-persistent`; el aprovisionamiento no usa ninguno de los dos y no toca `/etc/iptables/rules.v4`.
+- `deploy/provision/firewall.sh`, aplicado por `cognitive-dag-firewall.service` tras `docker.service` y
+  `ufw.service` (en cada arranque y en cada reinicio de Docker): quita los `REJECT icmp-host-prohibited` que
+  la imagen de Oracle deja en `INPUT` y `FORWARD`, mantiene la cadena `InstanceServices` de Oracle (guardada en
+  `/etc/cognitive-dag/oracle-instance-services.rules`) y bloquea en `DOCKER-USER` el tráfico de los
+  contenedores a `169.254.0.0/16` (metadatos y el token del instance principal), salvo el DNS al resolvedor
+  `169.254.169.254`. La salida a OCIR, Gemini y SMTP no cambia.
+
+Comprobación:
+
+```bash
+sudo iptables -S INPUT FORWARD | grep -c icmp-host-prohibited      # 0
+sudo iptables -S InstanceServices                                  # las reglas de Oracle
+sudo iptables -S DOCKER-USER                                       # -j COGNITIVE-DAG-METADATA
+sudo iptables -S COGNITIVE-DAG-METADATA                            # DNS RETURN y REJECT a 169.254.0.0/16
+systemctl is-active cognitive-dag-firewall.service                 # active
 ```
 
 ## Pasos del primer despliegue
@@ -114,6 +137,45 @@ Prueba cada alerta una vez con el procedimiento de [alerts.md](./alerts.md).
 Configura la llave restringida y el entorno `deploy` de GitHub como indica
 [deploy.md](./deploy.md#configuración-una-vez). Desde entonces cada publicación correcta de `main` se
 despliega sola.
+
+## Aplicar este arreglo en una VM ya aprovisionada
+
+Para una VM que se aprovisionó con la versión anterior de `harden.sh` (con las reglas de Oracle quitadas a
+mano). Tras mergear a `main`, en la VM:
+
+```bash
+sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only
+sudo bash /opt/cognitive-dag/deploy/provision/harden.sh
+sudo install -m 0644 /opt/cognitive-dag/deploy/provision/systemd/cognitive-dag-firewall.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now cognitive-dag-firewall.service
+```
+
+`harden.sh` es idempotente: guarda las reglas de `InstanceServices` desde las cargadas (o desde
+`rules.v4.cognitive-dag.bak` si ya no están) y aplica `firewall.sh`. Verifica:
+
+```bash
+sudo iptables -S INPUT FORWARD | grep icmp-host-prohibited || echo "sin REJECT genericos"
+sudo iptables -S InstanceServices
+sudo iptables -S OUTPUT | grep InstanceServices
+sudo iptables -S DOCKER-USER
+sudo iptables -S COGNITIVE-DAG-METADATA
+sudo cat /etc/cognitive-dag/oracle-instance-services.rules
+systemctl is-enabled cognitive-dag-firewall.service
+```
+
+Desde un contenedor el servicio de metadatos debe quedar cerrado y lo demás seguir abierto (imagen
+pública mínima; el segundo y el tercero deben responder):
+
+```bash
+docker run --rm alpine wget -T 5 -qO- http://169.254.169.254/opc/v2/instance/   # falla: «Connection refused» o sin ruta
+docker run --rm alpine nslookup bog.ocir.io                                    # resuelve (DNS permitido)
+docker run --rm alpine wget -T 10 -qO- https://example.com | head -n 3          # sale a Internet
+sudo curl -s -H 'Authorization: Bearer Oracle' http://169.254.169.254/opc/v2/instance/ | head -c 80   # el host sí (root)
+```
+
+Los sitios públicos (80 y 443) deben responder sin tocar nada más. Para probar la persistencia, `sudo reboot`
+y repetir las comprobaciones; el reinicio solo arranca el stack cuando el Vault responde (ver abajo).
 
 ## Después de un reinicio de la VM
 
