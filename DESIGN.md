@@ -6,12 +6,14 @@ colors:
   surface-night: "oklch(0.235 0.055 268)"
   raised-night: "oklch(0.285 0.06 268)"
   line-night: "oklch(0.4 0.06 268)"
+  line-strong-night: "oklch(0.6 0.05 265)"
   ink-night: "oklch(0.96 0.01 255)"
   ink-muted-night: "oklch(0.78 0.04 262)"
   ground-day: "oklch(0.975 0.006 250)"
   surface-day: "oklch(1 0 0)"
   raised-day: "oklch(0.955 0.01 255)"
   line-day: "oklch(0.84 0.02 262)"
+  line-strong-day: "oklch(0.62 0.03 262)"
   ink-day: "oklch(0.22 0.05 268)"
   ink-muted-day: "oklch(0.44 0.04 265)"
   action-night: "oklch(0.96 0.01 255)"
@@ -147,7 +149,7 @@ Un plano de metro hecho esmalte azul medianoche. Un workflow es una red de líne
 
 La identidad viene de cuatro cosas y solo esas: tipo (humanista de señalética, alta legibilidad), paleta (esmalte oscuro con tintas de línea), densidad (etiquetas fijas, ritmo de estaciones) y un gesto firma: el DAG dibujado como plano de metro. La organización de pantallas, la navegación y los controles siguen siendo estándar web (carril lateral, tablas con cabeceras, formularios, pestañas) para que nadie tenga que aprender nada.
 
-El modo oscuro es el nativo (operadores en sesiones largas, a menudo de noche); el claro («porcelana») es un par completo, no un añadido. Ambos siguen `prefers-color-scheme`.
+El modo oscuro es el nativo (operadores en sesiones largas, a menudo de noche); el claro («porcelana») es un par completo, no un añadido. Un selector de tres opciones en el menú de usuario (y en la cabecera sin sesión) elige **Sistema** (por defecto, sigue `prefers-color-scheme`), **Claro** u **Oscuro**; la elección se recuerda en el navegador y se aplica antes del primer pintado, sin parpadeo.
 
 Rechazado de forma explícita: el aspecto shadcn por defecto (azul oklch(0.45 0.16 265), tarjetas grises uniformes), cualquier azul-primario genérico de SaaS y la rotulación solo por color.
 
@@ -168,7 +170,8 @@ Estrategia **Comprometida**: el esmalte azul medianoche ocupa el 60–70 % de la
 - **Medianoche Esmalte** (ground-night, oklch(0.19 0.05 268)): fondo de la aplicación en oscuro.
 - **Panel de Estación** (surface-night, oklch(0.235 0.055 268)): tarjetas, tablas, paneles.
 - **Placa Elevada** (raised-night, oklch(0.285 0.06 268)): popovers, filas activas, badges.
-- **Filete de Plano** (line-night, oklch(0.4 0.06 268)): bordes de 1 px, divisores.
+- **Filete de Plano** (line-night, oklch(0.4 0.06 268)): bordes de 1 px, divisores decorativos.
+- **Filete de Control** (line-strong, oklch(0.6 0.05 265) en noche, oklch(0.62 0.03 262) en día): borde de campos y casillas; añadido en F10 para cumplir 3:1 (WCAG 1.4.11), que el filete de plano no alcanza.
 - **Porcelana** (ink-night, oklch(0.96 0.01 255)) y **Porcelana Apagada** (ink-muted-night, oklch(0.78 0.04 262)): texto principal y secundario.
 - Par claro «Porcelana»: ground-day oklch(0.975 0.006 250), surface-day blanco, ink-day oklch(0.22 0.05 268), ink-muted-day oklch(0.44 0.04 265), line-day oklch(0.84 0.02 262).
 
@@ -187,6 +190,7 @@ Cada estado lleva color + glifo + etiqueta en español.
 - **Cancelado** (state-cancelled, gris oklch(0.72 0.02 262)): círculo tachado ⊘.
 - **Omitido** (state-skipped, gris oklch(0.62 0.03 262)): relleno rayado a 45° + «»».
 - **Reutilizado** (state-reused, verde apagado oklch(0.8 0.1 155)): contorno discontinuo + ↺.
+- **Pendiente** (sin color de estado; usa `ink-muted`): círculo vacío de trazo fino + «Pendiente». Es el paso que aún no empezó (`StepStatus.pending`); se añadió a los siete estados originales porque el contrato de la API lo distingue de «Esperando».
 
 ### Categoría de nodo (línea)
 
