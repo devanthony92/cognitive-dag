@@ -64,12 +64,27 @@ revert() {
   exit 1
 }
 
+# Sets RESOLVED to <repository>@sha256:<digest of the index>, or exits the script. It is called
+# directly, never inside $(...): `die` in a command substitution would only end that subshell.
+# The digest is the SHA-256 of the raw index exactly as the registry serves it, which is what a
+# registry digest is by definition. `--format` and the text output differ between buildx versions
+# (0.30.1 ignores `--format` for an index), so neither is parsed.
+RESOLVED=""
 resolve_digest() { # resolve_digest <image> <sha>
-  local reference="$OCIR_REGISTRY/$OCIR_NAMESPACE/cognitive-dag/$1" digest
-  digest="$(docker buildx imagetools inspect "$reference:$2" --format '{{.Manifest.Digest}}')" ||
+  local reference="$OCIR_REGISTRY/$OCIR_NAMESPACE/cognitive-dag/$1" raw sum digest
+  raw="$STATE_DIR/index.raw.$$"
+  if ! docker buildx imagetools inspect --raw "$reference:$2" >"$raw" || [[ ! -s "$raw" ]]; then
+    rm -f "$raw"
     die "cannot resolve $1 for $2: was it published?"
+  fi
+  sum="$(sha256sum "$raw")" || {
+    rm -f "$raw"
+    die "cannot hash the index of $1"
+  }
+  rm -f "$raw"
+  digest="sha256:${sum%% *}"
   [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] || die "unexpected digest for $1"
-  printf '%s@%s' "$reference" "$digest"
+  RESOLVED="$reference@$digest"
 }
 
 prune_dumps() {
@@ -116,13 +131,13 @@ main() {
   docker login "$OCIR_REGISTRY" --username "$OCIR_PULL_USER" --password-stdin \
     <"$CDAG_SECRETS/ocir_pull_token" >/dev/null || die "cannot log in to $OCIR_REGISTRY"
 
-  local candidate="$STATE_DIR/candidate.env" image
-  {
-    for image in "${IMAGES[@]}"; do
-      printf '%s_IMAGE=%s\n' "${image^^}" "$(resolve_digest "$image" "$sha")"
-    done
-    printf 'GIT_SHA=%s\n' "$sha"
-  } >"$candidate"
+  # Every image is resolved before anything is written or touched: a failure ends the script here.
+  local candidate="$STATE_DIR/candidate.env" image lines=""
+  for image in "${IMAGES[@]}"; do
+    resolve_digest "$image" "$sha"
+    lines+="${image^^}_IMAGE=$RESOLVED"$'\n'
+  done
+  printf '%sGIT_SHA=%s\n' "$lines" "$sha" >"$candidate"
   log "deploying $sha"
 
   local old_sha=""
