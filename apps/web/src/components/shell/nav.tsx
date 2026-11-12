@@ -90,7 +90,7 @@ export function NavItem({ destination, organizationId, layout, badge, ariaLabel 
       className={cn(
         'relative flex min-h-11 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-raised hover:text-ink data-[status=active]:bg-raised data-[status=active]:font-bold data-[status=active]:text-ink',
         layout === 'rail'
-          ? 'flex-col gap-1 px-1 py-2 text-label lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-body'
+          ? 'flex-col gap-1 px-0 py-2 text-label tracking-tight lg:flex-row lg:justify-start lg:gap-3 lg:px-3 lg:py-2 lg:text-body lg:tracking-normal'
           : 'min-h-14 flex-1 flex-col gap-0.5 px-0.5 text-label',
       )}
     >
