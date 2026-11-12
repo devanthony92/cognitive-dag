@@ -41,6 +41,10 @@ deploy/provision/secrets.sh put <nombre>       # nueva versión; el valor se lee
 deploy/provision/secrets.sh list               # present / MISSING por nombre
 ```
 
+Los secretos se cargan desde **OCI Cloud Shell** (la CLI ya viene autenticada) o desde una máquina con tu
+perfil de OCI. Los nombres en el Vault deben ser exactamente `cdag-<nombre>` (`secrets.sh` los crea así; si
+cargas uno a mano con otro nombre, la VM no lo encuentra y `fetch` falla).
+
 El valor llega a la CLI de OCI como argumento en base64, visible un instante para los procesos de tu
 usuario: hazlo en una máquina que solo uses tú. El script no imprime el valor ni su base64.
 

@@ -90,4 +90,12 @@ Comprobación, ya en la VM: `sudo systemctl start cognitive-dag-secrets` termina
    la región), **DKIM** (el CNAME que da Oracle) y **DMARC** (`_dmarc`: `v=DMARC1; p=none; rua=mailto:...`).
    Se empieza en `p=none` con informes y se sube a `quarantine` cuando los informes salgan limpios.
 3. Credenciales SMTP del usuario de Oracle: usuario y contraseña van al Vault (`smtp_user`, `smtp_password`).
+   Para que el envío no falle con `535 Authorization failed: Envelope From address <...> not authorized`
+   aunque las credenciales sean válidas (aprendido en producción):
+   - El usuario `email-sender` debe estar **añadido al grupo** `email-senders`.
+   - La política lleva, además de `use email-family`, la línea explícita
+     `Allow group 'Default'/'email-senders' to use approved-senders in compartment cognitive-dag`, y el
+     remitente aprobado debe estar en el compartment `cognitive-dag`.
+   - Los cambios de IAM pueden tardar **varios minutos** en aplicarse al envío SMTP: espera antes de
+     volver a probar.
 4. Correo de prueba y revisión de las cabeceras del mensaje recibido: `spf=pass`, `dkim=pass`, `dmarc=pass`.
