@@ -13,7 +13,7 @@ contracts/design-contract.md, quickstart)
 
 **Tests**: incluidas. Cada prueba se escribe primero y DEBE fallar antes de implementar. No hay TDD
 constitucional nuevo (la autorización no cambia); las pruebas fijan las reglas de la spec: mapas de estado y
-categoría, backoff de 503, contraste, colores fijos, shell. Las 36 pruebas existentes de `apps/web/test/` no se
+categoría, backoff de 503, contraste, colores fijos, shell. Los 33 archivos de prueba existentes de `apps/web/test/` no se
 borran ni se debilitan (FR-031); si un selector cambia, se conserva la intención y se explica en la PR.
 
 **Feature flag**: ninguno (decisión del autor; ADR-0102). Cada PR deja la aplicación coherente y completa en
@@ -107,7 +107,7 @@ que no puede hacer un agente.
 - [ ] T019 [US3] `DESIGN.md`: sustituir «ambos siguen `prefers-color-scheme`» por el selector de tres opciones y
       registrar «Pendiente» en la tabla de estados (clarificación 2026-11-12)
 - [ ] T020 [US8] Ejecutar `pnpm --filter @cognitive-dag/web typecheck test build`, `pnpm lint`, `pnpm format:check`
-      y el recorrido de [quickstart.md](./quickstart.md) §2 y §3; confirmar 36 pruebas previas verdes y 0 scroll
+      y el recorrido de [quickstart.md](./quickstart.md) §2 y §3; confirmar 33 archivos de prueba previos verdes y 0 scroll
       horizontal en las 20 rutas; pasar ADR-0101 y 0102 a `accepted`
 - [ ] T021 [US8] Abrir la PR 1 con capturas claro/oscuro a 375 y 1440 px, mapa de principios de la constitución
       y la lista de decisiones de ADR; CI en verde
@@ -158,7 +158,7 @@ que no puede hacer un agente.
       única), con esqueleto estático bajo `prefers-reduced-motion`
 - [ ] T035 [US3] Activar `design-static.test.ts` con la lista de excepciones y retirar de ella cada archivo que
       esta PR deja limpio; actualizar `DESIGN.md` con «Pendiente»
-- [ ] T036 [US8] Typecheck, 36 pruebas previas y nuevas, build, capturas claro/oscuro de cada componente (galería de
+- [ ] T036 [US8] Typecheck, 33 archivos de prueba previos y nuevas, build, capturas claro/oscuro de cada componente (galería de
       pruebas no desplegada) y recorrido de anchos; abrir la PR 2 con CI en verde
 - [ ] T037 (autor) Merge de la PR 2 y comprobación en producción (consola, red, `check-headers.sh`)
 
@@ -207,7 +207,7 @@ que no puede hacer un agente.
 - [ ] T050 [US5] Sustituir todos los «Cargando…» sueltos fuera del editor y la ejecución por `RoutePending` o
       `Skeleton` con la forma final (FR-017)
 - [ ] T051 [US8] Recorrido de anchos y modos de todas las rutas (quickstart §2), `docs/ui/widths-report.md`
-      actualizado, 36 pruebas previas verdes
+      actualizado, 33 archivos de prueba previos verdes
 - [ ] T052 [US8] Abrir la PR 3 con capturas claro/oscuro 375/1440 de cada pantalla; CI en verde
 - [ ] T053 (autor) Merge de la PR 3 y comprobación en producción
 
@@ -276,7 +276,7 @@ que no puede hacer un agente.
 - [ ] T074 [US6] Medir `workflow-editor-performance` y el JS inicial antes/después; dentro de +10 % y +15 % (SC-011);
       documentar en la PR
 - [ ] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
-      grises de estaciones y estados; 36 pruebas previas (incluidas `workflow-editor*`, `runs-*`) sin debilitarlas
+      grises de estaciones y estados; 33 archivos de prueba previos (incluidas `workflow-editor*`, `runs-*`) sin debilitarlas
 - [ ] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde
 - [ ] T077 (autor) Merge de la PR 4 y comprobación en producción, incluida una ejecución real en vivo
 
@@ -316,7 +316,7 @@ que no puede hacer un agente.
 - [x] S01 `docs/PLAN.md`: F10 pasa a «Rediseño del frontend» y la antigua F10 «Integraciones» pasa a F11; `README.md`
       sigue el mismo criterio; los ADR históricos no se tocan
 - [x] S02 `spec.md`, clarificaciones, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` y
-      `tasks.md` escritos; análisis de consistencia con `speckit-analyze`
+      `tasks.md` escritos; análisis de consistencia en `checklists/analysis.md`
 
 ---
 

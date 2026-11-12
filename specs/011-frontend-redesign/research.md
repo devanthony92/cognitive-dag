@@ -162,7 +162,7 @@ están tomadas en [DESIGN.md](../../DESIGN.md) y en las clarificaciones de la sp
 
 - **Decisión**: cada PR es completa: en la PR 1 los componentes antiguos siguen funcionando porque los alias
   `--background`/`--primary` apuntan a los tokens nuevos; en la PR 2 los componentes base se reestilizan en
-  su sitio (mismos nombres y props, para que las 36 pruebas sigan verdes); en la PR 3 y 4 se migran pantallas;
+  su sitio (mismos nombres y props, para que las pruebas existentes sigan verdes); en la PR 3 y 4 se migran pantallas;
   las clases antiguas se retiran en la PR 3. Nunca queda un modo ilegible: cada PR se prueba en claro y oscuro.
 - **Razón**: FR-032 y la decisión de «sin flag».
 - **Riesgo**: una regresión visual llega a producción; se mitiga con capturas claro/oscuro 375/1440 por PR y

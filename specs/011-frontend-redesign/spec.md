@@ -22,7 +22,7 @@ backend. La antigua F10 «Integraciones» pasa a ser F11."
 
 Hechos medidos que condicionan el alcance:
 
-- `apps/web` tiene 20 rutas (`apps/web/src/routes/*`), unos 85 componentes `.tsx`, 36 archivos de prueba en
+- `apps/web` tiene 20 archivos de ruta (`apps/web/src/routes/*`: 19 pantallas y la raíz), unos 85 componentes `.tsx`, 33 archivos de prueba en
   `apps/web/test/` y ningún componente de forma (shell, pictogramas, esqueletos).
 - Hay 46 usos de colores Tailwind fijos (`bg-amber-500`, `text-emerald-600`…) en 9 archivos:
   `features/demo/DemoNotice.tsx`, `features/runs/{OrganizationRunsPage,status,StatusBadge,StepPanel}.tsx` y
@@ -475,7 +475,7 @@ cabeceras, y la suite completa de `apps/web`.
 - **FR-030**: La fase MUST ser solo de frontend: sin cambios de endpoints, contratos Zod, esquema, worker,
   Compose ni despliegue. Si una tarea demuestra que un cambio de API es imprescindible, MUST detenerse, marcarse
   en `tasks.md` como **[API]** y pedir aprobación del autor antes de ejecutarse.
-- **FR-031**: Las 36 pruebas existentes de `apps/web` MUST seguir pasando; si el cambio de estructura obliga a
+- **FR-031**: Los 33 archivos de prueba existentes de `apps/web` MUST seguir pasando; si el cambio de estructura obliga a
   actualizar un selector, la intención de la prueba MUST conservarse y el cambio explicarse en la PR. Los 6
   checks de CI MUST pasar en cada PR.
 - **FR-032**: Cada PR MUST dejar la aplicación coherente y desplegable por sí sola (sin pantallas a medias
@@ -514,13 +514,13 @@ cabeceras, y la suite completa de `apps/web`.
   con acción de reintento.
 - **SC-006**: «Describir workflow» muestra contenido (esqueleto del editor) en **≤ 200 ms** desde el clic
   cuando el código se precargó, y en ningún caso hay una pantalla en blanco (hoy: 1–3 s en blanco).
-- **SC-007**: Los **7** estados y las **6** categorías son distinguibles en escala de grises; **100 %** de las
+- **SC-007**: Los **7** estados de diseño (más «Pendiente») y las **6** categorías son distinguibles en escala de grises; **100 %** de las
   variantes tienen glifo y etiqueta en texto, probado por componente.
 - **SC-008**: **0** objetivos táctiles de menos de 44 px en controles y **0** textos de menos de 12 px
   (hoy 36 px y 10/11 px); cada una de las pantallas tiene exactamente **1** `h1`.
 - **SC-009**: **0** violaciones de CSP en consola y **0** solicitudes a orígenes distintos del propio al cargar
   cualquier ruta en producción; `check-headers.sh` pasa en cada despliegue de la fase.
-- **SC-010**: Las **36** pruebas existentes de `apps/web` siguen pasando y el total de pruebas no baja; los
+- **SC-010**: Los **33** archivos de prueba existentes de `apps/web` siguen pasando y el total de pruebas no baja; los
   **6** checks de CI pasan en cada PR de la fase.
 - **SC-011**: El editor con un workflow de referencia mantiene el tiempo de la prueba
   `workflow-editor-performance` dentro de +10 % respecto a `main`, y el peso inicial de JavaScript de la
