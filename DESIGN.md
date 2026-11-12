@@ -121,6 +121,11 @@ components:
     textColor: "{colors.ink-night}"
     rounded: "{rounded.lg}"
     padding: "16px"
+  node-station:
+    backgroundColor: "{colors.surface-night}"
+    textColor: "{colors.ink-night}"
+    rounded: "{rounded.station}"
+    size: "40px"
   status-badge:
     backgroundColor: "{colors.raised-night}"
     textColor: "{colors.ink-night}"
@@ -149,7 +154,7 @@ Rechazado de forma explícita: el aspecto shadcn por defecto (azul oklch(0.45 0.
 **Key Characteristics:**
 
 - Esmalte oscuro tintado de azul, nunca negro puro; blancos de porcelana tintados, nunca `#fff` de pantalla.
-- Estado y categoría = forma + etiqueta + color (nunca solo color; WCAG 1.4.1).
+- Categoría = pictograma + etiqueta + color; estado = glifo + etiqueta + color (nunca solo color; WCAG 1.4.1).
 - Líneas a 45°/90°, estaciones circulares, etiquetas de tamaño fijo.
 - Una sola acción primaria por vista, en tinta invertida (blanco sobre noche, tinta sobre día).
 - Todo estado de fallo conserva orientación: cabecera, ruta de vuelta y reintento.
@@ -175,7 +180,7 @@ Estrategia **Comprometida**: el esmalte azul medianoche ocupa el 60–70 % de la
 
 Cada estado lleva color + glifo + etiqueta en español.
 
-- **En curso** (state-running, cian oklch(0.79 0.12 225)): anillo con giro lento + «En curso».
+- **En curso** (state-running, cian oklch(0.79 0.12 225)): arco abierto con giro lento + «En curso».
 - **Completado** (state-succeeded, verde oklch(0.8 0.16 155)): círculo con ✓.
 - **Fallido** (state-failed, rojo oklch(0.72 0.19 25)): círculo con ✕, siempre con clase de error (transitorio, límite, tiempo, permanente).
 - **Esperando** (state-waiting, ámbar oklch(0.85 0.15 85)): reloj de arena; incluye aprobaciones humanas.
@@ -185,20 +190,22 @@ Cada estado lleva color + glifo + etiqueta en español.
 
 ### Categoría de nodo (línea)
 
-Identidad por forma de estación + color de línea + etiqueta. El color de categoría vive en el glifo y la arista saliente; el de estado, en el relleno y el badge.
+Todas las estaciones son círculos idénticos; la categoría se identifica por un **pictograma** de 24 px (trazo de 2 px, en el color de la línea) + etiqueta + color. El color de categoría vive en el borde de la estación, el pictograma y la arista saliente; el de estado, solo en la insignia de estado.
 
-- **Disparador** (node-trigger, magenta oklch(0.74 0.15 350)): terminal en píldora.
-- **Lógica** (node-logic, cobalto oklch(0.74 0.13 255)): rombo (condición, merge).
-- **LLM** (node-llm, violeta oklch(0.76 0.14 300)): hexágono.
-- **HTTP** (node-http, naranja oklch(0.78 0.14 60)): cuadrado.
-- **Aprobación humana** (node-approval, lima oklch(0.82 0.15 112)): círculo con silueta de persona.
-- **Simulado / mock** (node-mock, pizarra oklch(0.72 0.03 262)): cuadrado discontinuo.
+- **Disparador** (node-trigger, magenta oklch(0.74 0.15 350)): rayo (`zap`).
+- **Lógica** (node-logic, cobalto oklch(0.74 0.13 255)): bifurcación con nodos (`git-branch`; condición, merge).
+- **LLM** (node-llm, violeta oklch(0.76 0.14 300)): destellos, estrella de cuatro puntas y una pequeña (`sparkles`).
+- **HTTP** (node-http, naranja oklch(0.78 0.14 60)): globo terráqueo (`globe`).
+- **Aprobación humana** (node-approval, lima oklch(0.82 0.15 112)): persona con ✓ (`user-check`).
+- **Simulado / mock** (node-mock, pizarra oklch(0.72 0.03 262)): matraz (`flask-conical`).
+
+Los pictogramas son SVG propios en el bundle (o los equivalentes de Lucide indicados), nunca desde CDN.
 
 ### Named Rules
 
 **The Enamel Rule.** El fondo nunca es negro ni blanco puros: siempre esmalte o porcelana tintados hacia el matiz 268.
 **The Reserved Ink Rule.** Los colores de estado solo significan estado; nunca decoran, nunca rellenan botones ni cabeceras.
-**The Never-Color-Alone Rule.** Si quitas el matiz, el estado y la categoría siguen distinguibles por glifo y etiqueta.
+**The Never-Color-Alone Rule.** Si quitas el matiz, el estado y la categoría siguen distinguibles: la categoría por pictograma + etiqueta + color, el estado por glifo + etiqueta + color.
 **The One Action Rule.** La tinta invertida marca la acción principal: una por vista.
 
 ## Typography
@@ -268,7 +275,7 @@ Capas tonales, no sombras: la profundidad se lee por saltos de claridad del esma
 
 ## Shapes
 
-Lenguaje de placa esmaltada y estación. Radios: 4 px (badges pequeños, celdas), 8 px (botones, campos), 12 px (paneles), 999 px (estaciones, píldoras de estado). Bordes de 1 px en `line`; 2 px solo en el foco y en selección de nodo. Las aristas del DAG se doblan solo a 45° y 90° con esquinas redondeadas de radio fijo (12 px); las estaciones son círculos de 20–24 px con borde de 4 px, el nodo seleccionado crece a 28 px.
+Lenguaje de placa esmaltada y estación. Radios: 4 px (badges pequeños, celdas), 8 px (botones, campos), 12 px (paneles), 999 px (estaciones, píldoras de estado). Bordes de 1 px en `line`; 2 px solo en el foco y en selección de nodo. Las aristas del DAG se doblan solo a 45° y 90° con esquinas redondeadas de radio fijo (12 px); toda estación es un círculo de 40 px (radio 20) con borde de 4 px en el color de su categoría y relleno `surface`; seleccionada, crece a 48 px y suma el anillo de foco doble. La forma no distingue categorías: lo hace el pictograma interior. La insignia de estado es un círculo de 18 px.
 
 ## Components
 
@@ -289,7 +296,11 @@ Cabecera en Label, filas de 52 px, columna de estado primero, duración tabular 
 
 ### Nodo del editor (estación)
 
-Glifo de categoría (forma por categoría) + nombre + subtítulo de tipo; la ejecución añade anillo de estado y badge. Entradas y salidas son puertos redondos de 12 px con zona de 44 px. Sin `border-l-4`.
+Estación circular de 40 px (48 px seleccionada, con anillo de foco doble), borde de 4 px en el color de la categoría, relleno `surface` y pictograma de 24 px (trazo de 2 px, color de la categoría). Nombre (Title, 13 px, 600) y subtítulo de tipo (body-sm, apagado) **debajo** de la estación, de tamaño fijo.
+
+**Insignia de estado:** círculo de 18 px en la esquina superior derecha, relleno del color del estado, borde de 2 px en `ground` y glifo en `ground`: ✓ completado, arco abierto en curso (gira lento; estático con `prefers-reduced-motion`), reloj esperando, ✕ fallido, ⊘ cancelado, «»» omitido, ↺ reutilizado. Sin estado (editor) no hay insignia; no existe anillo de estado exterior.
+
+**Aristas:** líneas de 5 px a 45°/90° con esquinas de 12 px, en el color de la categoría del nodo origen; las ramas de una condición se etiquetan «sí» / «no». Entradas y salidas son puertos redondos de 12 px con zona de 44 px. Sin `border-l-4`.
 
 ### Campos y formularios
 
