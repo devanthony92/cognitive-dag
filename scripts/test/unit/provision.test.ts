@@ -26,6 +26,7 @@ vi.setConfig({ testTimeout: 180_000, hookTimeout: 180_000 });
 const PROVISION = 'deploy/provision/provision.sh';
 const SECRETS = 'deploy/provision/secrets.sh';
 const HARDEN = 'deploy/provision/harden.sh';
+const FIREWALL = 'deploy/provision/firewall.sh';
 const PKI = 'deploy/provision/pki.sh';
 
 const GENERATED = [
@@ -62,6 +63,71 @@ const provisionEnv = (sandbox: Sandbox): Record<string, string> => ({
   CDAG_REPO_URL: 'https://example.invalid/repo.git',
 });
 
+/**
+ * A small stateful iptables: the rules live in one file as `N <chain>` and `R <chain> <spec>` lines,
+ * enough for -N -F -C -A -I -D, iptables-save and iptables-restore --noflush. `netfilter-persistent`
+ * is deliberately not stubbed: ufw removes it from the real host, so calling it must fail here too.
+ */
+const IPTABLES_STATE = 'iptables.rules';
+function iptablesStubs(sandbox: Sandbox): void {
+  const head = `f="$STUB_BIN/../${IPTABLES_STATE}"; touch "$f"
+drop() { awk -v p="$1" 'index($0,p)!=1' "$f" >"$f.t"; mv "$f.t" "$f"; }`;
+  sandbox.stub(
+    'iptables',
+    `${head}
+args=(); for a in "$@"; do [[ "$a" == -w ]] || args+=("$a"); done
+set -- "\${args[@]}"
+op="$1"; chain="\${2:-}"
+case "$op" in
+  -N) grep -Fxq "N $chain" "$f" && exit 1; echo "N $chain" >>"$f" ;;
+  -F) drop "R $chain " ;;
+  -C) grep -Fxq "R $chain \${*:3}" "$f" ;;
+  -A) echo "R $chain \${*:3}" >>"$f" ;;
+  -I) shift 2; [[ "$1" =~ ^[0-9]+$ ]] && shift; { echo "R $chain $*"; cat "$f"; } >"$f.t"; mv "$f.t" "$f" ;;
+  -D) line="R $chain \${*:3}"; grep -Fxq "$line" "$f" || exit 1
+      awk -v l="$line" '$0==l && !d { d=1; next } { print }' "$f" >"$f.t"; mv "$f.t" "$f" ;;
+  *) exit 64 ;;
+esac`,
+  );
+  sandbox.stub(
+    'iptables-save',
+    `${head}
+echo '*filter'
+sed -n 's/^N \\(.*\\)$/:\\1 - [0:0]/p; s/^R /-A /p' "$f"
+echo COMMIT`,
+  );
+  sandbox.stub(
+    'iptables-restore',
+    `${head}
+while IFS= read -r line; do
+  case "$line" in
+    :*) c="\${line%% *}"; c="\${c#:}"; grep -Fxq "N $c" "$f" || echo "N $c" >>"$f"; drop "R $c " ;;
+    -A\\ *) echo "R \${line#-A }" >>"$f" ;;
+  esac
+done`,
+  );
+}
+
+/** The rules of an Oracle image as the stubs keep them: the generic REJECTs and InstanceServices. */
+const ORACLE_RULES = [
+  'N InstanceServices',
+  'R INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT',
+  'R INPUT -p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT',
+  'R INPUT -j REJECT --reject-with icmp-host-prohibited',
+  'R FORWARD -j REJECT --reject-with icmp-host-prohibited',
+  'R OUTPUT -d 169.254.0.0/16 -j InstanceServices',
+  'R InstanceServices -d 169.254.0.2/32 -p tcp -m owner --uid-owner 0 -m tcp --dport 3260 -j ACCEPT',
+  'R InstanceServices -d 169.254.0.0/16 -p tcp -j REJECT --reject-with tcp-reset',
+];
+
+/** The rules held by the iptables stubs, one per line, sorted so that two runs compare equal. */
+const liveRules = (sandbox: Sandbox): string[] =>
+  existsSync(sandbox.path(IPTABLES_STATE))
+    ? readFileSync(sandbox.path(IPTABLES_STATE), 'utf8').split('\n').filter(Boolean).sort()
+    : [];
+const seedRules = (sandbox: Sandbox, lines: string[]): void =>
+  writeFileSync(sandbox.path(IPTABLES_STATE), `${lines.join('\n')}\n`);
+
 /** Stubs for the host tools that provisioning calls. */
 function hostStubs(sandbox: Sandbox): void {
   for (const name of [
@@ -72,10 +138,10 @@ function hostStubs(sandbox: Sandbox): void {
     'sshd',
     'chown',
     'usermod',
-    'netfilter-persistent',
   ]) {
     sandbox.stub(name);
   }
+  iptablesStubs(sandbox);
   // A user exists once useradd made it: the marker is how the stubs remember between two runs.
   sandbox.stub('useradd', 'mkdir -p "$STUB_BIN/../users"; touch "$STUB_BIN/../users/${!#}"');
   sandbox.stub('id', '[[ -f "$STUB_BIN/../users/${!#}" ]]');
@@ -95,7 +161,9 @@ fi`,
 
 describe('shellcheck', () => {
   it.skipIf(!hasCommand('shellcheck'))('is clean on the provisioning scripts', () => {
-    const files = [PROVISION, SECRETS, HARDEN, PKI].map((file) => posix(join(ROOT, file)));
+    const files = [PROVISION, SECRETS, HARDEN, FIREWALL, PKI].map((file) =>
+      posix(join(ROOT, file)),
+    );
     const run = spawnSync('shellcheck', files, { encoding: 'utf8' });
     expect(run.stdout + run.stderr).toBe('');
     expect(run.status).toBe(0);
@@ -122,7 +190,8 @@ describe('provision.sh (T039)', () => {
   });
   afterEach(() => sandbox.cleanup());
 
-  const state = (): Record<string, string> => snapshot(sandbox.root, ['stub-bin', 'calls.log']);
+  const state = (): Record<string, string> =>
+    snapshot(sandbox.root, ['stub-bin', 'calls.log', IPTABLES_STATE]);
 
   it('succeeds twice and the second run changes nothing (idempotent)', () => {
     const first = sandbox.run(PROVISION, [], provisionEnv(sandbox));
@@ -196,6 +265,133 @@ describe('provision.sh (T039)', () => {
       .calls()
       .filter((call) => call.startsWith('sshd') || /^systemctl reload.*ssh/.test(call));
     expect(sshCalls[0]).toMatch(/^sshd -t/);
+  });
+
+  describe('firewall (ADR-0097)', () => {
+    const run = (): ReturnType<Sandbox['run']> => {
+      const result = sandbox.run(PROVISION, [], provisionEnv(sandbox));
+      expect(result.status, result.output).toBe(0);
+      return result;
+    };
+    const chainRules = (chain: string): string[] =>
+      readFileSync(sandbox.path(IPTABLES_STATE), 'utf8')
+        .split('\n')
+        .filter((line) => line.startsWith(`R ${chain} `))
+        .map((line) => line.slice(`R ${chain} `.length));
+    const saved = (): string => sandbox.path('etc/cognitive-dag/oracle-instance-services.rules');
+
+    it("removes Oracle's generic REJECT rules from INPUT and FORWARD, and no other rule", () => {
+      seedRules(sandbox, ORACLE_RULES);
+      run();
+      expect(liveRules(sandbox).join('\n')).not.toMatch(/icmp-host-prohibited/);
+      expect(chainRules('INPUT')).toEqual([
+        '-m state --state RELATED,ESTABLISHED -j ACCEPT',
+        '-p tcp -m state --state NEW -m tcp --dport 22 -j ACCEPT',
+      ]);
+    });
+
+    it('does not depend on netfilter-persistent and leaves rules.v4 alone', () => {
+      mkdirSync(sandbox.path('etc/iptables'), { recursive: true });
+      const stock =
+        '*filter\n:INPUT ACCEPT [0:0]\n-A INPUT -j REJECT --reject-with icmp-host-prohibited\nCOMMIT\n';
+      writeFileSync(sandbox.path('etc/iptables/rules.v4'), stock);
+      seedRules(sandbox, ORACLE_RULES);
+      const result = run();
+      expect(readFileSync(sandbox.path('etc/iptables/rules.v4'), 'utf8')).toBe(stock);
+      expect(result.output).not.toMatch(/netfilter-persistent/);
+      expect(sandbox.calls().filter((call) => call.startsWith('netfilter-persistent'))).toEqual([]);
+    });
+
+    it('keeps the InstanceServices rules and loads them again after a reboot', () => {
+      seedRules(sandbox, ORACLE_RULES);
+      run();
+      const text = readFileSync(saved(), 'utf8');
+      expect(text).toMatch(/^:InstanceServices - \[0:0\]$/m);
+      expect(text).toMatch(/^-A InstanceServices -d 169\.254\.0\.2\/32 .*--dport 3260 -j ACCEPT$/m);
+      expect(text).toMatch(
+        /^-A InstanceServices -d 169\.254\.0\.0\/16 -p tcp -j REJECT --reject-with tcp-reset$/m,
+      );
+      expect(text).toMatch(/^COMMIT$/m);
+      expect(chainRules('OUTPUT')).toContain('-d 169.254.0.0/16 -j InstanceServices');
+
+      // A reboot: memory is empty and only the unit runs, with the file saved on disk.
+      writeFileSync(sandbox.path(IPTABLES_STATE), '');
+      const boot = sandbox.run(FIREWALL, ['apply'], { CDAG_INSTANCE_SERVICES: posix(saved()) });
+      expect(boot.status, boot.output).toBe(0);
+      expect(chainRules('InstanceServices')).toHaveLength(2);
+      expect(chainRules('OUTPUT')).toEqual(['-d 169.254.0.0/16 -j InstanceServices']);
+    });
+
+    it('takes the InstanceServices rules from the stock rules.v4 when memory has none', () => {
+      mkdirSync(sandbox.path('etc/iptables'), { recursive: true });
+      const rule =
+        '-A InstanceServices -d 169.254.0.0/16 -p udp -j REJECT --reject-with icmp-port-unreachable';
+      writeFileSync(
+        sandbox.path('etc/iptables/rules.v4'),
+        `*filter\n:InstanceServices - [0:0]\n-A OUTPUT -d 169.254.0.0/16 -j InstanceServices\n${rule}\nCOMMIT\n`,
+      );
+      run();
+      expect(readFileSync(saved(), 'utf8')).toContain(rule);
+      expect(chainRules('InstanceServices')).toHaveLength(1);
+    });
+
+    it('does not overwrite the saved copy with whatever is loaded later', () => {
+      seedRules(sandbox, ORACLE_RULES);
+      run();
+      const first = readFileSync(saved(), 'utf8');
+      seedRules(sandbox, ['N InstanceServices', 'R InstanceServices -j ACCEPT']);
+      run();
+      expect(readFileSync(saved(), 'utf8')).toBe(first);
+    });
+
+    it('blocks containers from 169.254.0.0/16 in DOCKER-USER, DNS to the resolver excepted', () => {
+      run();
+      expect(chainRules('DOCKER-USER')).toEqual(['-j COGNITIVE-DAG-METADATA']);
+      expect(chainRules('COGNITIVE-DAG-METADATA')).toEqual([
+        '-d 169.254.169.254/32 -p udp --dport 53 -j RETURN',
+        '-d 169.254.169.254/32 -p tcp --dport 53 -j RETURN',
+        '-d 169.254.0.0/16 -j REJECT --reject-with icmp-admin-prohibited',
+      ]);
+      // Only the metadata network is touched: nothing else of the containers' egress is dropped.
+      for (const rule of chainRules('COGNITIVE-DAG-METADATA'))
+        expect(rule).toMatch(/^-d 169\.254\./);
+    });
+
+    it('is idempotent: a second run leaves the same rules and no duplicate', () => {
+      seedRules(sandbox, ORACLE_RULES);
+      run();
+      const first = liveRules(sandbox);
+      run();
+      expect(liveRules(sandbox)).toEqual(first);
+      expect(new Set(first).size).toBe(first.length);
+    });
+
+    it('installs a unit that reapplies at boot and on a Docker restart, before the stack', () => {
+      run();
+      const unit = readFileSync(
+        sandbox.path('etc/systemd/system/cognitive-dag-firewall.service'),
+        'utf8',
+      );
+      expect(unit).toMatch(/^After=.*\bdocker\.service\b/m);
+      expect(unit).toMatch(/^After=.*\bufw\.service\b/m);
+      expect(unit).toMatch(/^Requires=docker\.service$/m);
+      expect(unit).toMatch(/^PartOf=docker\.service$/m);
+      expect(unit).toMatch(/^Before=cognitive-dag\.service$/m);
+      expect(unit).toMatch(/^Type=oneshot$/m);
+      expect(unit).toMatch(/^RemainAfterExit=yes$/m);
+      expect(unit).toMatch(
+        /^ExecStart=\/usr\/bin\/bash \/opt\/cognitive-dag\/deploy\/provision\/firewall\.sh apply$/m,
+      );
+      expect(unit).toMatch(/^WantedBy=multi-user\.target$/m);
+      expect(sandbox.calls().join('\n')).toMatch(
+        /systemctl enable .*cognitive-dag-firewall\.service/,
+      );
+    });
+
+    it('refuses an unknown command', () => {
+      expect(sandbox.run(FIREWALL, ['flush']).status).toBe(2);
+      expect(sandbox.calls().filter((call) => call.startsWith('iptables'))).toEqual([]);
+    });
   });
 
   it('installs the units: secrets fail closed, then the stack, alerts every 5 minutes', () => {

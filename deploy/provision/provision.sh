@@ -3,9 +3,9 @@
 # (F9, T044, FR-016, D16A, ADR-0093). Idempotent: running it again changes nothing that is already
 # right. It installs Docker and the tools, creates the deploy user and the directories, clones the
 # repository to /opt/cognitive-dag, installs the OCI CLI, hardens SSH and the firewall, and installs
-# and enables the systemd units. It does NOT fetch secrets (that needs the Vault and the operator's
-# first steps, docs/operations/provisioning.md) and prints no value; it writes nothing inside the
-# repository tree and nothing secret to disk.
+# and enables the systemd units (the firewall one keeps the rules across reboots). It does NOT fetch
+# secrets (that needs the Vault and the operator's first steps, docs/operations/provisioning.md) and
+# prints no value; it writes nothing inside the repository tree and nothing secret to disk.
 #
 #   sudo deploy/provision/provision.sh
 #
@@ -102,7 +102,8 @@ EOF
 install_file "$rotation" "$R/etc/logrotate.d/cognitive-dag" 0644
 rm -f "$rotation"
 systemctl daemon-reload
-systemctl enable cognitive-dag-secrets.service cognitive-dag.service cognitive-dag-alerts.timer
+systemctl enable cognitive-dag-firewall.service cognitive-dag-secrets.service cognitive-dag.service \
+  cognitive-dag-alerts.timer
 
 step "done"
 if [[ ! -f "$CONFIG" ]]; then

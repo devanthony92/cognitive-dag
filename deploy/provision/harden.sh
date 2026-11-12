@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Hardens the host (F9, T044, FR-016, D15A): SSH with keys only and no root, fail2ban on SSH, a host
-# firewall that opens 22, 80 and 443 and nothing else. Called by provision.sh; idempotent.
+# firewall that opens 22, 80 and 443 and nothing else, plus the rules ufw does not manage
+# (firewall.sh). Called by provision.sh; idempotent.
 #
 # PROVISION_ROOT is a prefix for every path (empty on the VM, a temporary directory in the tests).
 # Docker publishes ports around ufw, which is why the Compose file publishes only 80 and 443 and
@@ -67,14 +68,31 @@ ufw allow 80/tcp
 ufw allow 443/tcp
 ufw --force enable
 
-# Oracle's Ubuntu images ship iptables rules that reject everything but SSH. ufw is the host
-# firewall here, so the stock file is set aside (kept as .cognitive-dag.bak) and replaced by an
-# open policy; ufw has already opened 22, 80 and 443 above.
-rules="$R/etc/iptables/rules.v4"
-if [[ -f "$rules" ]] && grep -q 'REJECT --reject-with icmp-host-prohibited' "$rules"; then
-  echo "harden: replacing the stock Oracle iptables rules (backup: rules.v4.cognitive-dag.bak)"
-  cp "$rules" "$rules.cognitive-dag.bak"
-  printf '*filter\n:INPUT ACCEPT [0:0]\n:FORWARD ACCEPT [0:0]\n:OUTPUT ACCEPT [0:0]\nCOMMIT\n' >"$rules"
-  netfilter-persistent reload || true
+# Oracle's Ubuntu images ship iptables rules (iptables-persistent) that reject everything but SSH
+# and a chain, InstanceServices, that limits who talks to 169.254.0.0/16. Installing ufw removes
+# iptables-persistent, so nothing loads /etc/iptables/rules.v4 any more and that file is left alone.
+# The InstanceServices rules are saved once, from the live rules or from the stock file, and
+# firewall.sh puts them back at every boot; it also drops the generic REJECTs and blocks the
+# containers' access to the metadata service (ADR-0097).
+saved="$R/etc/cognitive-dag/oracle-instance-services.rules"
+if [[ ! -s "$saved" ]]; then
+  lines="$(iptables-save -t filter 2>/dev/null | grep -E '^-A InstanceServices ' || true)"
+  for stock in "$R/etc/iptables/rules.v4" "$R/etc/iptables/rules.v4.cognitive-dag.bak"; do
+    [[ -n "$lines" || ! -f "$stock" ]] && continue
+    lines="$(grep -E '^-A InstanceServices ' "$stock" || true)"
+  done
+  if [[ -n "$lines" ]]; then
+    echo "harden: saving Oracle's InstanceServices rules to $saved"
+    write_if_changed "$saved" 0644 <<EOF || true
+# Managed by deploy/provision/harden.sh: Oracle's InstanceServices chain, loaded by firewall.sh.
+*filter
+:InstanceServices - [0:0]
+$lines
+COMMIT
+EOF
+  else
+    echo "harden: no Oracle InstanceServices rules found; nothing to keep"
+  fi
 fi
+CDAG_INSTANCE_SERVICES="$saved" bash "$(dirname "${BASH_SOURCE[0]}")/firewall.sh" apply
 echo "harden: done"

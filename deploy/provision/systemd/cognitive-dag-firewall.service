@@ -1,0 +1,14 @@
+[Unit]
+Description=Host firewall rules outside ufw (Oracle InstanceServices, no metadata for containers)
+Requires=docker.service
+After=docker.service ufw.service
+PartOf=docker.service
+Before=cognitive-dag.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/bash /opt/cognitive-dag/deploy/provision/firewall.sh apply
+
+[Install]
+WantedBy=multi-user.target
