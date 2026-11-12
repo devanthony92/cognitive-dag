@@ -285,14 +285,14 @@ Lenguaje de placa esmaltada y estación. Radios: 4 px (badges pequeños, celdas)
 
 ### Botones
 
-- **Forma:** 44 px de alto, radio 8 px.
+- **Forma:** 44 px de alto, radio 8 px, texto de 15 px en 600 (el cuerpo, también en el primario, para que las etiquetas largas no desborden a 375 px).
 - **Primario:** tinta invertida; un solo uno por vista.
 - **Secundario:** `surface` con filete `line`; **Peligro:** contorno en `state-failed` con etiqueta explícita.
 - **Foco:** anillo doble 2+2 px. **Hover:** sube un escalón tonal (surface → raised). **Deshabilitado:** 45 % de opacidad con cursor `not-allowed`, nunca solo gris.
 
 ### Badge de estado
 
-Píldora de 24 px: glifo + etiqueta en español + (si aplica) clase de error. El glifo es siempre visible; el color solo refuerza. «En curso» lleva anillo giratorio; con `prefers-reduced-motion` el anillo queda estático.
+Píldora de 24 px: glifo + etiqueta en español + (si aplica) clase de error. El glifo es siempre visible; el color solo refuerza. «En curso» lleva anillo giratorio; con `prefers-reduced-motion` el anillo queda estático. Son ocho estados (los siete de diseño y «Pendiente», círculo vacío de trazo fino); cada uno tiene glifo propio, distinguible en escala de grises. La insignia de 18 px de la estación reutiliza los mismos glifos sin círculo, en el color de fondo.
 
 ### Tabla de ejecuciones
 

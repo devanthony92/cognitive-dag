@@ -122,15 +122,15 @@ que no puede hacer un agente.
 
 ### Tests (escribir primero)
 
-- [ ] T023 [P] [US4] `apps/web/test/status-badge.test.tsx`: los 8 estados (7 de diseño + Pendiente) y las clases de error
+- [x] T023 [P] [US4] `apps/web/test/status-badge.test.tsx`: los 8 estados (7 de diseño + Pendiente) y las clases de error
       tienen glifo, etiqueta en español y token; glifos distintos entre sí; «En curso» sin giro con
       `prefers-reduced-motion`; mapa completo desde `RunStatus`, `StepStatus` y `waitingReason` según el contrato (FR-020, FR-022)
-- [ ] T024 [P] [US4] `apps/web/test/node-category.test.ts`: recorre `NODE_CATALOG` de `packages/dag-schema` y exige
+- [x] T024 [P] [US4] `apps/web/test/node-category.test.ts`: recorre `NODE_CATALOG` de `packages/dag-schema` y exige
       categoría para cada tipo (los 11 actuales); pictograma y etiqueta presentes; falla ante un prefijo nuevo sin mapa (FR-021)
-- [ ] T025 [P] [US5] `apps/web/test/ui-controls.test.tsx`: botón de 44 px con una sola variante primaria por vista
+- [x] T025 [P] [US5] `apps/web/test/ui-controls.test.tsx`: botón de 44 px con una sola variante primaria por vista
       (helper de prueba), campos de 44 px, etiqueta visible, error con icono y texto, diálogo con foco atrapado,
       devuelto y cierre con Esc (FR-012, FR-025, FR-026)
-- [ ] T026 [P] [US3] `apps/web/test/design-static.test.ts`: recorre `apps/web/src` y falla ante paleta Tailwind,
+- [x] T026 [P] [US3] `apps/web/test/design-static.test.ts`: recorre `apps/web/src` y falla ante paleta Tailwind,
       `#hex`, `rgb(`/`hsl(`, `border-l-*`/`border-r-*` > 1, `max-w-*` no permitidos en rutas y páginas,
       `text-[10px]`/`text-[11px]`, `style=`/`<style>` fuera de la lista de excepciones; usa
       `apps/web/test/design-static.allowlist.json` con los archivos que aún incumplen, que se vacía al final de la
@@ -138,27 +138,27 @@ que no puede hacer un agente.
 
 ### Implementation
 
-- [ ] T027 [P] [US4] `apps/web/src/components/status/{StatusBadge,statusGlyphs}.tsx`: píldora de 24 px con glifo SVG
+- [x] T027 [P] [US4] `apps/web/src/components/status/{StatusBadge,statusGlyphs}.tsx`: píldora de 24 px con glifo SVG
       propio (arco, ✓, ✕, reloj de arena, ⊘, rayado 45°, ↺, círculo vacío), etiqueta y clase de error; insignia de 18 px
       reutilizable; sustituye a `features/runs/StatusBadge.tsx` y retira `STATUS_TONE` de `features/runs/status.ts`
       (conserva los textos de `RUN_STATUS_LABELS`, `STEP_STATUS_LABELS`, `ERROR_CLASS_LABELS`, `WAITING_REASON_LABELS`)
-- [ ] T028 [P] [US4] `apps/web/src/components/category/{categories.ts,CategoryIcon.tsx}` con el mapa tipo → categoría,
+- [x] T028 [P] [US4] `apps/web/src/components/category/{categories.ts,CategoryIcon.tsx}` con el mapa tipo → categoría,
       pictogramas de Lucide importados uno a uno (`zap`, `git-branch`, `sparkles`, `globe`, `user-check`,
       `flask-conical`) y etiquetas en español
-- [ ] T029 [P] [US5] `apps/web/src/components/ui/button.tsx`: 44 px, radio 8, primario en tinta invertida,
+- [x] T029 [P] [US5] `apps/web/src/components/ui/button.tsx`: 44 px, radio 8, primario en tinta invertida,
       secundario, peligro con contorno, foco con anillo doble, deshabilitado al 45 % con `not-allowed`
-- [ ] T030 [P] [US5] `apps/web/src/components/ui/{input,textarea,native-select,password-input,label,form}.tsx`: 44 px,
+- [x] T030 [P] [US5] `apps/web/src/components/ui/{input,textarea,native-select,password-input,label,form}.tsx`: 44 px,
       etiqueta visible, ayuda en body-sm, error con icono y texto, ≥ 16 px en móvil, `aria-describedby` actual
-- [ ] T031 [P] [US5] `apps/web/src/components/ui/{table,card}.tsx`: filas de 52 px, cabecera en Label, contención
+- [x] T031 [P] [US5] `apps/web/src/components/ui/{table,card}.tsx`: filas de 52 px, cabecera en Label, contención
       del desborde dentro de la tabla (sin scroll del documento), cifras tabulares, capas tonales
-- [ ] T032 [P] [US5] `apps/web/src/components/ui/{dialog,dropdown-menu}.tsx` y popover/select de Radix con tokens,
+- [x] T032 [P] [US5] `apps/web/src/components/ui/{dialog,dropdown-menu}.tsx` y popover/select de Radix con tokens,
       sombra flotante, foco atrapado y devuelto, Esc cierra
-- [ ] T033 [P] [US5] `apps/web/src/components/ui/{alert,toast}.tsx` con los tokens de estado y glifo (nunca solo color)
-- [ ] T034 [P] [US2] `apps/web/src/components/ui/skeleton.tsx`, `EmptyState` y `PageHeader` (un `h1`, acción primaria
+- [x] T033 [P] [US5] `apps/web/src/components/ui/{alert,toast}.tsx` con los tokens de estado y glifo (nunca solo color)
+- [x] T034 [P] [US2] `apps/web/src/components/ui/skeleton.tsx`, `EmptyState` y `PageHeader` (un `h1`, acción primaria
       única), con esqueleto estático bajo `prefers-reduced-motion`
-- [ ] T035 [US3] Activar `design-static.test.ts` con la lista de excepciones y retirar de ella cada archivo que
+- [x] T035 [US3] Activar `design-static.test.ts` con la lista de excepciones y retirar de ella cada archivo que
       esta PR deja limpio; actualizar `DESIGN.md` con «Pendiente»
-- [ ] T036 [US8] Typecheck, 33 archivos de prueba previos y nuevas, build, capturas claro/oscuro de cada componente (galería de
+- [x] T036 [US8] Typecheck, 33 archivos de prueba previos y nuevas, build, capturas claro/oscuro de cada componente (galería de
       pruebas no desplegada) y recorrido de anchos; abrir la PR 2 con CI en verde
 - [ ] T037 (autor) Merge de la PR 2 y comprobación en producción (consola, red, `check-headers.sh`)
 
