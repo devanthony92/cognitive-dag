@@ -1,17 +1,18 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
+import { UserCheck } from 'lucide-react';
 import { useState } from 'react';
 import { ApiProblemError } from '../../api/client';
 import type { Approval, ApprovalDecision, ApprovalStatus } from '@cognitive-dag/contracts';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { EmptyState } from '../../components/ui/empty-state';
+import { PageHeader } from '../../components/ui/page-header';
+import { RowsSkeleton } from '../../components/ui/rows-skeleton';
+import { STACKED } from '../../components/ui/table-stacked';
+import { StatusBadge } from '../../components/status/StatusBadge';
+import { CategoryIcon } from '../../components/category/CategoryIcon';
+import { cn } from '../../lib/utils';
 import {
   Dialog,
   DialogContent,
@@ -74,105 +75,124 @@ export function ApprovalsPage({
       search: approvalId === undefined ? {} : { approval: approvalId },
     });
 
-  return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Aprobaciones</h1>
-        <p className="text-muted-foreground">
-          Solicitudes de ejecuciones que esperan una decisión. No ves las de las ejecuciones que
-          iniciaste tú: las decide otra persona.
-        </p>
-      </section>
+  const empty =
+    tab === 'pending'
+      ? 'No tienes solicitudes pendientes.'
+      : 'Todavía no hay solicitudes resueltas.';
 
-      <Card>
-        <CardHeader>
-          <div role="tablist" aria-label="Estado de las solicitudes" className="flex gap-2">
-            {(
-              [
-                ['pending', 'Pendientes'],
-                ['resolved', 'Historial'],
-              ] as const
-            ).map(([id, title]) => (
-              <Button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                variant={tab === id ? 'primary' : 'secondary'}
-                size="sm"
-                onClick={() => setTab(id)}
-              >
-                {title}
-              </Button>
-            ))}
-          </div>
-          <CardTitle className="sr-only">
-            {tab === 'pending' ? 'Pendientes' : 'Historial'}
-          </CardTitle>
-          <CardDescription className="sr-only">Lista de solicitudes</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {list.isPending && <p role="status">Cargando solicitudes…</p>}
-          {list.isError && <ProblemAlert error={list.error} />}
-          {list.isSuccess && items.length === 0 && (
-            <p className="text-muted-foreground">
-              {tab === 'pending'
-                ? 'No tienes solicitudes pendientes.'
-                : 'Todavía no hay solicitudes resueltas.'}
-            </p>
-          )}
-          {items.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Workflow</TableHead>
-                  <TableHead>Paso</TableHead>
-                  <TableHead>Solicitada</TableHead>
-                  <TableHead>{tab === 'pending' ? 'Vence' : 'Resultado'}</TableHead>
-                  <TableHead>
-                    <span className="sr-only">Acciones</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell>{item.workflowName}</TableCell>
-                    <TableCell>{item.nodeLabel}</TableCell>
-                    <TableCell>{formatDateTime(item.requestedAt)}</TableCell>
-                    <TableCell>
-                      {tab === 'pending'
-                        ? formatDateTime(item.expiresAt)
-                        : `${STATUS_TEXT[item.status]}${item.decidedBy ? ` por ${item.decidedBy.name}` : ''}`}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        size="sm"
-                        aria-label={`Ver solicitud de ${item.workflowName}`}
-                        onClick={() => open(item.id)}
-                      >
-                        Ver
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-          {list.hasNextPage && (
+  return (
+    <div className="grid w-full gap-6">
+      <PageHeader
+        title="Aprobaciones"
+        description="Solicitudes de ejecuciones que esperan una decisión. No ves las de las ejecuciones que iniciaste tú: las decide otra persona."
+      />
+
+      <div role="tablist" aria-label="Estado de las solicitudes" className="flex flex-wrap gap-2">
+        {(
+          [
+            ['pending', 'Pendientes'],
+            ['resolved', 'Historial'],
+          ] as const
+        ).map(([id, title]) => (
+          <Button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            variant={tab === id ? 'primary' : 'secondary'}
+            onClick={() => setTab(id)}
+          >
+            {title}
+          </Button>
+        ))}
+      </div>
+
+      {list.isPending && <RowsSkeleton rows={4} />}
+      {list.isError && <ProblemAlert error={list.error} />}
+      {list.isSuccess && items.length === 0 && (
+        <EmptyState
+          icon={UserCheck}
+          title={empty}
+          action={
             <Button
               type="button"
               variant="secondary"
-              disabled={list.isFetchingNextPage}
-              onClick={() => void list.fetchNextPage()}
+              onClick={() => setTab(tab === 'pending' ? 'resolved' : 'pending')}
             >
-              Cargar más
+              {tab === 'pending' ? 'Ver historial' : 'Ver pendientes'}
             </Button>
-          )}
-        </CardContent>
-      </Card>
+          }
+        />
+      )}
+      {items.length > 0 && (
+        <Table>
+          <TableHeader className={STACKED.head}>
+            <TableRow>
+              <TableHead>Estado</TableHead>
+              <TableHead>Workflow</TableHead>
+              <TableHead>Paso</TableHead>
+              <TableHead>Solicitada</TableHead>
+              <TableHead>{tab === 'pending' ? 'Vence' : 'Resultado'}</TableHead>
+              <TableHead>
+                <span className="sr-only">Acciones</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {items.map((item) => (
+              <TableRow key={item.id} className={STACKED.row}>
+                <TableCell className={STACKED.cell}>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {item.status === 'pending' ? (
+                      <StatusBadge status="running" kind="step" waitingReason="approval" />
+                    ) : (
+                      <span className="text-body font-semibold">{STATUS_TEXT[item.status]}</span>
+                    )}
+                    <CategoryIcon category="approval" showLabel className="[&_svg]:size-5" />
+                  </div>
+                </TableCell>
+                <TableCell className={cn(STACKED.cell, 'min-w-40 whitespace-normal')}>
+                  {item.workflowName}
+                </TableCell>
+                <TableCell className={STACKED.cell}>{item.nodeLabel}</TableCell>
+                <TableCell className={cn(STACKED.cell, 'tabular-nums')}>
+                  {formatDateTime(item.requestedAt)}
+                </TableCell>
+                <TableCell className={cn(STACKED.cell, 'tabular-nums')}>
+                  {tab === 'pending'
+                    ? formatDateTime(item.expiresAt)
+                    : item.decidedBy
+                      ? `${STATUS_TEXT[item.status]} por ${item.decidedBy.name}`
+                      : STATUS_TEXT[item.status]}
+                </TableCell>
+                <TableCell className={STACKED.cell}>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`Ver solicitud de ${item.workflowName}`}
+                    onClick={() => open(item.id)}
+                  >
+                    Ver
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+      {list.hasNextPage && (
+        <div>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={list.isFetchingNextPage}
+            onClick={() => void list.fetchNextPage()}
+          >
+            {list.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+          </Button>
+        </div>
+      )}
 
       {selectedId !== undefined && (
         <ApprovalDetailDialog
@@ -235,11 +255,11 @@ function ApprovalDetailDialog({
                     ? `Vence el ${formatDateTime(data.expiresAt)}.`
                     : `${STATUS_TEXT[data.status]}${data.resolvedAt ? ` el ${formatDateTime(data.resolvedAt)}` : ''}${data.decidedBy ? ` por ${data.decidedBy.name}` : ''}.`
                 }`
-              : 'Cargando la solicitud…'}
+              : 'Un momento: se carga la solicitud.'}
           </DialogDescription>
         </DialogHeader>
 
-        {detail.isPending && <p role="status">Cargando…</p>}
+        {detail.isPending && <RowsSkeleton rows={2} />}
         {expired && (
           <Alert>
             <AlertDescription>
@@ -251,19 +271,19 @@ function ApprovalDetailDialog({
         {data && (
           <div className="grid gap-3">
             <div>
-              <p className="text-sm font-medium">Mensaje</p>
-              <p className="rounded-md border bg-muted p-3 text-sm whitespace-pre-wrap">
+              <p className="text-body-sm font-semibold">Mensaje</p>
+              <p className="rounded-md border border-line bg-surface p-3 text-body-sm whitespace-pre-wrap">
                 {data.message}
               </p>
             </div>
             {data.status !== 'pending' && data.comment && (
               <div>
-                <p className="text-sm font-medium">Comentario</p>
-                <p className="text-sm whitespace-pre-wrap">{data.comment}</p>
+                <p className="text-body-sm font-semibold">Comentario</p>
+                <p className="text-body-sm whitespace-pre-wrap">{data.comment}</p>
               </div>
             )}
             {canDecide && (
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label htmlFor="approval-comment">Comentario (opcional)</Label>
                 <Textarea
                   id="approval-comment"
@@ -271,13 +291,13 @@ function ApprovalDetailDialog({
                   maxLength={COMMENT_MAX}
                   onChange={(event) => setComment(event.target.value)}
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-body-sm text-ink-muted">
                   {comment.length}/{COMMENT_MAX}
                 </p>
               </div>
             )}
             {data.status === 'pending' && !canDecide && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-body-sm text-ink-muted">
                 Iniciaste esta ejecución, así que la decide otra persona.
               </p>
             )}

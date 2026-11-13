@@ -104,7 +104,14 @@ describe('page structure of the list, settings and access screens', () => {
       const main = await mainOf();
       await waitFor(() => expect(within(main).getAllByRole('status').length).toBeGreaterThan(0));
       expect(within(main).getAllByRole('heading', { level: 1 })).toHaveLength(1);
-      expect(within(main).queryByText(/^Cargando…?$/)).toBeNull();
+      // No loose «Cargando…» line: the only text of a loading state is the one for assistive technology.
+      const loose = [...main.querySelectorAll('*')].filter(
+        (element) =>
+          element.children.length === 0 &&
+          !element.classList.contains('sr-only') &&
+          /^Cargando.*…$/.test(element.textContent?.trim() ?? ''),
+      );
+      expect(loose.map((element) => element.textContent)).toEqual([]);
     });
   });
 });
