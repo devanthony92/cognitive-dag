@@ -181,7 +181,7 @@ function MembersTable({
 
   return (
     <div className="grid gap-4">
-      <Table>
+      <Table flush>
         <TableHeader>
           <TableRow>
             <TableHead>Nombre</TableHead>
@@ -390,7 +390,7 @@ function InvitationsSection({
         )}
         {pending.isError && <ProblemAlert error={pending.error} />}
         {pending.data && pending.data.length > 0 && (
-          <Table>
+          <Table flush>
             <TableHeader>
               <TableRow>
                 <TableHead>Correo</TableHead>

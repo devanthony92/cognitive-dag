@@ -54,8 +54,8 @@ export function RunsTable<T extends RunsTableRow>({
         <TableRow>
           <TableHead>Estado</TableHead>
           {showWorkflow && <TableHead>Workflow</TableHead>}
-          <TableHead>Versión</TableHead>
-          <TableHead>Inició</TableHead>
+          {!showWorkflow && <TableHead>Versión</TableHead>}
+          {!showWorkflow && <TableHead>Inició</TableHead>}
           <TableHead>Creada</TableHead>
           {renderSteps && <TableHead>Pasos</TableHead>}
           <TableHead numeric>Duración</TableHead>
@@ -97,13 +97,17 @@ export function RunsTable<T extends RunsTableRow>({
                 </Link>
               </TableCell>
             )}
-            <TableCell className={cn(STACKED.cell, 'tabular-nums')}>
-              <span className="sm:hidden text-ink-muted">Versión </span>
-              {run.versionNumber}
-            </TableCell>
-            <TableCell className={cn(STACKED.cell, 'max-w-40 truncate')} title={originOf(run)}>
-              {originOf(run)}
-            </TableCell>
+            {!showWorkflow && (
+              <>
+                <TableCell className={cn(STACKED.cell, 'tabular-nums')}>
+                  <span className="sm:hidden text-ink-muted">Versión </span>
+                  {run.versionNumber}
+                </TableCell>
+                <TableCell className={cn(STACKED.cell, 'max-w-40 truncate')} title={originOf(run)}>
+                  {originOf(run)}
+                </TableCell>
+              </>
+            )}
             <TableCell className={cn(STACKED.cell, 'tabular-nums')}>
               {formatDateTime(run.createdAt)}
             </TableCell>
@@ -112,7 +116,7 @@ export function RunsTable<T extends RunsTableRow>({
               {formatDuration(runDurationMs(run, now))}
             </TableCell>
             <TableCell className={STACKED.cell}>
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:w-56">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <Link
                   to="/orgs/$organizationId/runs/$runId"
                   params={{ organizationId, runId: run.id }}

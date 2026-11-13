@@ -3,12 +3,22 @@ import { cn } from '../../lib/utils';
 
 /**
  * A table of the design: the wrapper contains the overflow, so a wide table scrolls inside its own box
- * and never makes the document scroll sideways. Rows are 52 px, the header is a Label, figures that
+ * and never makes the document scroll sideways. `flush` is for a table inside a card. Rows are 52 px, the header is a Label, figures that
  * change (durations, counters) are tabular and aligned to the right with `numeric`.
  */
-function Table({ className, ...props }: React.ComponentProps<'table'>) {
+function Table({
+  className,
+  flush = false,
+  ...props
+}: React.ComponentProps<'table'> & { flush?: boolean }) {
   return (
-    <div className="relative w-full max-w-full overflow-x-auto rounded-lg border border-line bg-surface">
+    <div
+      className={cn(
+        'relative w-full max-w-full overflow-x-auto',
+        // Inside a card the table drops its own box so a panel never holds another panel.
+        flush ? 'border-t border-line' : 'rounded-lg border border-line bg-surface',
+      )}
+    >
       <table className={cn('w-full caption-bottom text-body', className)} {...props} />
     </div>
   );
