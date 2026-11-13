@@ -1,6 +1,5 @@
 ---
-
-description: "Task list for F10 — Rediseño del frontend"
+description: 'Task list for F10 — Rediseño del frontend'
 ---
 
 # Tasks: Rediseño del frontend (F10)
@@ -199,7 +198,7 @@ que no puede hacer un agente.
       `page-narrow`, `Display` en el título, un `h1`, mensajes de error con icono; `/register` conserva su
       comportamiento (FR-024)
 - [ ] T048 [P] [US5] Compilador «Describir workflow» sin el lienzo (`features/compiler/{CompilerPage,IntentForm,
-      CompilationView,RecentCompilations,ApplyPanel}.tsx`): tokens, esqueletos, aviso de «nada se ejecuta sin
+    CompilationView,RecentCompilations,ApplyPanel}.tsx`): tokens, esqueletos, aviso de «nada se ejecuta sin
       publicar» visible, estados vacío/carga/error
 - [ ] T049 [US3] Retirar los alias `--background`/`--primary`/… de `apps/web/src/index.css` y las clases antiguas;
       reducir la lista de excepciones de `design-static.allowlist.json` a los archivos del editor y de la
@@ -249,7 +248,7 @@ que no puede hacer un agente.
 - [ ] T063 [P] [US6] `features/workflows/Palette.tsx`: pictogramas, etiquetas, tokens y controles de 44 px; botón «Añadir
       nodo» y hoja inferior bajo 768 px
 - [ ] T064 [P] [US6] `features/workflows/{ConfigForm,ProblemsList,ListEditors,ConditionBuilder,TemplateEditor,
-      ReferenceSelect,RetrySection,VersionsPanel,PublishDialog}.tsx`: campos base, tokens, 0 colores fijos
+    ReferenceSelect,RetrySection,VersionsPanel,PublishDialog}.tsx`: campos base, tokens, 0 colores fijos
 - [ ] T065 [US6] `features/workflows/WorkflowEditor.tsx`: cabecera de página `page-full`, un `h1`, barra de acciones con
       una sola acción primaria, estados de conflicto/reintento con alertas de tokens, panel de configuración como hoja
       inferior en móvil, modo «Conectar», esqueleto del editor (el de T017 refinado)
@@ -273,8 +272,9 @@ que no puede hacer un agente.
 
 ### Cierre de la PR
 
-- [ ] T074 [US6] Medir `workflow-editor-performance` y el JS inicial antes/después; dentro de +10 % y +15 % (SC-011);
-      documentar en la PR
+- [x] T074 [US6] Medir `workflow-editor-performance` y el JS inicial antes/después; dentro de +10 % y +15 % (SC-011);
+      documentar en la PR (JS inicial +0,04 %; apertura en caliente +31 % en navegador real, **desviación aceptada
+      por el autor**, `docs/ui/editor-performance.md`)
 - [ ] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
       grises de estaciones y estados; 33 archivos de prueba previos (incluidas `workflow-editor*`, `runs-*`) sin debilitarlas
 - [ ] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde

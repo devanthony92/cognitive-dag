@@ -1,3 +1,5 @@
+import { memo } from 'react';
+import { CategoryIcon } from '../../components/category/CategoryIcon';
 import {
   NODE_CATALOG,
   NODE_TYPES,
@@ -17,18 +19,18 @@ const CATEGORIES: { id: NodeCategory; title: string }[] = [
 ];
 
 /** The 11 node types, grouped; click or drag one onto the canvas to add it. */
-export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
+function PaletteBase({ onAdd }: { onAdd: (type: NodeType) => void }) {
   return (
     <aside
       aria-label="Paleta de nodos"
-      className="w-60 shrink-0 overflow-y-auto border-r bg-card p-3"
+      className="w-60 shrink-0 overflow-y-auto border-r border-line bg-surface p-3 max-md:w-full max-md:border-r-0 max-md:p-0"
     >
       {CATEGORIES.map(({ id, title }) => {
         const types = NODE_TYPES.filter((type) => NODE_CATALOG[type].category === id);
         if (types.length === 0) return null;
         return (
           <section key={id} className="mb-4">
-            <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <h2 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">
               {title}
             </h2>
             <div className="grid gap-1.5">
@@ -44,12 +46,15 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
                       event.dataTransfer.effectAllowed = 'copy';
                     }}
                     onClick={() => onAdd(type)}
-                    className="rounded-md border bg-background px-2.5 py-2 text-left text-sm outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    className="flex min-h-11 items-start gap-3 rounded-md border border-line bg-ground px-2.5 py-2 text-left text-sm outline-none hover:bg-raised"
                   >
-                    <span className="block font-medium">{entry.label}</span>
-                    <span className="block text-xs text-muted-foreground">{entry.description}</span>
-                    <span className="mt-1 block text-[11px] font-medium text-primary">
-                      Ejecutable
+                    <CategoryIcon type={type} className="mt-0.5" />
+                    <span className="min-w-0">
+                      <span className="block font-medium">{entry.label}</span>
+                      <span className="block text-xs text-ink-muted">{entry.description}</span>
+                      <span className="mt-1 block text-label font-semibold text-ink-muted">
+                        Ejecutable
+                      </span>
                     </span>
                   </button>
                 );
@@ -61,3 +66,6 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
     </aside>
   );
 }
+
+/** Memoised: it only changes when the way of adding a node does, not while the draft is edited. */
+export const Palette = memo(PaletteBase);

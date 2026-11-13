@@ -34,6 +34,9 @@ function bigDraft(): DagDefinition {
   return { schemaVersion: 1, nodes, edges } as unknown as DagDefinition;
 }
 
+/** Budget for the 11 keystrokes of the test below; see the comment there. */
+const TYPING_BUDGET_MS = 2000;
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -102,6 +105,11 @@ describe('editor performance with 50 nodes and 100 connections (SC-004)', () => 
     await user.type(label, 'Renombrado');
     await screen.findAllByText('Renombrado');
     // Eleven keystrokes with 50 nodes on screen: each one should not repaint the whole graph.
-    expect(performance.now() - t0).toBeLessThan(5000);
+    // The budget is about five times what the eleven keystrokes take on a developer machine (≈0.4 s;
+    // a run varies ±30 % with the noise of jsdom), so noise never fails it, while a regression that
+    // redraws the whole graph on every keystroke (≈0.7 s) is still well above the usual figure and a
+    // quadratic one fails. The +10 % goal of SC-011 is not checked here: jsdom has no layout or paint,
+    // so it measures React work only; the real-browser numbers are in docs/ui/editor-performance.md.
+    expect(performance.now() - t0).toBeLessThan(TYPING_BUDGET_MS);
   }, 30_000);
 });

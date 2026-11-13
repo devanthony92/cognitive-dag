@@ -43,7 +43,7 @@ function Messages({ messages }: { messages: string[] }) {
   return (
     <>
       {messages.map((message) => (
-        <p key={message} className="text-sm text-destructive">
+        <p key={message} className="text-sm text-state-failed">
           {message}
         </p>
       ))}
@@ -275,7 +275,7 @@ function TypeEditor({
       </NativeSelect>
       {kind === 'enum' && (
         <div className="grid gap-1">
-          <span id={`${id}-values-label`} className="text-xs text-muted-foreground">
+          <span id={`${id}-values-label`} className="text-xs text-ink-muted">
             Valores permitidos
           </span>
           <StringListEditor

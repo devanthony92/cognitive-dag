@@ -1,13 +1,19 @@
-import { Background, Controls, ReactFlow, type Edge } from '@xyflow/react';
+import { Background, Controls, ReactFlow } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMemo } from 'react';
 import type { DagDefinition } from '@cognitive-dag/dag-schema';
 import type { DraftValidation } from '@cognitive-dag/contracts';
-import { DagNodeView } from '../workflows/DagNodeView';
-import { buildEdges, type FlowNode } from '../workflows/flow';
+import { CANVAS_ARIA_LABELS } from '../../components/station/a11y';
+import { CanvasZoom, FitWhenReady } from '../../components/station/CanvasZoom';
+import {
+  buildEdges,
+  EDGE_TYPES,
+  NODE_TYPES,
+  type FlowEdge,
+  type FlowNode,
+} from '../workflows/flow';
 import { groupErrors } from '../workflows/model';
 
-const NODE_TYPES = { dag: DagNodeView };
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
 interface Props {
@@ -41,7 +47,7 @@ export function ResultPreview({ definition, errors }: Props) {
     [definition.nodes, grouped],
   );
 
-  const edges = useMemo<Edge[]>(
+  const edges = useMemo<FlowEdge[]>(
     () =>
       buildEdges(definition, grouped, NO_SELECTION, true).map((edge) => ({
         ...edge,
@@ -51,11 +57,14 @@ export function ResultPreview({ definition, errors }: Props) {
   );
 
   return (
-    <div className="h-96 w-full overflow-hidden rounded-md border">
-      <ReactFlow<FlowNode, Edge>
+    <div className="h-96 w-full overflow-hidden rounded-lg border border-line">
+      <ReactFlow<FlowNode, FlowEdge>
         nodes={nodes}
         edges={edges}
         nodeTypes={NODE_TYPES}
+        edgeTypes={EDGE_TYPES}
+        className="station-canvas"
+        ariaLabelConfig={CANVAS_ARIA_LABELS}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
@@ -69,6 +78,8 @@ export function ResultPreview({ definition, errors }: Props) {
       >
         <Background />
         <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
+        <CanvasZoom />
+        <FitWhenReady minZoom={0.2} />
       </ReactFlow>
     </div>
   );

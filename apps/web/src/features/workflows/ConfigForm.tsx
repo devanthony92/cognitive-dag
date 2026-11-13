@@ -107,8 +107,8 @@ export function ConfigForm({ node, definition, readOnly, errors, onChange, onRen
 
   return (
     <fieldset disabled={readOnly} className="grid gap-4">
-      <div className="text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">{entry.label}</p>
+      <div className="text-sm text-ink-muted">
+        <p className="font-medium text-ink">{entry.label}</p>
         <p>{entry.description}</p>
       </div>
 
@@ -148,7 +148,7 @@ export function ConfigForm({ node, definition, readOnly, errors, onChange, onRen
               />
             ) : (
               <div className="grid gap-2">
-                <p className="text-sm text-destructive">
+                <p className="text-sm text-state-failed">
                   La condición guardada no tiene un formato que el constructor pueda mostrar.
                 </p>
                 <Button
@@ -279,7 +279,7 @@ export function ConfigForm({ node, definition, readOnly, errors, onChange, onRen
       {node.type.startsWith('llm.') && (
         <p
           role="note"
-          className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900"
+          className="rounded-md border border-line bg-raised p-2 text-body-sm text-ink"
         >
           No envíes datos reales: el proveedor puede usar el contenido.
         </p>
@@ -328,7 +328,7 @@ function FieldRow({
       <Label htmlFor={id}>{label}</Label>
       {children}
       {messages.map((message) => (
-        <p key={message} id={`${id}-message`} className="text-sm text-destructive">
+        <p key={message} id={`${id}-message`} className="text-sm text-state-failed">
           {message}
         </p>
       ))}
@@ -453,7 +453,7 @@ function IdentifierField({
           }
         }}
       />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-ink-muted">
         Las referencias de otros nodos lo usan; al cambiarlo se actualizan solas.
       </p>
     </FieldRow>

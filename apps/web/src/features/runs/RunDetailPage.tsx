@@ -95,7 +95,7 @@ export function RunDetailPage({
 
   if (run.isError) {
     return (
-      <div className="mx-auto grid w-full max-w-xl gap-3 p-6">
+      <div className="mx-auto grid w-full max-w-page-narrow gap-3 p-6">
         <ProblemAlert error={run.error} />
         <div>
           <Button variant="secondary" size="sm" onClick={() => void run.refetch()}>
@@ -106,7 +106,7 @@ export function RunDetailPage({
     );
   }
   if (!run.data || !definition) {
-    return <p className="p-6 text-muted-foreground">Cargando la ejecución…</p>;
+    return <p className="p-6 text-ink-muted">Cargando la ejecución…</p>;
   }
 
   const data = run.data;
@@ -117,8 +117,8 @@ export function RunDetailPage({
   const rerunError = rerun.error instanceof ApiProblemError ? rerun.error.problem : undefined;
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full flex-col bg-background">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-card px-4 py-2">
+    <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full flex-col bg-ground">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b bg-surface px-4 py-2">
         <Link
           to="/orgs/$organizationId/workflows/$workflowId/runs"
           params={{ organizationId, workflowId: data.workflowId }}
@@ -136,35 +136,35 @@ export function RunDetailPage({
               >
                 {workflow.data.name}
               </Link>
-              <span className="font-normal text-muted-foreground"> · </span>
+              <span className="font-normal text-ink-muted"> · </span>
             </>
           ) : null}
           Ejecución
         </h1>
         <StatusBadge status={data.status} />
-        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted">
           <div className="flex gap-1">
             <dt>Versión</dt>
-            <dd className="text-foreground">{data.versionNumber}</dd>
+            <dd className="text-ink">{data.versionNumber}</dd>
           </div>
           <div className="flex min-w-0 gap-1">
             <dt>Inició</dt>
-            <dd className="max-w-40 truncate text-foreground" title={originOf(data)}>
+            <dd className="w-40 truncate text-ink" title={originOf(data)}>
               {originOf(data)}
             </dd>
           </div>
           <div className="flex gap-1">
             <dt>Creada</dt>
-            <dd className="text-foreground">{formatDateTime(data.createdAt)}</dd>
+            <dd className="text-ink">{formatDateTime(data.createdAt)}</dd>
           </div>
           <div className="flex gap-1">
             <dt>Duración</dt>
-            <dd className="text-foreground">{formatDuration(runDurationMs(data, now))}</dd>
+            <dd className="text-ink">{formatDuration(runDurationMs(data, now))}</dd>
           </div>
           {data.llmUsage && (
             <div className="flex gap-1">
               <dt>Consumo LLM</dt>
-              <dd className="text-foreground">
+              <dd className="text-ink">
                 {formatTokens(data.llmUsage.inputTokens)} entrada ·{' '}
                 {formatTokens(data.llmUsage.outputTokens)} salida ·{' '}
                 {formatCostUsd(data.llmUsage.costMicroUsd)}
@@ -188,12 +188,12 @@ export function RunDetailPage({
         </dl>
         <div className="ml-auto flex items-center gap-3">
           {active && (
-            <span role="status" className="text-xs text-muted-foreground">
+            <span role="status" className="text-xs text-ink-muted">
               {MODE_TEXT[mode]}
             </span>
           )}
           {blockedReason && (
-            <span id={REASON_ID} className="text-xs text-muted-foreground">
+            <span id={REASON_ID} className="text-xs text-ink-muted">
               {blockedReason}
             </span>
           )}
@@ -259,8 +259,8 @@ export function RunDetailPage({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="relative min-h-72 min-w-0 flex-1">
           <ReactFlowProvider>
             <RunGraph
               definition={definition}
@@ -272,7 +272,7 @@ export function RunDetailPage({
         </div>
         <aside
           aria-label="Detalle del nodo"
-          className="w-80 shrink-0 overflow-y-auto border-l bg-card p-4"
+          className="max-h-[45%] w-full shrink-0 overflow-y-auto border-t border-line bg-surface p-4 md:max-h-none md:w-80 md:border-t-0 md:border-l"
         >
           {selectedStep ? (
             <StepPanel
@@ -292,7 +292,7 @@ export function RunDetailPage({
                 : {})}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-ink-muted">
               Selecciona un nodo del grafo para ver sus intentos, duración, error, entrada y salida.
             </p>
           )}

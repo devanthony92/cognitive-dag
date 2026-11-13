@@ -30,10 +30,10 @@ export function ScheduleStatus({
   return (
     <section aria-label="Programación" className="mt-6 grid gap-2 border-t pt-4">
       <h3 className="text-sm font-semibold">Programación</h3>
-      {schedule.isPending && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {schedule.isPending && <p className="text-sm text-ink-muted">Cargando…</p>}
       {schedule.isError && <ProblemAlert error={schedule.error} />}
       {schedule.isSuccess && state === null && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-ink-muted">
           Se programa al activar una versión que tenga este disparador.
         </p>
       )}
@@ -41,7 +41,7 @@ export function ScheduleStatus({
         <>
           <dl className="grid gap-1 text-sm">
             <div className="flex gap-2">
-              <dt className="text-muted-foreground">Activa</dt>
+              <dt className="text-ink-muted">Activa</dt>
               <dd>
                 {state.desiredState === 'scheduled'
                   ? `Sí, con la versión ${state.versionNumber}`
@@ -49,19 +49,19 @@ export function ScheduleStatus({
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-muted-foreground">Cron</dt>
+              <dt className="text-ink-muted">Cron</dt>
               <dd>
                 <code>{state.cron}</code> ({state.timezone})
               </dd>
             </div>
             <div className="flex gap-2">
-              <dt className="text-muted-foreground">Estado</dt>
+              <dt className="text-ink-muted">Estado</dt>
               <dd>{SYNC_TEXT[state.syncStatus]}</dd>
             </div>
           </dl>
           {state.nextRuns.length > 0 && (
             <div className="text-sm">
-              <p className="text-muted-foreground">Próximos disparos</p>
+              <p className="text-ink-muted">Próximos disparos</p>
               <ul className="list-disc pl-5">
                 {state.nextRuns.map((time) => (
                   <li key={time}>{formatDateTime(time)}</li>
