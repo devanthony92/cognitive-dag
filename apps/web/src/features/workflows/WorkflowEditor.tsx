@@ -1,7 +1,6 @@
 import {
   Background,
   Controls,
-  Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -12,16 +11,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useBlocker } from '@tanstack/react-router';
-import {
-  Cable,
-  Download,
-  Network,
-  Plus,
-  Save,
-  Send,
-  SlidersHorizontal,
-  Sparkles,
-} from 'lucide-react';
+import { Download, Network, Save, Send, Sparkles } from 'lucide-react';
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { WorkflowBody } from '@cognitive-dag/contracts';
 import {
@@ -91,6 +81,7 @@ import {
   type Position,
 } from './model';
 import { Palette, PALETTE_DRAG_TYPE } from './Palette';
+import { CanvasToolbar } from './CanvasToolbar';
 import { ProblemsList } from './ProblemsList';
 import { PublishDialog } from './PublishDialog';
 import { useLiveValidation } from './useLiveValidation';
@@ -452,6 +443,12 @@ function EditorSession({
     setConnectFrom(selectedNode.id);
     setAnnouncement(`Conectando desde «${selectedNode.label}». Elige la estación de destino.`);
   };
+  const startConnectNow = useRef(startConnect);
+  startConnectNow.current = startConnect;
+  const startConnectStable = useCallback(() => startConnectNow.current(), []);
+  const openAdd = useCallback(() => setAddOpen(true), []);
+  const openConfig = useCallback(() => setConfigOpen(true), []);
+
   const finishConnect = (targetId: string) => {
     const from = connectFrom ? definition.nodes.find((item) => item.id === connectFrom) : undefined;
     const to = definition.nodes.find((item) => item.id === targetId);
@@ -473,6 +470,15 @@ function EditorSession({
     const branch = handles.length > 1 ? ` (${HANDLE_LABELS[handle] ?? handle})` : '';
     setAnnouncement(`Conectadas «${from.label}»${branch} y «${to.label}».`);
   };
+
+  // Stable: an inline handler would make React Flow redraw all the stations on every keystroke.
+  const finishNow = useRef(finishConnect);
+  finishNow.current = finishConnect;
+  const connectingNow = useRef(connectFrom);
+  connectingNow.current = connectFrom;
+  const onNodeClick = useCallback((_: unknown, clicked: { id: string }) => {
+    if (connectingNow.current !== undefined) finishNow.current(clicked.id);
+  }, []);
 
   const confirmDelete = () => {
     if (!pendingDelete) return;
@@ -703,9 +709,7 @@ function EditorSession({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
-            onNodeClick={(_, clicked) => {
-              if (connectFrom !== undefined) finishConnect(clicked.id);
-            }}
+            onNodeClick={onNodeClick}
             edgeTypes={EDGE_TYPES}
             className="station-canvas"
             ariaLabelConfig={CANVAS_ARIA_LABELS}
@@ -721,34 +725,15 @@ function EditorSession({
             <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
             <CanvasZoom />
             <FitWhenReady minZoom={0.2} />
-            <Panel position="top-left" className="flex flex-wrap gap-2">
-              {phone && canWrite && (
-                <Button variant="secondary" onClick={() => setAddOpen(true)}>
-                  <Plus aria-hidden />
-                  Añadir nodo
-                </Button>
-              )}
-              {canWrite && (
-                <Button
-                  variant={connectFrom === undefined ? 'secondary' : 'primary'}
-                  aria-pressed={connectFrom !== undefined}
-                  onClick={startConnect}
-                >
-                  <Cable aria-hidden />
-                  Conectar
-                </Button>
-              )}
-              {phone && (
-                <Button
-                  variant="secondary"
-                  disabled={!selectedNode}
-                  onClick={() => setConfigOpen(true)}
-                >
-                  <SlidersHorizontal aria-hidden />
-                  Configurar
-                </Button>
-              )}
-            </Panel>
+            <CanvasToolbar
+              phone={phone}
+              canWrite={canWrite}
+              connecting={connectFrom !== undefined}
+              hasSelection={selectedNode !== undefined}
+              onAdd={openAdd}
+              onConnect={startConnectStable}
+              onConfigure={openConfig}
+            />
           </ReactFlow>
         </div>
 
@@ -829,7 +814,7 @@ function EditorSession({
         {announcement}
       </div>
 
-      {phone && canWrite && (
+      {phone && canWrite && addOpen && (
         <Sheet open={addOpen} onOpenChange={setAddOpen}>
           <SheetContent aria-describedby={undefined}>
             <SheetTitle>Añadir nodo</SheetTitle>
@@ -842,7 +827,7 @@ function EditorSession({
           </SheetContent>
         </Sheet>
       )}
-      {phone && (
+      {phone && configOpen && (
         <Sheet open={configOpen} onOpenChange={setConfigOpen}>
           <SheetContent>
             <SheetTitle>Configurar nodo</SheetTitle>
@@ -924,29 +909,31 @@ function EditorSession({
         </Sheet>
       )}
 
-      <Dialog
-        open={pendingDelete !== undefined}
-        onOpenChange={(open) => !open && setPendingDelete(undefined)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{`¿Eliminar «${pendingDelete?.name ?? ''}»?`}</DialogTitle>
-            <DialogDescription>
-              {pendingDelete?.kind === 'node'
-                ? 'Se elimina la estación y sus conexiones. Aún no se guarda: puedes recargar para descartar.'
-                : 'Se elimina la conexión. Aún no se guarda.'}
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setPendingDelete(undefined)}>
-              Cancelar
-            </Button>
-            <Button variant="danger" onClick={confirmDelete}>
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {pendingDelete !== undefined && (
+        <Dialog
+          open={pendingDelete !== undefined}
+          onOpenChange={(open) => !open && setPendingDelete(undefined)}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{`¿Eliminar «${pendingDelete?.name ?? ''}»?`}</DialogTitle>
+              <DialogDescription>
+                {pendingDelete?.kind === 'node'
+                  ? 'Se elimina la estación y sus conexiones. Aún no se guarda: puedes recargar para descartar.'
+                  : 'Se elimina la conexión. Aún no se guarda.'}
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setPendingDelete(undefined)}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={confirmDelete}>
+                Eliminar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <ProblemsList errors={result.errors} labels={labels} onSelectNode={selectNode} />
 
