@@ -7,16 +7,10 @@ import {
   type OrganizationSummary,
 } from '@cognitive-dag/contracts';
 import { ApiProblemError, request } from '../../api/client';
-import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Button, buttonVariants } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { PageHeader } from '../../components/ui/page-header';
+import { Skeleton } from '../../components/ui/skeleton';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { ROLE_LABELS } from '../organizations/OrganizationSwitcher';
 import { sessionQuery } from '../session/session';
@@ -79,27 +73,37 @@ export function AcceptInvitationPanel({ token }: { token: string | undefined }) 
 
   if (token === undefined || preview.isError) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Invitación no válida</CardTitle>
-          <CardDescription>
-            El enlace no es válido, ya fue usado o está vencido. Pide a un owner que te invite de
-            nuevo.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="grid gap-6">
+        <PageHeader title="Invitación no válida" />
+        <Alert variant="destructive">
+          <AlertTitle>No se puede usar este enlace</AlertTitle>
+          <AlertDescription>
+            <p>
+              El enlace no es válido, ya fue usado o está vencido. Pide a un owner que te invite de
+              nuevo.
+            </p>
+          </AlertDescription>
+        </Alert>
+        <div>
+          <Link to="/" className={buttonVariants({ variant: 'secondary' })}>
+            Ir al inicio
+          </Link>
+        </div>
+      </div>
     );
   }
 
   const invitation = preview.data;
   if (!invitation || session.isPending) {
     return (
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Invitación</CardTitle>
-          <CardDescription>Cargando la invitación…</CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="grid gap-6">
+        <PageHeader title="Invitación" />
+        <div role="status" className="grid gap-3">
+          <span className="sr-only">Cargando la invitación…</span>
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="h-24 w-full" />
+        </div>
+      </div>
     );
   }
 
@@ -107,33 +111,33 @@ export function AcceptInvitationPanel({ token }: { token: string | undefined }) 
   const wrongAccount = user !== undefined && user.email !== invitation.email;
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Invitación a {invitation.organizationName}</CardTitle>
-        <CardDescription>
-          Te invitaron como {ROLE_LABELS[invitation.role]}. La invitación es para{' '}
-          <strong>{invitation.email}</strong>.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        {user === undefined && (
-          <Alert>
-            <AlertDescription>
-              Inicia sesión con {invitation.email} para aceptarla. Si todavía no tienes cuenta,
-              créala con ese mismo correo: al verificarlo e iniciar sesión podrás aceptar.
-            </AlertDescription>
-          </Alert>
-        )}
-        {wrongAccount && (
-          <Alert variant="destructive">
-            <AlertDescription>
-              Estás conectado como {user.email}. Cierra sesión y entra con {invitation.email}.
-            </AlertDescription>
-          </Alert>
-        )}
-        {accept.isError && <ProblemAlert error={accept.error} />}
-      </CardContent>
-      <CardFooter className="gap-2">
+    <div className="grid gap-6">
+      <PageHeader
+        title={`Invitación a ${invitation.organizationName}`}
+        description={
+          <>
+            Te invitaron como {ROLE_LABELS[invitation.role]}. La invitación es para{' '}
+            <strong className="font-semibold text-ink">{invitation.email}</strong>.
+          </>
+        }
+      />
+      {user === undefined && (
+        <Alert>
+          <AlertDescription>
+            Inicia sesión con {invitation.email} para aceptarla. Si todavía no tienes cuenta, créala
+            con ese mismo correo: al verificarlo e iniciar sesión podrás aceptar.
+          </AlertDescription>
+        </Alert>
+      )}
+      {wrongAccount && (
+        <Alert variant="destructive">
+          <AlertDescription>
+            Estás conectado como {user.email}. Cierra sesión y entra con {invitation.email}.
+          </AlertDescription>
+        </Alert>
+      )}
+      {accept.isError && <ProblemAlert error={accept.error} />}
+      <div className="flex flex-wrap gap-3">
         {user === undefined ? (
           <>
             <Link to="/login" className={buttonVariants()}>
@@ -148,7 +152,7 @@ export function AcceptInvitationPanel({ token }: { token: string | undefined }) 
             Aceptar invitación
           </Button>
         )}
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
