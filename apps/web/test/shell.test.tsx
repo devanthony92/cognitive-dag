@@ -61,7 +61,8 @@ describe('application shell (FR-008, FR-011)', () => {
 
   it('keeps the header free of whitespace-nowrap so it cannot overflow the window', async () => {
     openApp(`/orgs/${ORG_ID}/workflows`, signedIn('owner'));
-    const header = await screen.findByRole('banner');
+    // PageHeader is a <header> too: the shell's own comes first in the document.
+    const header = (await screen.findAllByRole('banner'))[0]!;
     expect(header.className).not.toMatch(/whitespace-nowrap/);
     expect(header.querySelector('.whitespace-nowrap')).toBeNull();
   });

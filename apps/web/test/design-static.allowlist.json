@@ -1,27 +1,7 @@
 {
-  "src/features/approvals/ApprovalsPage.tsx": {
-    "rules": ["page-width"],
-    "reason": "Restyled in PR 3 (lists, settings, access); the list empties by the end of PR 4."
-  },
-  "src/features/credentials/ConnectionsPage.tsx": {
-    "rules": ["page-width"],
-    "reason": "Restyled in PR 3 (lists, settings, access); the list empties by the end of PR 4."
-  },
-  "src/features/llm/LlmUsageCard.tsx": {
-    "rules": ["inline-style"],
-    "reason": "Bar width of the usage meter comes from the data; PR 3 replaces it with a token-driven meter."
-  },
-  "src/features/runs/OrganizationRunsPage.tsx": {
-    "rules": ["tailwind-palette", "page-width"],
-    "reason": "Restyled in PR 3 (lists, settings, access); the list empties by the end of PR 4."
-  },
   "src/features/runs/RunDetailPage.tsx": {
     "rules": ["page-width"],
     "reason": "Restyled in PR 4 (editor and run view with stations); the list empties by the end of PR 4."
-  },
-  "src/features/runs/RunsPage.tsx": {
-    "rules": ["page-width"],
-    "reason": "Restyled in PR 3 (lists, settings, access); the list empties by the end of PR 4."
   },
   "src/features/runs/StepPanel.tsx": {
     "rules": ["tailwind-palette"],

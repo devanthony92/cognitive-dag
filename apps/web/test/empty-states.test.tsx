@@ -24,7 +24,7 @@ function empties(url: string) {
       }),
     );
   }
-  if (/\/(runs|approvals|http-allowed-hosts)(\?.*)?$/.test(url)) {
+  if (/\/(runs|approvals|http-allowed-hosts|credentials)(\?.*)?$/.test(url)) {
     return Promise.resolve(json({ items: [], nextCursor: null }));
   }
   return signedIn()(url);
