@@ -1,4 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
+import { Alert, AlertDescription } from '../../components/ui/alert';
+import { PageHeader } from '../../components/ui/page-header';
 import { HttpHostsSection } from '../http-hosts/HttpHostsSection';
 import { sessionQuery } from '../session/session';
 import { CredentialsSection } from './CredentialsSection';
@@ -11,22 +13,27 @@ export function ConnectionsPage({ organizationId }: { organizationId: string }) 
 
   if (role === 'viewer') {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-8">
-        <h1 className="text-2xl font-semibold tracking-tight">Conexiones</h1>
-        <p className="text-muted-foreground">Tu rol no permite ver las conexiones.</p>
+      <div className="grid gap-6">
+        <PageHeader
+          title="Conexiones"
+          description="Las credenciales y los destinos permitidos de las llamadas HTTP."
+        />
+        <Alert>
+          <AlertDescription>Tu rol no permite ver las conexiones.</AlertDescription>
+        </Alert>
       </div>
     );
   }
   return (
-    <div className="mx-auto grid w-full max-w-5xl gap-6 px-4 py-8">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Conexiones</h1>
-        <p className="text-muted-foreground">
-          {isOwner
+    <div className="grid gap-6">
+      <PageHeader
+        title="Conexiones"
+        description={
+          isOwner
             ? 'Administra las credenciales y los destinos permitidos de las llamadas HTTP.'
-            : 'Solo los owners pueden cambiar las credenciales y los destinos permitidos.'}
-        </p>
-      </section>
+            : 'Solo los owners pueden cambiar las credenciales y los destinos permitidos.'
+        }
+      />
       <CredentialsSection organizationId={organizationId} isOwner={isOwner} />
       <HttpHostsSection organizationId={organizationId} isOwner={isOwner} />
     </div>

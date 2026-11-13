@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { ConnectionsPage } from '../features/credentials/ConnectionsPage';
 
 export const Route = createFileRoute('/orgs/$organizationId/connections')({
+  staticData: { width: 'default' },
   component: Connections,
 });
 
