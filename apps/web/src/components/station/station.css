@@ -1,0 +1,181 @@
+/*
+ * Stations and lines of the canvas (DESIGN.md: Nodo del editor; research R9). Colours come only from
+ * tokens.css. React Flow ships its own stylesheet; these rules are more specific so they win whatever
+ * the order of the two files.
+ */
+
+/* The canvas sits on the enamel, not on the white of React Flow. */
+.react-flow.station-canvas {
+  --xy-background-color: var(--ground);
+  --xy-background-pattern-color: var(--line);
+  --xy-node-boxshadow-selected: none;
+  --xy-controls-button-background-color: var(--surface);
+  --xy-controls-button-background-color-hover: var(--raised);
+  --xy-controls-button-color: var(--ink);
+  --xy-controls-button-color-hover: var(--ink);
+  --xy-controls-button-border-color: var(--line);
+  --xy-controls-box-shadow: 0 8px 24px var(--shadow-color);
+  --xy-edge-label-background-color: var(--surface);
+  --xy-edge-label-color: var(--ink);
+  --xy-selection-background-color: color-mix(in oklab, var(--focus) 8%, transparent);
+  --xy-selection-border: 1px dashed var(--focus);
+  background: var(--ground);
+}
+
+/* The box of a station is the 40 px circle; React Flow must not draw a box of its own around it. */
+.station-canvas .react-flow__node {
+  border-radius: 999px;
+}
+.station-canvas .react-flow__node:focus,
+.station-canvas .react-flow__node:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+/* The keyboard focus is the double ring of the design, on the circle (React Flow focuses the box). */
+.react-flow__node:focus-visible [data-station-circle] {
+  box-shadow: var(--ring-focus);
+}
+
+/* Name and type keep their size whatever the zoom: the map comes closer, the sign does not shrink. */
+.station-labels {
+  scale: calc(1 / var(--canvas-zoom, 1));
+  transform-origin: top center;
+}
+
+/* Ports: a 12 px dot on the circle with a 44 px touch zone around it. */
+.react-flow__handle.station-port {
+  width: 12px;
+  height: 12px;
+  min-width: 12px;
+  min-height: 12px;
+  border: 2px solid var(--ground);
+  background: var(--line-strong);
+}
+.react-flow__handle.station-port::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  translate: -50% -50%;
+}
+.station-canvas .react-flow__handle.station-port.connectingfrom,
+.station-canvas .react-flow__handle.station-port.connectingto,
+.station-canvas .react-flow__handle.station-port:hover {
+  background: var(--ink);
+}
+/* A port nobody can use (read-only canvas) is not drawn. */
+.station-canvas .react-flow__handle.station-port:not(.connectable) {
+  opacity: 0;
+}
+
+/* Several outputs fan out along the right side of the circle, each on its edge. */
+.react-flow__handle.station-port.station-port-of-2.station-port-at-0 {
+  top: 30%;
+  right: 1.7px;
+}
+.react-flow__handle.station-port.station-port-of-2.station-port-at-1 {
+  top: 70%;
+  right: 1.7px;
+}
+.react-flow__handle.station-port.station-port-of-3.station-port-at-0 {
+  top: 18%;
+  right: 4.6px;
+}
+.react-flow__handle.station-port.station-port-of-3.station-port-at-1 {
+  top: 50%;
+}
+.react-flow__handle.station-port.station-port-of-3.station-port-at-2 {
+  top: 82%;
+  right: 4.6px;
+}
+
+/* Lines: 5 px in the colour of the category of the source. */
+.station-edge .react-flow__edge-path.station-edge-path {
+  stroke: var(--line-strong);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.station-edge[data-category='trigger'] .station-edge-path {
+  stroke: var(--node-trigger);
+}
+.station-edge[data-category='logic'] .station-edge-path {
+  stroke: var(--node-logic);
+}
+.station-edge[data-category='llm'] .station-edge-path {
+  stroke: var(--node-llm);
+}
+.station-edge[data-category='http'] .station-edge-path {
+  stroke: var(--node-http);
+}
+.station-edge[data-category='approval'] .station-edge-path {
+  stroke: var(--node-approval);
+}
+.station-edge[data-category='mock'] .station-edge-path {
+  stroke: var(--node-mock);
+}
+/* A line with a problem: the failed colour and a dash, so it does not rely on colour alone. */
+.station-edge[data-problem='true'] .station-edge-path {
+  stroke: var(--state-failed);
+  stroke-dasharray: 10 7;
+}
+/* In a run, the line into a skipped step fades back. */
+.station-edge[data-dimmed='true'] {
+  opacity: 0.35;
+}
+
+/* Selected or focused line: a halo in the ink colour under the line. */
+.station-edge-halo {
+  fill: none;
+  stroke: var(--focus);
+  stroke-width: 11;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+.react-flow__edge.selected .station-edge-halo,
+.react-flow__edge:focus-visible .station-edge-halo {
+  opacity: 1;
+}
+.station-canvas .react-flow__edge:focus,
+.station-canvas .react-flow__edge:focus-visible {
+  outline: none;
+}
+
+/* Branch label («Sí», «No»...) and problem mark of a line, at a fixed size like the station labels. */
+.station-edge-tag {
+  transform-box: fill-box;
+  transform-origin: center;
+  scale: calc(1 / var(--canvas-zoom, 1));
+}
+.station-edge-tag rect {
+  fill: var(--surface);
+  stroke: var(--line-strong);
+  stroke-width: 1;
+}
+.station-edge-tag text {
+  fill: var(--ink);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.station-edge-problem circle {
+  fill: var(--state-failed);
+  stroke: var(--ground);
+  stroke-width: 2;
+}
+.station-edge-problem path {
+  fill: none;
+  stroke: var(--ground);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+/* The spinning arc of «En curso» on a station badge stops with reduced motion (index.css). */
+.station-canvas .react-flow__edge.animated .station-edge-path {
+  stroke-dasharray: 12 8;
+}
