@@ -117,7 +117,7 @@ export function CredentialsSection({
           />
         )}
         {credentials.isSuccess && credentials.data.length > 0 && (
-          <Table>
+          <Table flush>
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>

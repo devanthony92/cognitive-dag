@@ -29,6 +29,21 @@ y oscuro = **160 mediciones, 0 con scroll horizontal**. Cada pantalla tiene un s
 | Carril de 240 px (≥ 1024), de 72 px (768–1023) y barra inferior de 56 px (< 768)                                       | 768 px: de +394 px a 0; 1024 px: de +138 px a 0                    |
 | La lista de Workflows contiene el desborde de su tabla dentro del contenedor (`grid-cols-[minmax(0,1fr)]`)             | 375 px: la tabla se desplaza dentro de su tarjeta, no el documento |
 
-Pendiente para la PR 3 (T038, T047): `reset-password`, `verify-email`, `invitations/accept`, `register`,
-`forgot-password` y el compilador siguen sin un `h1` propio (usan el título de la tarjeta), y la tabla de Workflows
-oculta columnas a 375 px en lugar de convertirse en lista. El `h1` único se exige por ruta desde la PR 3.
+## Tras la PR 3 (listas, ajustes y acceso)
+
+Mismo método (iframes de 375, 768, 1024 y 1440 px, API simulada con datos ficticios, `scrollWidth - ancho`).
+Rutas: organización, Workflows, «Describir workflow», Ejecuciones de la organización y de un workflow,
+Aprobaciones, Conexiones, Miembros, cambio de contraseña y aceptar invitación (con sesión, 10 rutas), más `/`,
+`/login`, `/register`, `/forgot-password`, `/reset-password` (con y sin token) y `/verify-email` (sin sesión,
+7 rutas). 17 rutas × 4 anchos × claro y oscuro = **136 mediciones, 0 con scroll horizontal y 1 solo `h1` en cada
+una**. El editor y la ejecución quedan para la PR 4.
+
+| Qué cambió                                                                                        | Resultado                                                                   |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Workflows y Aprobaciones apilan cada fila bajo 640 px en lugar de ocultar columnas                | 375 px: nombre, versión y fecha visibles sin desplazarse                    |
+| Ejecuciones de la organización y de un workflow comparten `RunsTable` y `page-default`            | Antes `max-w-5xl`/`6xl` y ancho completo; ahora una sola columna de 1120 px |
+| `reset-password`, `verify-email`, `invitations/accept`, `register`, `forgot-password`, compilador | Cada uno con un solo `h1` (antes usaban el título de la tarjeta, un `h2`)   |
+| Las pantallas de lista cargan con esqueletos de la forma final y `role="status"`                  | Sin «Cargando…» suelto fuera del editor y de la ejecución                   |
+
+Quedan «Cargando…» en `ScheduleStatus`, `WebhookPanel`, `StepPanel`, `RunDetailPage` y `WorkflowEditor`: son del
+editor y de la ejecución (PR 4).

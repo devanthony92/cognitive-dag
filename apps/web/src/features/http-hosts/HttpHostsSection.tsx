@@ -109,7 +109,7 @@ export function HttpHostsSection({
             {hosts.data.map((host) => (
               <li
                 key={host.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-line p-2"
+                className="flex items-center justify-between gap-2 border-b border-line py-2"
               >
                 <code className="text-body-sm break-all">{host.pattern}</code>
                 {isOwner && (
