@@ -94,44 +94,99 @@ export function createNodeBuilder() {
   };
 }
 
+interface CachedEdge {
+  source: DagDefinition['edges'][number];
+  from: string;
+  to: string;
+  fromType: string | undefined;
+  selected: boolean;
+  readOnly: boolean;
+  problems: readonly unknown[] | undefined;
+  out: FlowEdge;
+}
+
 /**
- * The lines of the canvas: a station edge per connection, in the colour of the category of its
+ * Builds the lines of the canvas: a station edge per connection, in the colour of the category of its
  * source, named after its two ends, with the branch («Sí», «No»…) when the source has several outputs.
+ * Like the node builder it keeps the object of a line that did not change, so typing in the panel
+ * does not make React Flow redraw the other 99 lines.
  */
+export function createEdgeBuilder() {
+  const cache = new Map<string, CachedEdge>();
+  return (
+    definition: DagDefinition,
+    errors: GroupedErrors,
+    selected: ReadonlySet<string>,
+    readOnly: boolean,
+  ): FlowEdge[] => {
+    const byId = new Map(definition.nodes.map((node) => [node.id, node]));
+    const live = new Set<string>();
+    const edges = definition.edges.map((edge) => {
+      live.add(edge.id);
+      const source = byId.get(edge.source);
+      const target = byId.get(edge.target);
+      const problems = errors.byEdge.get(edge.id);
+      const from = source?.label ?? edge.source;
+      const to = target?.label ?? edge.target;
+      const isSelected = selected.has(edge.id);
+      const hit = cache.get(edge.id);
+      if (
+        hit &&
+        hit.source === edge &&
+        hit.from === from &&
+        hit.to === to &&
+        hit.fromType === source?.type &&
+        hit.selected === isSelected &&
+        hit.readOnly === readOnly &&
+        hit.problems === problems
+      ) {
+        return hit.out;
+      }
+      const branching = source ? NODE_CATALOG[source.type].handles.length > 1 : false;
+      const label = branching ? (HANDLE_LABELS[edge.sourceHandle] ?? edge.sourceHandle) : undefined;
+      const problem = problems?.map((error) => error.message).join('. ');
+      const out: FlowEdge = {
+        id: edge.id,
+        type: 'station',
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        selected: isSelected,
+        deletable: !readOnly,
+        focusable: true,
+        ariaLabel: [`Conexión de «${from}»${label ? ` (${label})` : ''} a «${to}»`, problem]
+          .filter(Boolean)
+          .join('. '),
+        data: {
+          category: source ? categoryOfType(source.type) : undefined,
+          ...(problem ? { problem } : {}),
+        },
+        ...(label ? { label } : {}),
+        ...(problem ? { className: 'has-errors' } : {}),
+      };
+      cache.set(edge.id, {
+        source: edge,
+        from,
+        to,
+        fromType: source?.type,
+        selected: isSelected,
+        readOnly,
+        problems,
+        out,
+      });
+      return out;
+    });
+    for (const id of cache.keys()) if (!live.has(id)) cache.delete(id);
+    return edges;
+  };
+}
+
+/** One-off build, for the read-only canvases (run view, draft preview). */
 export function buildEdges(
   definition: DagDefinition,
   errors: GroupedErrors,
   selected: ReadonlySet<string>,
   readOnly: boolean,
 ): FlowEdge[] {
-  const byId = new Map(definition.nodes.map((node) => [node.id, node]));
-  return definition.edges.map((edge) => {
-    const source = byId.get(edge.source);
-    const target = byId.get(edge.target);
-    const problems = errors.byEdge.get(edge.id);
-    const branching = source ? NODE_CATALOG[source.type].handles.length > 1 : false;
-    const label = branching ? (HANDLE_LABELS[edge.sourceHandle] ?? edge.sourceHandle) : undefined;
-    const problem = problems?.map((error) => error.message).join('. ');
-    const from = source?.label ?? edge.source;
-    const to = target?.label ?? edge.target;
-    return {
-      id: edge.id,
-      type: 'station',
-      source: edge.source,
-      target: edge.target,
-      sourceHandle: edge.sourceHandle,
-      selected: selected.has(edge.id),
-      deletable: !readOnly,
-      focusable: true,
-      ariaLabel: [`Conexión de «${from}»${label ? ` (${label})` : ''} a «${to}»`, problem]
-        .filter(Boolean)
-        .join('. '),
-      data: {
-        category: source ? categoryOfType(source.type) : undefined,
-        ...(problem ? { problem } : {}),
-      },
-      ...(label ? { label } : {}),
-      ...(problem ? { className: 'has-errors' } : {}),
-    };
-  });
+  return createEdgeBuilder()(definition, errors, selected, readOnly);
 }

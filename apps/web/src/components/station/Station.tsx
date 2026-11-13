@@ -1,9 +1,9 @@
 import { TriangleAlert } from 'lucide-react';
 import { NODE_CATALOG, type NodeType } from '@cognitive-dag/dag-schema';
-import { cn } from '../../lib/utils';
-import { CATEGORIES, categoryOfType } from '../category/categories';
+import { CATEGORIES, CATEGORY_IDS, categoryOfType, type CategoryId } from '../category/categories';
 import { StatusMark } from '../status/StatusBadge';
 import type { ServiceState } from '../status/statusGlyphs';
+import { categorySymbolId } from './CategorySprite';
 import './station.css';
 
 export interface StationProps {
@@ -21,6 +21,27 @@ export interface StationProps {
   /** A short note under the type, such as «Esperando por el límite». */
   note?: string;
 }
+
+/* Class strings are built once: a plan can hold 50 stations and none of them should run a class merger. */
+const CIRCLE_BASE =
+  'absolute top-1/2 left-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-station border-4 bg-surface transition-[width,height] duration-(--duration-state) ease-line';
+const CIRCLE_CLASS = Object.fromEntries(
+  CATEGORY_IDS.flatMap((id) => [
+    [`${id}:0`, `${CIRCLE_BASE} size-10 ${CATEGORIES[id].borderClass} ${CATEGORIES[id].textClass}`],
+    [
+      `${id}:1`,
+      `${CIRCLE_BASE} size-12 shadow-(--ring-focus) ${CATEGORIES[id].borderClass} ${CATEGORIES[id].textClass}`,
+    ],
+  ]),
+) as Record<`${CategoryId}:${0 | 1}`, string>;
+const CIRCLE_UNKNOWN = `${CIRCLE_BASE} size-10 border-line-strong text-ink-muted`;
+const BADGE_CLASS = [
+  'absolute -top-1.5 -right-1.5 size-[18px]',
+  'absolute -top-2.5 -right-2.5 size-[18px]',
+];
+const PROBLEM_BASE =
+  'absolute flex h-[18px] items-center gap-0.5 rounded-station border-2 border-ground bg-state-failed px-1 text-label font-semibold text-ground';
+const PROBLEM_CLASS = [`${PROBLEM_BASE} -top-2 -right-4`, `${PROBLEM_BASE} -top-3 -right-5`];
 
 const plural = (count: number, one: string, many: string) => `${count} ${count === 1 ? one : many}`;
 
@@ -61,31 +82,30 @@ export function Station({
   note,
 }: StationProps) {
   const category = categoryOfType(type);
-  const look = category ? CATEGORIES[category] : undefined;
-  const Icon = look?.Icon;
   return (
     <div data-station className="relative size-10">
       <div
         data-station-circle
         data-category={category}
-        className={cn(
-          'absolute top-1/2 left-1/2 flex size-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-station border-4 bg-surface transition-[width,height] duration-(--duration-state) ease-line',
-          look ? [look.borderClass, look.textClass] : 'border-line-strong text-ink-muted',
-          selected && 'size-12 shadow-(--ring-focus)',
-        )}
+        className={category ? CIRCLE_CLASS[`${category}:${selected ? 1 : 0}`] : CIRCLE_UNKNOWN}
       >
-        {Icon && <Icon className="size-6" strokeWidth={2} aria-hidden />}
+        {category && (
+          <svg
+            className="size-6"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            aria-hidden="true"
+            focusable="false"
+          >
+            <use href={`#${categorySymbolId(category)}`} />
+          </svg>
+        )}
       </div>
 
       {state && (
-        <span
-          data-station-badge
-          data-state={state}
-          className={cn(
-            'absolute -top-1.5 -right-1.5 size-[18px]',
-            selected && '-top-2.5 -right-2.5',
-          )}
-        >
+        <span data-station-badge data-state={state} className={BADGE_CLASS[selected ? 1 : 0]}>
           <StatusMark state={state} label={stateLabel ?? ''} />
         </span>
       )}
@@ -94,10 +114,7 @@ export function Station({
         <span
           data-testid="node-errors"
           title={problemTitle}
-          className={cn(
-            'absolute -top-2 -right-4 flex h-[18px] items-center gap-0.5 rounded-station border-2 border-ground bg-state-failed px-1 text-label font-semibold text-ground',
-            selected && '-top-3 -right-5',
-          )}
+          className={PROBLEM_CLASS[selected ? 1 : 0]}
         >
           <TriangleAlert className="size-3" strokeWidth={2.5} aria-hidden />
           <span className="sr-only">Problemas:</span>

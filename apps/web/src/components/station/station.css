@@ -128,18 +128,12 @@
   opacity: 0.35;
 }
 
-/* Selected or focused line: a halo in the ink colour under the line. */
-.station-edge-halo {
-  fill: none;
+/* Selected or focused line: the wide invisible hit path shows as a halo in the ink colour under it. */
+.react-flow__edge.selected .react-flow__edge-interaction,
+.react-flow__edge:focus-visible .react-flow__edge-interaction {
   stroke: var(--focus);
-  stroke-width: 11;
+  stroke-opacity: 0.35;
   stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0;
-}
-.react-flow__edge.selected .station-edge-halo,
-.react-flow__edge:focus-visible .station-edge-halo {
-  opacity: 1;
 }
 .station-canvas .react-flow__edge:focus,
 .station-canvas .react-flow__edge:focus-visible {

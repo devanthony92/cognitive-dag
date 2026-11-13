@@ -103,7 +103,7 @@ export function RunGraph({ definition, steps, selectedId, onSelect }: Props) {
       <Background />
       <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
       <CanvasZoom />
-      <FitWhenReady />
+      <FitWhenReady minZoom={0.2} />
     </ReactFlow>
   );
 }

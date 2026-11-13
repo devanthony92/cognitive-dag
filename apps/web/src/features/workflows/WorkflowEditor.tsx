@@ -70,7 +70,7 @@ import { downloadDefinition, exportFileName } from './export';
 import { autoLayout } from './layout';
 import { checkRename, renameNodeId } from './references';
 import {
-  buildEdges,
+  createEdgeBuilder,
   createNodeBuilder,
   EDGE_TYPES,
   HANDLE_LABELS,
@@ -189,6 +189,7 @@ function EditorSession({
   const [selectedEdges, setSelectedEdges] = useState<ReadonlySet<string>>(NO_SELECTION);
   const [measured, setMeasured] = useState<ReadonlyMap<string, Size>>(new Map());
   const buildNodes = useMemo(createNodeBuilder, []);
+  const buildEdgeList = useMemo(createEdgeBuilder, []);
   const [announcement, setAnnouncement] = useState('');
   const [connectFrom, setConnectFrom] = useState<string | undefined>();
   const [addOpen, setAddOpen] = useState(false);
@@ -285,8 +286,8 @@ function EditorSession({
     [buildNodes, definition, errors, selectedNodes, measured, readOnly],
   );
   const edges = useMemo(
-    () => buildEdges(definition, errors, selectedEdges, readOnly),
-    [definition, errors, selectedEdges, readOnly],
+    () => buildEdgeList(definition, errors, selectedEdges, readOnly),
+    [buildEdgeList, definition, errors, selectedEdges, readOnly],
   );
 
   const selectNode = useCallback((id: string) => {
@@ -390,7 +391,7 @@ function EditorSession({
     selectNode(added.id);
   };
 
-  const addFromPalette = (type: NodeType) => {
+  const addFromPaletteNow = (type: NodeType) => {
     const rect = canvas.current?.getBoundingClientRect();
     const center = flow.screenToFlowPosition({
       x: (rect?.left ?? 0) + (rect?.width ?? 0) / 2,
@@ -403,6 +404,11 @@ function EditorSession({
       y: center.y - 30 + (Math.floor(slot / 3) - 1) * 90,
     });
   };
+
+  // The palette is memoised: it gets a callback that never changes and always runs the latest one.
+  const addNow = useRef(addFromPaletteNow);
+  addNow.current = addFromPaletteNow;
+  const addFromPalette = useCallback((type: NodeType) => addNow.current(type), []);
 
   const selectedId = selectedNodes.values().next().value;
   const selectedNode = definition.nodes.find((node) => node.id === selectedId);
@@ -714,7 +720,7 @@ function EditorSession({
             <Background />
             <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
             <CanvasZoom />
-            <FitWhenReady />
+            <FitWhenReady minZoom={0.2} />
             <Panel position="top-left" className="flex flex-wrap gap-2">
               {phone && canWrite && (
                 <Button variant="secondary" onClick={() => setAddOpen(true)}>

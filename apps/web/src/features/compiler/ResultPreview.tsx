@@ -79,7 +79,7 @@ export function ResultPreview({ definition, errors }: Props) {
         <Background />
         <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
         <CanvasZoom />
-        <FitWhenReady />
+        <FitWhenReady minZoom={0.2} />
       </ReactFlow>
     </div>
   );

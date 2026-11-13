@@ -51,7 +51,6 @@ function StationEdgeBase({
       data-dimmed={data?.dimmed ? 'true' : undefined}
       className="station-edge"
     >
-      <path d={path} className="station-edge-halo" />
       <path
         d={path}
         fill="none"

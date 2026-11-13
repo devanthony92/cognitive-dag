@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { CategoryIcon } from '../../components/category/CategoryIcon';
 import {
   NODE_CATALOG,
@@ -18,7 +19,7 @@ const CATEGORIES: { id: NodeCategory; title: string }[] = [
 ];
 
 /** The 11 node types, grouped; click or drag one onto the canvas to add it. */
-export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
+function PaletteBase({ onAdd }: { onAdd: (type: NodeType) => void }) {
   return (
     <aside
       aria-label="Paleta de nodos"
@@ -65,3 +66,6 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
     </aside>
   );
 }
+
+/** Memoised: it only changes when the way of adding a node does, not while the draft is edited. */
+export const Palette = memo(PaletteBase);
