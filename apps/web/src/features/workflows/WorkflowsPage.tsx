@@ -21,7 +21,11 @@ import {
   FormLabel,
   FormMessage,
 } from '../../components/ui/form';
+import { EmptyState } from '../../components/ui/empty-state';
 import { Input } from '../../components/ui/input';
+import { PageHeader } from '../../components/ui/page-header';
+import { RowsSkeleton } from '../../components/ui/rows-skeleton';
+import { STACKED } from '../../components/ui/table-stacked';
 import {
   Table,
   TableBody,
@@ -30,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '../../components/ui/table';
+import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { sessionQuery } from '../session/session';
 import { createWorkflow, workflowsKey, workflowsQuery } from './api';
@@ -65,14 +70,14 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
 
   return (
     <div className="grid w-full grid-cols-[minmax(0,1fr)] gap-6">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Workflows</h1>
-        <p className="text-muted-foreground">
-          {canCreate
+      <PageHeader
+        title="Workflows"
+        description={
+          canCreate
             ? 'Diseña un flujo de nodos, valídalo y publica versiones.'
-            : 'Puedes abrir los workflows en modo de solo lectura.'}
-        </p>
-      </section>
+            : 'Puedes abrir los workflows en modo de solo lectura.'
+        }
+      />
 
       {canCreate && (
         <Card>
@@ -102,72 +107,95 @@ export function WorkflowsPage({ organizationId }: { organizationId: string }) {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" disabled={create.isPending} className="sm:mt-[1.375rem]">
+                <Button type="submit" disabled={create.isPending} className="sm:mt-[1.625rem]">
                   Crear workflow
                 </Button>
               </form>
             </Form>
             {create.isError && <ProblemAlert error={create.error} />}
-            {canCreate && (
-              <div className="flex flex-wrap items-center gap-3 border-t pt-4 text-sm">
+            <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4 text-body-sm">
+              <Button asChild variant="secondary">
+                <Link to="/orgs/$organizationId/workflows/new" params={{ organizationId }}>
+                  <Sparkles aria-hidden />
+                  Describir workflow
+                </Link>
+              </Button>
+              <span className="text-ink-muted">
+                ¿Prefieres contarlo con tus palabras? El compilador arma un borrador.
+              </span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <section className="grid gap-3" aria-labelledby="workflows-list-title">
+        <h2 id="workflows-list-title" className="text-title font-semibold text-ink">
+          Tus workflows
+        </h2>
+        {workflows.isPending && <RowsSkeleton />}
+        {workflows.isError && <ProblemAlert error={workflows.error} />}
+        {workflows.data?.length === 0 && (
+          <EmptyState
+            titleAs="h3"
+            title="Todavía no hay workflows."
+            description={
+              canCreate
+                ? 'Crea el primero con el nombre de arriba o cuéntalo con tus palabras.'
+                : 'Cuando alguien cree uno, aparecerá aquí.'
+            }
+            action={
+              canCreate ? (
                 <Button asChild variant="secondary">
                   <Link to="/orgs/$organizationId/workflows/new" params={{ organizationId }}>
                     <Sparkles aria-hidden />
                     Describir workflow
                   </Link>
                 </Button>
-                <span className="text-muted-foreground">
-                  ¿Prefieres contarlo con tus palabras? El compilador arma un borrador.
-                </span>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Tus workflows</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {workflows.isError && <ProblemAlert error={workflows.error} />}
-          {workflows.data?.length === 0 && (
-            <p className="text-sm text-muted-foreground">Todavía no hay workflows.</p>
-          )}
-          {workflows.data && workflows.data.length > 0 && (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Versión activa</TableHead>
-                  <TableHead>Borrador modificado</TableHead>
+              ) : (
+                <Button asChild variant="secondary">
+                  <Link to="/orgs/$organizationId/runs" params={{ organizationId }}>
+                    Ver ejecuciones
+                  </Link>
+                </Button>
+              )
+            }
+          />
+        )}
+        {workflows.data && workflows.data.length > 0 && (
+          <Table>
+            <TableHeader className={STACKED.head}>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Versión activa</TableHead>
+                <TableHead>Borrador modificado</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {workflows.data.map((workflow) => (
+                <TableRow key={workflow.id} className={STACKED.row}>
+                  <TableCell className={STACKED.cell}>
+                    <Link
+                      to="/orgs/$organizationId/workflows/$workflowId"
+                      params={{ organizationId, workflowId: workflow.id }}
+                      className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4"
+                    >
+                      {workflow.name}
+                    </Link>
+                  </TableCell>
+                  <TableCell className={STACKED.cell}>
+                    {workflow.activeVersionNumber === null
+                      ? 'Sin publicar'
+                      : `Versión ${workflow.activeVersionNumber}`}
+                  </TableCell>
+                  <TableCell className={cn(STACKED.cell, 'text-ink-muted')}>
+                    {new Date(workflow.draftUpdatedAt).toLocaleString('es')}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {workflows.data.map((workflow) => (
-                  <TableRow key={workflow.id}>
-                    <TableCell>
-                      <Link
-                        to="/orgs/$organizationId/workflows/$workflowId"
-                        params={{ organizationId, workflowId: workflow.id }}
-                        className="font-medium underline"
-                      >
-                        {workflow.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {workflow.activeVersionNumber === null
-                        ? 'Sin publicar'
-                        : `Versión ${workflow.activeVersionNumber}`}
-                    </TableCell>
-                    <TableCell>{new Date(workflow.draftUpdatedAt).toLocaleString('es')}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </section>
     </div>
   );
 }
