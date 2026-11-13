@@ -7,6 +7,8 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { EmptyState } from '../../components/ui/empty-state';
+import { Skeleton } from '../../components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -42,13 +44,20 @@ export function RecentCompilations({ organizationId, workflowId, selectedId, onS
       </CardHeader>
       <CardContent>
         {list.isPending && (
-          <p role="status" className="text-sm text-muted-foreground">
-            Cargando compilaciones…
-          </p>
+          <div role="status" className="grid gap-2">
+            <span className="sr-only">Cargando compilaciones…</span>
+            <Skeleton className="h-13 w-full" />
+            <Skeleton className="h-13 w-full" />
+            <Skeleton className="h-13 w-full" />
+          </div>
         )}
         {list.isError && <ProblemAlert error={list.error} />}
         {list.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">Todavía no hay compilaciones.</p>
+          <EmptyState
+            titleAs="h3"
+            title="Todavía no hay compilaciones."
+            description="Describe lo que quieres automatizar y aparecerá aquí."
+          />
         )}
         {list.data && list.data.length > 0 && (
           <Table>
@@ -57,7 +66,7 @@ export function RecentCompilations({ organizationId, workflowId, selectedId, onS
                 <TableHead>Fecha</TableHead>
                 <TableHead>Modo</TableHead>
                 <TableHead>Estado</TableHead>
-                <TableHead>Nodos</TableHead>
+                <TableHead numeric>Nodos</TableHead>
                 <TableHead>
                   <span className="sr-only">Acciones</span>
                 </TableHead>
@@ -72,7 +81,7 @@ export function RecentCompilations({ organizationId, workflowId, selectedId, onS
                   <TableCell>{new Date(item.createdAt).toLocaleString('es')}</TableCell>
                   <TableCell>{item.mode === 'regenerate' ? 'Regenerar' : 'Nuevo'}</TableCell>
                   <TableCell>{STATUS_LABEL[item.status]}</TableCell>
-                  <TableCell>{item.nodeCount ?? '—'}</TableCell>
+                  <TableCell numeric>{item.nodeCount ?? '—'}</TableCell>
                   <TableCell>
                     <Button
                       variant="secondary"
