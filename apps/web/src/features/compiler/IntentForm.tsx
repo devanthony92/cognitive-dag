@@ -38,15 +38,15 @@ export function IntentForm({ initialIntent, pending, onSubmit }: Props) {
           aria-describedby="compiler-intent-counter"
           placeholder="Por ejemplo: cuando llegue un correo, clasifícalo como spam o no, archiva el spam y responde el resto."
         />
-        <div className="flex items-center justify-between gap-2 text-sm">
+        <div className="flex items-center justify-between gap-2 text-body-sm">
           <span
             id="compiler-intent-counter"
-            className={tooLong ? 'text-destructive' : 'text-muted-foreground'}
+            className={tooLong ? 'text-state-failed' : 'text-ink-muted'}
           >
             {length} / {COMPILER_INTENT_MAX_CHARS}
           </span>
           {tooLong && (
-            <span role="alert" className="text-destructive">
+            <span role="alert" className="text-state-failed">
               Máximo {COMPILER_INTENT_MAX_CHARS} caracteres.
             </span>
           )}

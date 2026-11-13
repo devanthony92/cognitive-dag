@@ -44,7 +44,7 @@ const isConflict = (error: unknown): boolean =>
 export function ApplyPanel({ organizationId, compilation, result, definition, canWrite }: Props) {
   if (!canWrite) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-body-sm text-ink-muted">
         Tu rol no permite crear ni reemplazar borradores.
       </p>
     );
@@ -111,7 +111,7 @@ function CreateWorkflow({
           aria-invalid={nameError !== undefined}
           onChange={(event) => setName(event.target.value)}
         />
-        {nameError && <p className="text-sm text-destructive">{nameError}</p>}
+        {nameError && <p className="text-body-sm text-state-failed">{nameError}</p>}
       </div>
       {apply.isError && createdId !== undefined && (
         <Alert variant="destructive">
@@ -194,7 +194,7 @@ function ReplaceDraft({
         <Link
           to="/orgs/$organizationId/workflows/$workflowId"
           params={{ organizationId, workflowId }}
-          className="text-sm underline"
+          className="text-body-sm underline underline-offset-4"
         >
           Volver al editor sin cambiar nada
         </Link>
