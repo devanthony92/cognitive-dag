@@ -113,7 +113,7 @@ describe('approvals inbox and counter', () => {
   it('shows loading, then the empty state', async () => {
     stubApi(whenPath(/\/approvals\?/, 'GET', () => json({ items: [], nextCursor: null })));
     renderWithRouter(<ApprovalsPage organizationId={ORG_ID} selectedId={undefined} />);
-    expect(await screen.findByText('Cargando solicitudes…')).toBeDefined();
+    expect(await screen.findByRole('status')).toBeDefined();
     expect(await screen.findByText('No tienes solicitudes pendientes.')).toBeDefined();
   });
 

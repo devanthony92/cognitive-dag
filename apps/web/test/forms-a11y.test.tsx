@@ -77,7 +77,7 @@ describe('forms of access, account and organization', () => {
   it('/reset-password with a token has an h1 and accessible field errors', async () => {
     openApp('/reset-password?token=t', guest);
     expect(await screen.findByRole('heading', { level: 1 })).toBeDefined();
-    await submitEmpty(/contraseña|Guardar|Cambiar/i);
+    await submitEmpty('Cambiar contraseña');
   });
 
   it('/account/password has an h1 and accessible field errors', async () => {
@@ -104,12 +104,14 @@ describe('forms of access, account and organization', () => {
         ? Promise.resolve(
             json([
               {
+                membershipId: '0192f0a0-0000-7000-8000-000000000011',
                 userId: sessionFor().user.id,
                 name: 'Ana',
                 email: 'ana@example.com',
                 role: 'owner',
               },
               {
+                membershipId: '0192f0a0-0000-7000-8000-000000000012',
                 userId: '0192f0a0-0000-7000-8000-000000000002',
                 name: 'Luis',
                 email: 'luis@example.com',

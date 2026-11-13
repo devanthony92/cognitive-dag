@@ -112,7 +112,7 @@ export function RunsTable<T extends RunsTableRow>({
               {formatDuration(runDurationMs(run, now))}
             </TableCell>
             <TableCell className={STACKED.cell}>
-              <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-start">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 sm:w-56">
                 <Link
                   to="/orgs/$organizationId/runs/$runId"
                   params={{ organizationId, runId: run.id }}
