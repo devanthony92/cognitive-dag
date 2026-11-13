@@ -1,3 +1,4 @@
+import { CategoryIcon } from '../../components/category/CategoryIcon';
 import {
   NODE_CATALOG,
   NODE_TYPES,
@@ -21,7 +22,7 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
   return (
     <aside
       aria-label="Paleta de nodos"
-      className="w-60 shrink-0 overflow-y-auto border-r bg-surface p-3"
+      className="w-60 shrink-0 overflow-y-auto border-r border-line bg-surface p-3 max-md:w-full max-md:border-r-0 max-md:p-0"
     >
       {CATEGORIES.map(({ id, title }) => {
         const types = NODE_TYPES.filter((type) => NODE_CATALOG[type].category === id);
@@ -44,12 +45,15 @@ export function Palette({ onAdd }: { onAdd: (type: NodeType) => void }) {
                       event.dataTransfer.effectAllowed = 'copy';
                     }}
                     onClick={() => onAdd(type)}
-                    className="rounded-md border bg-ground px-2.5 py-2 text-left text-sm outline-none hover:bg-raised focus-visible:ring-[3px] focus-visible:ring-focus/50"
+                    className="flex min-h-11 items-start gap-3 rounded-md border border-line bg-ground px-2.5 py-2 text-left text-sm outline-none hover:bg-raised"
                   >
-                    <span className="block font-medium">{entry.label}</span>
-                    <span className="block text-xs text-ink-muted">{entry.description}</span>
-                    <span className="mt-1 block text-label font-semibold text-ink-muted">
-                      Ejecutable
+                    <CategoryIcon type={type} className="mt-0.5" />
+                    <span className="min-w-0">
+                      <span className="block font-medium">{entry.label}</span>
+                      <span className="block text-xs text-ink-muted">{entry.description}</span>
+                      <span className="mt-1 block text-label font-semibold text-ink-muted">
+                        Ejecutable
+                      </span>
                     </span>
                   </button>
                 );
