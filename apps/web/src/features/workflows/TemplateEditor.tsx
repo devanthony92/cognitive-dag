@@ -149,15 +149,15 @@ export function TemplateEditor({
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
                 chip.problem
-                  ? 'border-destructive bg-destructive/10 text-destructive'
-                  : 'bg-muted text-foreground',
+                  ? 'border-state-failed bg-destructive/10 text-state-failed'
+                  : 'bg-raised text-ink',
               )}
             >
               <span>{chip.problem ? `${chip.text} (no válida)` : chip.text}</span>
               <button
                 type="button"
                 aria-label={`Quitar referencia ${chip.text}`}
-                className="rounded-full p-0.5 hover:bg-background/60 focus-visible:ring-2 focus-visible:ring-ring"
+                className="rounded-full p-0.5 hover:bg-ground/60 focus-visible:ring-2 focus-visible:ring-focus"
                 onClick={() => onChange(`${value.slice(0, chip.start)}${value.slice(chip.end)}`)}
               >
                 <X className="size-3" aria-hidden />

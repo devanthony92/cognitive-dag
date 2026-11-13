@@ -149,7 +149,7 @@ export function LazyServiceStrip({
   const base = runQuery(organizationId, runId);
   const detail = useQuery({
     ...base,
-    queryFn: (context) => limit(() => base.queryFn!(context)),
+    queryFn: (context) => limit(async () => await base.queryFn!(context)),
     enabled: visible,
     staleTime: final ? Infinity : 30_000,
   });

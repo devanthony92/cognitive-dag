@@ -83,11 +83,11 @@ export function ConditionBuilder({ value, nodeId, definition, messages, onChange
   return (
     <div className="grid gap-2">
       <ConditionNode condition={value} path={[]} context={context} />
-      <p className="text-xs text-muted-foreground">
+      <p className="text-xs text-ink-muted">
         Máximo {CONDITION_MAX_OPERATIONS} operaciones y {CONDITION_MAX_DEPTH} niveles de anidación.
       </p>
       {rest.map((message) => (
-        <p key={message} className="text-sm text-destructive">
+        <p key={message} className="text-sm text-state-failed">
           {message}
         </p>
       ))}
@@ -148,7 +148,7 @@ function ConditionNode({
   const newGroup: Condition = { op: 'and', operands: [newLeaf] };
 
   return (
-    <div role="group" aria-label={name} className="grid gap-2 rounded-md border bg-background p-2">
+    <div role="group" aria-label={name} className="grid gap-2 rounded-md border bg-ground p-2">
       <NativeSelect
         aria-label={`Operación de ${name}`}
         value={condition.op}
@@ -449,7 +449,7 @@ function OperandEditor({
           <LiteralValue name={name} literal={operand} choices={choices} onChange={onChange} />
         )}
       </div>
-      {problem && <p className="text-sm text-destructive">{problem}</p>}
+      {problem && <p className="text-sm text-state-failed">{problem}</p>}
     </div>
   );
 }

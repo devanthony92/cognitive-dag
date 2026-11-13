@@ -1,22 +1,32 @@
 import {
   Background,
   Controls,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
   type Connection,
-  type Edge,
   type EdgeChange,
   type NodeChange,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link, useBlocker } from '@tanstack/react-router';
-import { Download, Network, Save, Send, Sparkles } from 'lucide-react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import {
+  Cable,
+  Download,
+  Network,
+  Plus,
+  Save,
+  Send,
+  SlidersHorizontal,
+  Sparkles,
+} from 'lucide-react';
+import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type { WorkflowBody } from '@cognitive-dag/contracts';
 import {
   DEFAULT_LIMITS,
+  NODE_CATALOG,
   type DagDefinition,
   type DagLimits,
   type NodeType,
@@ -33,7 +43,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../../components/ui/sheet';
 import { Toast } from '../../components/ui/toast';
+import { CANVAS_ARIA_LABELS } from '../../components/station/a11y';
+import { CanvasZoom } from '../../components/station/CanvasZoom';
+import { PHONE_QUERY, useMediaQuery } from '../../lib/media';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { RunButton } from '../runs/RunButton';
@@ -55,8 +69,15 @@ import { ConfigForm } from './ConfigForm';
 import { downloadDefinition, exportFileName } from './export';
 import { autoLayout } from './layout';
 import { checkRename, renameNodeId } from './references';
-import { DagNodeView } from './DagNodeView';
-import { buildEdges, createNodeBuilder, type FlowNode } from './flow';
+import {
+  buildEdges,
+  createNodeBuilder,
+  EDGE_TYPES,
+  HANDLE_LABELS,
+  NODE_TYPES,
+  type FlowEdge,
+  type FlowNode,
+} from './flow';
 import {
   addNode,
   canonicalJson,
@@ -75,7 +96,6 @@ import { PublishDialog } from './PublishDialog';
 import { useLiveValidation } from './useLiveValidation';
 import { VersionsPanel } from './VersionsPanel';
 
-const NODE_TYPES = { dag: DagNodeView };
 const NO_SELECTION: ReadonlySet<string> = new Set();
 
 interface Props {
@@ -95,13 +115,17 @@ export function WorkflowEditor({ organizationId, workflowId }: Props) {
 
   if (workflow.isError) {
     return (
-      <div className="mx-auto w-full max-w-xl p-6">
+      <div className="mx-auto w-full max-w-page-narrow p-6">
         <ProblemAlert error={workflow.error} />
       </div>
     );
   }
   if (!workflow.data || !session.data) {
-    return <p className="p-6 text-muted-foreground">Cargando el workflow…</p>;
+    return (
+      <p role="status" className="p-6 text-ink-muted">
+        Cargando el workflow…
+      </p>
+    );
   }
 
   return (
@@ -144,7 +168,8 @@ function EditorSession({
 }: SessionProps) {
   const queryClient = useQueryClient();
   const readOnly = !canWrite;
-  const flow = useReactFlow<FlowNode, Edge>();
+  const flow = useReactFlow<FlowNode, FlowEdge>();
+  const phone = useMediaQuery(PHONE_QUERY);
   const canvas = useRef<HTMLDivElement>(null);
 
   const initial = useMemo(() => toEditableDefinition(workflow.draft), [workflow.draft]);
@@ -164,6 +189,14 @@ function EditorSession({
   const [selectedEdges, setSelectedEdges] = useState<ReadonlySet<string>>(NO_SELECTION);
   const [measured, setMeasured] = useState<ReadonlyMap<string, Size>>(new Map());
   const buildNodes = useMemo(createNodeBuilder, []);
+  const [announcement, setAnnouncement] = useState('');
+  const [connectFrom, setConnectFrom] = useState<string | undefined>();
+  const [addOpen, setAddOpen] = useState(false);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<
+    { kind: 'node' | 'edge'; id: string; name: string } | undefined
+  >();
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const limitsData = useQuery(limitsQuery(organizationId)).data;
   const limits = useMemo<DagLimits>(
@@ -401,6 +434,94 @@ function EditorSession({
     [definition, selectedId],
   );
 
+  const nameOf = (id: string) => definition.nodes.find((item) => item.id === id)?.label ?? id;
+
+  /** Connect mode: pick a source, then a destination, without dragging (WCAG 2.5.7). */
+  const startConnect = () => {
+    if (readOnly) return;
+    if (!selectedNode) {
+      setAnnouncement('Selecciona primero la estación de origen.');
+      return;
+    }
+    setConnectFrom(selectedNode.id);
+    setAnnouncement(`Conectando desde «${selectedNode.label}». Elige la estación de destino.`);
+  };
+  const finishConnect = (targetId: string) => {
+    const from = connectFrom ? definition.nodes.find((item) => item.id === connectFrom) : undefined;
+    const to = definition.nodes.find((item) => item.id === targetId);
+    if (!from || !to) return;
+    setConnectFrom(undefined);
+    if (from.id === to.id || !NODE_CATALOG[to.type].acceptsInput) {
+      setAnnouncement(`«${to.label}» no puede ser el destino. Conexión cancelada.`);
+      return;
+    }
+    const handles = NODE_CATALOG[from.type].handles;
+    const used = new Set(
+      definition.edges.filter((item) => item.source === from.id).map((item) => item.sourceHandle),
+    );
+    const handle = handles.find((name) => !used.has(name)) ?? handles[0];
+    if (!handle) return;
+    setDefinition((current) =>
+      connect(current, { source: from.id, sourceHandle: handle, target: to.id }),
+    );
+    const branch = handles.length > 1 ? ` (${HANDLE_LABELS[handle] ?? handle})` : '';
+    setAnnouncement(`Conectadas «${from.label}»${branch} y «${to.label}».`);
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDelete) return;
+    setDefinition((current) =>
+      pendingDelete.kind === 'node'
+        ? removeNodes(current, [pendingDelete.id])
+        : removeEdges(current, [pendingDelete.id]),
+    );
+    setSelectedNodes(NO_SELECTION);
+    setSelectedEdges(NO_SELECTION);
+    setAnnouncement(`«${pendingDelete.name}» eliminada.`);
+    setPendingDelete(undefined);
+  };
+
+  const onEditorKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape' && connectFrom !== undefined) {
+      setConnectFrom(undefined);
+      setAnnouncement('Conexión cancelada.');
+      return;
+    }
+    const target = event.target as HTMLElement;
+    const item = target.closest<HTMLElement>('.react-flow__node, .react-flow__edge');
+    if (!item || item !== target) return;
+    const id = item.getAttribute('data-id');
+    if (!id) return;
+    const isNode = item.classList.contains('react-flow__node');
+    if (event.key === 'Enter' || event.key === ' ') {
+      if (isNode && connectFrom !== undefined) {
+        finishConnect(id);
+      } else if (isNode && event.key === 'Enter' && selectedNodes.has(id)) {
+        // Second Enter on a selected station: into its configuration.
+        if (phone) setConfigOpen(true);
+        else
+          panelRef.current?.querySelector<HTMLElement>('input, textarea, select, button')?.focus();
+      } else if (isNode) {
+        setAnnouncement(`«${nameOf(id)}» seleccionada. Intro otra vez abre su configuración.`);
+      }
+      return;
+    }
+    if ((event.key === 'Delete' || event.key === 'Backspace') && !readOnly) {
+      event.preventDefault();
+      if (isNode) setPendingDelete({ kind: 'node', id, name: nameOf(id) });
+      else {
+        const found = definition.edges.find((edge) => edge.id === id);
+        if (found) {
+          setPendingDelete({
+            kind: 'edge',
+            id,
+            name: `${nameOf(found.source)} → ${nameOf(found.target)}`,
+          });
+        }
+      }
+    }
+  };
+
   const arrange = () => {
     setDefinition((current) => autoLayout(current, measured));
     requestAnimationFrame(() => void flow.fitView({ maxZoom: 1, duration: 200 }));
@@ -423,8 +544,11 @@ function EditorSession({
     publishBlock === undefined && !validating && !save.isPending && !publish.isPending;
 
   return (
-    <div className="flex h-[calc(100dvh-4rem)] min-h-[32rem] w-full flex-col bg-background">
-      <div className="flex flex-wrap items-center gap-3 border-b bg-card px-4 py-2">
+    <div
+      onKeyDown={onEditorKeyDown}
+      className="flex h-[calc(100dvh-var(--header-height)-var(--bottom-bar-height))] min-h-[32rem] w-full flex-col bg-ground md:h-[calc(100dvh-var(--header-height))]"
+    >
+      <div className="flex flex-wrap items-center gap-3 border-b border-line bg-surface px-4 py-2">
         <Link
           to="/orgs/$organizationId/workflows"
           params={{ organizationId }}
@@ -436,17 +560,17 @@ function EditorSession({
           <div className="flex items-center gap-2">
             <h1 className="truncate text-lg font-semibold tracking-tight">{workflow.name}</h1>
             {readOnly && (
-              <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium">
+              <span className="shrink-0 rounded-station border px-2 py-0.5 text-xs font-medium">
                 Solo lectura
               </span>
             )}
             {dirty && (
-              <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+              <span className="shrink-0 rounded-station border border-line-strong bg-raised px-2 py-0.5 text-xs font-semibold text-ink">
                 Sin guardar
               </span>
             )}
           </div>
-          <p className="truncate text-xs text-muted-foreground">
+          <p className="truncate text-xs text-ink-muted">
             {savedAt
               ? `Guardado a las ${savedAt.toLocaleTimeString('es')}`
               : `Último guardado: ${new Date(workflow.draftUpdatedAt).toLocaleString('es')}`}
@@ -528,7 +652,7 @@ function EditorSession({
               <Button variant="secondary" size="sm" onClick={onReload}>
                 Recargar
               </Button>
-              <span className="ml-2 text-sm text-muted-foreground">
+              <span className="ml-2 text-sm text-ink-muted">
                 Descarta tus cambios sin guardar y carga la última revisión.
               </span>
             </div>
@@ -545,7 +669,7 @@ function EditorSession({
       )}
 
       <div className="flex min-h-0 flex-1">
-        {canWrite && <Palette onAdd={addFromPalette} />}
+        {canWrite && !phone && <Palette onAdd={addFromPalette} />}
 
         <div
           ref={canvas}
@@ -566,16 +690,22 @@ function EditorSession({
             );
           }}
         >
-          <ReactFlow<FlowNode, Edge>
+          <ReactFlow<FlowNode, FlowEdge>
             nodes={nodes}
             edges={edges}
             nodeTypes={NODE_TYPES}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
+            onNodeClick={(_, clicked) => {
+              if (connectFrom !== undefined) finishConnect(clicked.id);
+            }}
+            edgeTypes={EDGE_TYPES}
+            className="station-canvas"
+            ariaLabelConfig={CANVAS_ARIA_LABELS}
             nodesDraggable={!readOnly}
             nodesConnectable={!readOnly}
-            deleteKeyCode={readOnly ? null : ['Backspace', 'Delete']}
+            deleteKeyCode={null}
             fitView
             fitViewOptions={{ maxZoom: 1 }}
             minZoom={0.2}
@@ -583,80 +713,233 @@ function EditorSession({
           >
             <Background />
             <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
+            <CanvasZoom />
+            <Panel position="top-left" className="flex flex-wrap gap-2">
+              {phone && canWrite && (
+                <Button variant="secondary" onClick={() => setAddOpen(true)}>
+                  <Plus aria-hidden />
+                  Añadir nodo
+                </Button>
+              )}
+              {canWrite && (
+                <Button
+                  variant={connectFrom === undefined ? 'secondary' : 'primary'}
+                  aria-pressed={connectFrom !== undefined}
+                  onClick={startConnect}
+                >
+                  <Cable aria-hidden />
+                  Conectar
+                </Button>
+              )}
+              {phone && (
+                <Button
+                  variant="secondary"
+                  disabled={!selectedNode}
+                  onClick={() => setConfigOpen(true)}
+                >
+                  <SlidersHorizontal aria-hidden />
+                  Configurar
+                </Button>
+              )}
+            </Panel>
           </ReactFlow>
         </div>
 
-        <aside
-          aria-label="Panel lateral"
-          className="w-80 shrink-0 overflow-y-auto border-l bg-card"
-        >
-          <div role="tablist" className="flex border-b">
-            {(
-              [
-                ['node', 'Nodo'],
-                ['versions', 'Versiones'],
-              ] as const
-            ).map(([id, title]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                onClick={() => setTab(id)}
-                className={cn(
-                  'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                  tab === id
-                    ? 'border-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {title}
-              </button>
-            ))}
-          </div>
-          <div role="tabpanel" className="p-4">
-            {tab === 'node' ? (
-              selectedNode ? (
-                <>
-                  <ConfigForm
-                    key={selectedNode.id}
-                    node={selectedNode}
-                    definition={definition}
-                    readOnly={readOnly}
-                    errors={errors}
-                    onChange={onNodeChange}
-                    onRename={renameSelected}
-                  />
-                  {selectedNode.type === 'trigger.webhook' && (
-                    <WebhookPanel
-                      organizationId={organizationId}
-                      workflowId={workflowId}
-                      canWrite={canWrite}
+        {!phone && (
+          <aside
+            ref={panelRef}
+            aria-label="Panel lateral"
+            className="w-80 shrink-0 overflow-y-auto border-l border-line bg-surface"
+          >
+            <div role="tablist" className="flex border-b">
+              {(
+                [
+                  ['node', 'Nodo'],
+                  ['versions', 'Versiones'],
+                ] as const
+              ).map(([id, title]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === id}
+                  onClick={() => setTab(id)}
+                  className={cn(
+                    'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
+                    tab === id ? 'border-ink' : 'border-transparent text-ink-muted hover:text-ink',
+                  )}
+                >
+                  {title}
+                </button>
+              ))}
+            </div>
+            <div role="tabpanel" className="p-4">
+              {tab === 'node' ? (
+                selectedNode ? (
+                  <>
+                    <ConfigForm
+                      key={selectedNode.id}
+                      node={selectedNode}
+                      definition={definition}
+                      readOnly={readOnly}
+                      errors={errors}
+                      onChange={onNodeChange}
+                      onRename={renameSelected}
                     />
-                  )}
-                  {selectedNode.type === 'trigger.schedule' && (
-                    <ScheduleStatus organizationId={organizationId} workflowId={workflowId} />
-                  )}
-                </>
+                    {selectedNode.type === 'trigger.webhook' && (
+                      <WebhookPanel
+                        organizationId={organizationId}
+                        workflowId={workflowId}
+                        canWrite={canWrite}
+                      />
+                    )}
+                    {selectedNode.type === 'trigger.schedule' && (
+                      <ScheduleStatus organizationId={organizationId} workflowId={workflowId} />
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-ink-muted">
+                    Selecciona un nodo del lienzo para ver su configuración.
+                  </p>
+                )
               ) : (
-                <p className="text-sm text-muted-foreground">
-                  Selecciona un nodo del lienzo para ver su configuración.
-                </p>
-              )
-            ) : (
-              <VersionsPanel
-                organizationId={organizationId}
-                workflowId={workflowId}
-                canWrite={canWrite}
-                workflowName={workflow.name}
-                revision={revision}
-                onDraftReplaced={onDraftReplaced}
-                onReload={onReload}
-              />
-            )}
-          </div>
-        </aside>
+                <VersionsPanel
+                  organizationId={organizationId}
+                  workflowId={workflowId}
+                  canWrite={canWrite}
+                  workflowName={workflow.name}
+                  revision={revision}
+                  onDraftReplaced={onDraftReplaced}
+                  onReload={onReload}
+                />
+              )}
+            </div>
+          </aside>
+        )}
       </div>
+
+      <div role="status" aria-label="Avisos del editor" className="sr-only">
+        {announcement}
+      </div>
+
+      {phone && canWrite && (
+        <Sheet open={addOpen} onOpenChange={setAddOpen}>
+          <SheetContent aria-describedby={undefined}>
+            <SheetTitle>Añadir nodo</SheetTitle>
+            <Palette
+              onAdd={(type) => {
+                addFromPalette(type);
+                setAddOpen(false);
+              }}
+            />
+          </SheetContent>
+        </Sheet>
+      )}
+      {phone && (
+        <Sheet open={configOpen} onOpenChange={setConfigOpen}>
+          <SheetContent>
+            <SheetTitle>Configurar nodo</SheetTitle>
+            <SheetDescription className="sr-only">
+              Configuración del nodo seleccionado y versiones del workflow.
+            </SheetDescription>
+            <div ref={panelRef}>
+              <div role="tablist" className="flex border-b">
+                {(
+                  [
+                    ['node', 'Nodo'],
+                    ['versions', 'Versiones'],
+                  ] as const
+                ).map(([id, title]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === id}
+                    onClick={() => setTab(id)}
+                    className={cn(
+                      'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
+                      tab === id
+                        ? 'border-ink'
+                        : 'border-transparent text-ink-muted hover:text-ink',
+                    )}
+                  >
+                    {title}
+                  </button>
+                ))}
+              </div>
+              <div role="tabpanel" className="p-4">
+                {tab === 'node' ? (
+                  selectedNode ? (
+                    <>
+                      <ConfigForm
+                        key={selectedNode.id}
+                        node={selectedNode}
+                        definition={definition}
+                        readOnly={readOnly}
+                        errors={errors}
+                        onChange={onNodeChange}
+                        onRename={renameSelected}
+                      />
+                      {selectedNode.type === 'trigger.webhook' && (
+                        <WebhookPanel
+                          organizationId={organizationId}
+                          workflowId={workflowId}
+                          canWrite={canWrite}
+                        />
+                      )}
+                      {selectedNode.type === 'trigger.schedule' && (
+                        <ScheduleStatus organizationId={organizationId} workflowId={workflowId} />
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm text-ink-muted">
+                      Selecciona un nodo del lienzo para ver su configuración.
+                    </p>
+                  )
+                ) : (
+                  <VersionsPanel
+                    organizationId={organizationId}
+                    workflowId={workflowId}
+                    canWrite={canWrite}
+                    workflowName={workflow.name}
+                    revision={revision}
+                    onDraftReplaced={onDraftReplaced}
+                    onReload={onReload}
+                  />
+                )}
+              </div>
+
+              <Button className="mt-4 w-full" onClick={() => setConfigOpen(false)}>
+                Listo
+              </Button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      )}
+
+      <Dialog
+        open={pendingDelete !== undefined}
+        onOpenChange={(open) => !open && setPendingDelete(undefined)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{`¿Eliminar «${pendingDelete?.name ?? ''}»?`}</DialogTitle>
+            <DialogDescription>
+              {pendingDelete?.kind === 'node'
+                ? 'Se elimina la estación y sus conexiones. Aún no se guarda: puedes recargar para descartar.'
+                : 'Se elimina la conexión. Aún no se guarda.'}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setPendingDelete(undefined)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={confirmDelete}>
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <ProblemsList errors={result.errors} labels={labels} onSelectNode={selectNode} />
 
