@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import type { z } from 'zod';
 import {
@@ -37,8 +37,11 @@ import {
   FormLabel,
   FormMessage,
 } from '../../components/ui/form';
+import { EmptyState } from '../../components/ui/empty-state';
 import { Input } from '../../components/ui/input';
 import { NativeSelect } from '../../components/ui/native-select';
+import { PageHeader } from '../../components/ui/page-header';
+import { Skeleton } from '../../components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -88,20 +91,28 @@ export function MembersPage({ organizationId }: { organizationId: string }) {
 
   return (
     <div className="grid w-full gap-6">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">Miembros</h1>
-        <p className="text-muted-foreground">
-          {isOwner
+      <PageHeader
+        title="Miembros"
+        description={
+          isOwner
             ? 'Invita personas, cambia sus roles o quítalas de la organización.'
-            : 'Solo los owners pueden invitar, cambiar roles o quitar miembros.'}
-        </p>
-      </section>
+            : 'Solo los owners pueden invitar, cambiar roles o quitar miembros.'
+        }
+      />
 
       <Card>
         <CardHeader>
           <CardTitle>Personas con acceso</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="grid gap-4">
+          {members.isPending && (
+            <div role="status" className="grid gap-2">
+              <span className="sr-only">Cargando miembros</span>
+              <Skeleton className="h-13 w-full" />
+              <Skeleton className="h-13 w-full" />
+              <Skeleton className="h-13 w-full" />
+            </div>
+          )}
           {members.isError && <ProblemAlert error={members.error} />}
           {actionError !== undefined && <ProblemAlert error={actionError} />}
           {members.data && (
@@ -185,7 +196,7 @@ function MembersTable({
               <TableCell>
                 {member.name}
                 {member.userId === currentUserId && (
-                  <span className="ml-2 text-xs text-muted-foreground">(tú)</span>
+                  <span className="ml-2 text-body-sm text-ink-muted">(tú)</span>
                 )}
               </TableCell>
               <TableCell>{member.email}</TableCell>
@@ -215,7 +226,7 @@ function MembersTable({
               {isOwner && (
                 <TableCell>
                   <Button
-                    variant="secondary"
+                    variant="danger"
                     size="sm"
                     aria-label={`Quitar a ${member.name}`}
                     onClick={() => {
@@ -271,6 +282,7 @@ function InvitationsSection({
   feedback: Feedback;
 }) {
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLFormElement>(null);
   const form = useForm<InviteInput, unknown, InviteOutput>({
     resolver: zodResolver(CreateInvitationRequestSchema),
     defaultValues: { email: '', role: 'viewer' },
@@ -321,6 +333,7 @@ function InvitationsSection({
       <CardContent className="grid gap-6">
         <Form {...form}>
           <form
+            ref={formRef}
             noValidate
             onSubmit={(event) => void form.handleSubmit((values) => invite.mutate(values))(event)}
             className="grid gap-4 sm:grid-cols-[1fr_10rem_auto] sm:items-start"
@@ -368,6 +381,13 @@ function InvitationsSection({
           </Alert>
         )}
 
+        {pending.isPending && (
+          <div role="status" className="grid gap-2">
+            <span className="sr-only">Cargando invitaciones</span>
+            <Skeleton className="h-13 w-full" />
+            <Skeleton className="h-13 w-full" />
+          </div>
+        )}
         {pending.isError && <ProblemAlert error={pending.error} />}
         {pending.data && pending.data.length > 0 && (
           <Table>
@@ -402,7 +422,22 @@ function InvitationsSection({
           </Table>
         )}
         {pending.data?.length === 0 && (
-          <p className="text-sm text-muted-foreground">No hay invitaciones pendientes.</p>
+          <EmptyState
+            titleAs="h3"
+            title="No hay invitaciones pendientes."
+            description="Invita a alguien con su correo y el rol que tendrá."
+            action={
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() =>
+                  formRef.current?.querySelector<HTMLInputElement>('input[type="email"]')?.focus()
+                }
+              >
+                Invitar a alguien
+              </Button>
+            }
+          />
         )}
       </CardContent>
     </Card>
