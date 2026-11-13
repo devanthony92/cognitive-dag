@@ -50,12 +50,12 @@ export function CredentialSelect({
         )}
       </NativeSelect>
       {credentials.isError && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-body-sm text-ink-muted">
           No se pudo leer la lista de credenciales (puede que tu rol no lo permita).
         </p>
       )}
       {credentials.isSuccess && items.length === 0 && (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-body-sm text-ink-muted">
           Aún no hay credenciales. Un owner las crea en «Conexiones».
         </p>
       )}

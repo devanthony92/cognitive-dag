@@ -200,7 +200,7 @@ describe('"Consumo LLM de hoy" card (US3)', () => {
 
   it('shows the loading state', async () => {
     home(NO_FLAGS, () => new Promise<Response>(() => {}));
-    expect(await screen.findByText('Cargando consumo…')).toBeDefined();
+    expect(await screen.findByText('Cargando consumo')).toBeDefined();
   });
 
   it('says "Sin consumo hoy" when there is none', async () => {
