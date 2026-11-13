@@ -259,8 +259,8 @@ export function RunDetailPage({
         </div>
       )}
 
-      <div className="flex min-h-0 flex-1">
-        <div className="relative min-w-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <div className="relative min-h-72 min-w-0 flex-1">
           <ReactFlowProvider>
             <RunGraph
               definition={definition}
@@ -272,7 +272,7 @@ export function RunDetailPage({
         </div>
         <aside
           aria-label="Detalle del nodo"
-          className="w-80 shrink-0 overflow-y-auto border-l bg-surface p-4"
+          className="max-h-[45%] w-full shrink-0 overflow-y-auto border-t border-line bg-surface p-4 md:max-h-none md:w-80 md:border-t-0 md:border-l"
         >
           {selectedStep ? (
             <StepPanel

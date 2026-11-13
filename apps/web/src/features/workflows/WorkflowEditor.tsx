@@ -46,7 +46,7 @@ import {
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../../components/ui/sheet';
 import { Toast } from '../../components/ui/toast';
 import { CANVAS_ARIA_LABELS } from '../../components/station/a11y';
-import { CanvasZoom } from '../../components/station/CanvasZoom';
+import { CanvasZoom, FitWhenReady } from '../../components/station/CanvasZoom';
 import { PHONE_QUERY, useMediaQuery } from '../../lib/media';
 import { cn } from '../../lib/utils';
 import { ProblemAlert } from '../auth/ProblemAlert';
@@ -714,6 +714,7 @@ function EditorSession({
             <Background />
             <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
             <CanvasZoom />
+            <FitWhenReady />
             <Panel position="top-left" className="flex flex-wrap gap-2">
               {phone && canWrite && (
                 <Button variant="secondary" onClick={() => setAddOpen(true)}>

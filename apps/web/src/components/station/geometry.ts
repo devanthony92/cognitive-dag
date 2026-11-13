@@ -104,12 +104,17 @@ export function roundedPath(points: readonly Point[], radius = EDGE_CORNER_RADIU
   return parts.join(' ');
 }
 
-/** Where the branch label of a line sits: on its first run, close to the source port. */
+/**
+ * Where the branch label of a line sits. Both branches of a condition leave the same port, so the
+ * label goes just past the first bend, on the diagonal or vertical run, where the two lines have
+ * already split apart (one goes up, the other down); a straight line gets it near the source.
+ */
 export function labelPoint(points: readonly Point[]): Point {
-  const [start, next] = points;
+  const [start, first, second] = points;
   if (!start) return { x: 0, y: 0 };
-  if (!next) return start;
-  return toward(start, next, Math.min(32, distance(start, next) / 2));
+  if (!first) return start;
+  if (!second) return toward(start, first, Math.min(48, distance(start, first) / 2));
+  return toward(first, second, Math.min(28, distance(first, second) / 2));
 }
 
 /** Middle of the route, measured along it: where the problem mark of a line sits. */

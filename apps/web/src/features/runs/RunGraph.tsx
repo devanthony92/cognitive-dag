@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { RunStep } from '@cognitive-dag/contracts';
 import type { DagDefinition } from '@cognitive-dag/dag-schema';
 import { CANVAS_ARIA_LABELS } from '../../components/station/a11y';
-import { CanvasZoom } from '../../components/station/CanvasZoom';
+import { CanvasZoom, FitWhenReady } from '../../components/station/CanvasZoom';
 import { stationDescription } from '../../components/station/Station';
 import { serviceStateOf, statusLabelOf } from '../../components/status/service-state';
 import {
@@ -103,6 +103,7 @@ export function RunGraph({ definition, steps, selectedId, onSelect }: Props) {
       <Background />
       <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
       <CanvasZoom />
+      <FitWhenReady />
     </ReactFlow>
   );
 }

@@ -107,7 +107,7 @@ export function Station({
 
       <div
         data-station-labels
-        className="station-labels pointer-events-none absolute top-full left-1/2 mt-2 w-44 -translate-x-1/2 text-center"
+        className="station-labels pointer-events-none absolute top-full left-1/2 mt-2 w-32 -translate-x-1/2 text-center"
       >
         <p className="truncate text-[13px] leading-tight font-semibold text-ink">{label}</p>
         <p className="truncate text-body-sm leading-tight text-ink-muted">

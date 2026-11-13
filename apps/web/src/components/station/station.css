@@ -179,3 +179,12 @@
 .station-canvas .react-flow__edge.animated .station-edge-path {
   stroke-dasharray: 12 8;
 }
+
+/* The attribution of React Flow follows the theme instead of its own white box. */
+.station-canvas .react-flow__attribution {
+  background: var(--surface);
+  color: var(--ink-muted);
+}
+.station-canvas .react-flow__attribution a {
+  color: var(--ink-muted);
+}

@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import type { DagDefinition } from '@cognitive-dag/dag-schema';
 import type { DraftValidation } from '@cognitive-dag/contracts';
 import { CANVAS_ARIA_LABELS } from '../../components/station/a11y';
-import { CanvasZoom } from '../../components/station/CanvasZoom';
+import { CanvasZoom, FitWhenReady } from '../../components/station/CanvasZoom';
 import {
   buildEdges,
   EDGE_TYPES,
@@ -79,6 +79,7 @@ export function ResultPreview({ definition, errors }: Props) {
         <Background />
         <Controls showInteractive={false} fitViewOptions={{ maxZoom: 1 }} />
         <CanvasZoom />
+        <FitWhenReady />
       </ReactFlow>
     </div>
   );

@@ -47,3 +47,26 @@ una**. El editor y la ejecución quedan para la PR 4.
 
 Quedan «Cargando…» en `ScheduleStatus`, `WebhookPanel`, `StepPanel`, `RunDetailPage` y `WorkflowEditor`: son del
 editor y de la ejecución (PR 4).
+
+## PR 4 — editor y ejecución (estaciones)
+
+Método: servidor de desarrollo de `apps/web` y una API simulada con datos ficticios (sin datos reales), vista del
+navegador a 375 px (táctil emulado, 5 puntos) y a 1440 px, claro y oscuro; `scrollWidth - innerWidth`. Capturas en
+`docs/ui/screenshots/f10-pr4/` (escaladas por la herramienta de captura).
+
+| Pantalla             | Ancho | Modo         | Desborde horizontal                                        |
+| -------------------- | ----- | ------------ | ---------------------------------------------------------- |
+| Editor de workflow   | 1440  | claro/oscuro | 0 px (el documento mide 15 px menos por la barra vertical) |
+| Editor de workflow   | 375   | claro/oscuro | 0 px                                                       |
+| Detalle de ejecución | 1440  | claro/oscuro | 0 px                                                       |
+| Detalle de ejecución | 375   | claro/oscuro | 0 px                                                       |
+
+Hallazgos corregidos en el recorrido: el primer `fitView` dejaba el plano al zoom mínimo (ahora se ajusta al medir
+las estaciones), el panel del detalle de ejecución ocupaba 320 de 375 px (ahora va bajo el grafo en móvil), la
+atribución de React Flow no seguía el tema y las etiquetas «Sí»/«No» se solapaban en el puerto de la condición.
+
+Límites conocidos: a 375 px con 6 estaciones los rótulos de tamaño fijo (≥ 12 px) se rozan al ajustar el plano
+entero a la vista; se acerca con pellizco. La lista de ejecuciones (tira de servicio) no se pudo recorrer en
+navegador con la API simulada y está cubierta por pruebas. Detector de impeccable (`impeccable detect apps/web/src`,
+solo regex): 2 hallazgos, ambos en `styles/fonts.css` (las caras de reserva `Atkinson Fallback`/`Atkinson Mono
+Fallback`, documentadas en `DESIGN.md`); ninguno en el editor ni en la ejecución.
