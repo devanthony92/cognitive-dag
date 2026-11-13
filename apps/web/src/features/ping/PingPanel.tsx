@@ -82,7 +82,7 @@ export function PingPanel({ organizationId }: { organizationId: string }) {
           </div>
         ) : (
           role === 'viewer' && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-sm text-ink-muted">
               Tu rol es de solo lectura: un owner o un editor puede ejecutar el ping.
             </p>
           )
@@ -96,31 +96,33 @@ export function PingPanel({ organizationId }: { organizationId: string }) {
                   : 'No se pudo completar la solicitud.'}
               </p>
               {error instanceof ApiProblemError && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  correlationId: {error.problem.correlationId}
+                <p className="mt-1 text-body-sm text-ink-muted">
+                  correlationId: <span className="font-mono">{error.problem.correlationId}</span>
                 </p>
               )}
             </AlertDescription>
           </Alert>
         )}
         {ping && (
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Estado</dt>
+          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-body-sm">
+            <dt className="text-ink-muted">Estado</dt>
             <dd>
               <Badge status={ping.status} />
             </dd>
             {ping.result && (
               <>
-                <dt className="text-muted-foreground">Resultado</dt>
+                <dt className="text-ink-muted">Resultado</dt>
                 <dd>
                   {ping.result.pong} (worker {ping.result.workerId}, intentos {ping.result.attempts}
                   )
                 </dd>
               </>
             )}
-            <dt className="text-muted-foreground">correlationId</dt>
+            <dt className="text-ink-muted">correlationId</dt>
             <dd>
-              <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{ping.correlationId}</code>
+              <code className="rounded-sm bg-raised px-1.5 py-0.5 font-mono text-label text-ink">
+                {ping.correlationId}
+              </code>
             </dd>
           </dl>
         )}
@@ -133,12 +135,14 @@ export function PingPanel({ organizationId }: { organizationId: string }) {
 function Badge({ status }: { status: PingExecution['status'] }) {
   const tone =
     status === 'completed'
-      ? 'bg-primary text-primary-foreground'
+      ? 'border-state-succeeded text-ink'
       : status === 'failed' || status === 'timed_out'
-        ? 'bg-destructive/10 text-destructive'
-        : 'bg-muted text-muted-foreground';
+        ? 'border-state-failed text-state-failed'
+        : 'border-line text-ink-muted';
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${tone}`}>
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-0.5 text-label font-semibold ${tone}`}
+    >
       {STATUS_LABELS[status]}
     </span>
   );

@@ -133,7 +133,7 @@ export function VersionsPanel({
             <div className="flex items-center gap-2">
               <span className="font-medium">Versión {version.number}</span>
               {version.active && (
-                <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-ink-foreground">
+                <span className="rounded-station bg-action px-2 py-0.5 text-xs text-on-action">
                   Activa
                 </span>
               )}

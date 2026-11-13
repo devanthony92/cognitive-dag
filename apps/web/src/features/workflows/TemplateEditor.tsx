@@ -149,7 +149,7 @@ export function TemplateEditor({
               className={cn(
                 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs',
                 chip.problem
-                  ? 'border-state-failed bg-destructive/10 text-state-failed'
+                  ? 'border-state-failed bg-raised text-state-failed'
                   : 'bg-raised text-ink',
               )}
             >

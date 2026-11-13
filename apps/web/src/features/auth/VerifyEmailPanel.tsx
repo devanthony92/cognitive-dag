@@ -6,13 +6,7 @@ import { AcceptedResponseSchema, EmailRequestSchema } from '@cognitive-dag/contr
 import { request } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '../../components/ui/card';
 import {
   Form,
   FormControl,
@@ -107,9 +101,9 @@ export function VerifyEmailPanel({ token }: { token: string | undefined }) {
   const failed = token === undefined || verification.isError;
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Verificación de correo</CardTitle>
+        <h1 className="text-display font-bold tracking-tight">Verificación de correo</h1>
         <CardDescription>
           {verified
             ? 'Tu correo quedó verificado.'

@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
-import { Alert, AlertDescription } from '../../components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { buttonVariants } from '../../components/ui/button';
 import {
   Card,
   CardContent,
@@ -9,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { PageHeader } from '../../components/ui/page-header';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { sessionQuery } from '../session/session';
 import { workflowsQuery } from '../workflows/api';
@@ -54,35 +56,45 @@ export function CompilerPage({ organizationId, workflowId }: Props) {
 
   return (
     <div className="grid w-full gap-6">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {workflowId === undefined ? 'Describir workflow' : 'Regenerar borrador'}
-        </h1>
-        <p className="text-muted-foreground">
-          {workflowId === undefined
-            ? 'Cuéntalo con tus palabras y el compilador arma un borrador. Nada se ejecuta hasta que lo publiques.'
-            : `Describe de nuevo lo que quieres${workflowName ? ` para «${workflowName}»` : ''} y revisa la vista previa antes de reemplazar el borrador.`}
-        </p>
-        <p className="mt-1 text-sm">
-          {workflowId === undefined ? (
-            <Link
-              to="/orgs/$organizationId/workflows"
-              params={{ organizationId }}
-              className="underline"
-            >
-              Volver a los workflows
-            </Link>
-          ) : (
-            <Link
-              to="/orgs/$organizationId/workflows/$workflowId"
-              params={{ organizationId, workflowId }}
-              className="underline"
-            >
-              Volver al editor
-            </Link>
-          )}
-        </p>
-      </section>
+      <PageHeader
+        title={workflowId === undefined ? 'Describir workflow' : 'Regenerar borrador'}
+        description={
+          workflowId === undefined
+            ? 'Cuéntalo con tus palabras y el compilador arma un borrador.'
+            : `Describe de nuevo lo que quieres${workflowName ? ` para «${workflowName}»` : ''} y revisa la vista previa antes de reemplazar el borrador.`
+        }
+      />
+      <div>
+        {workflowId === undefined ? (
+          <Link
+            to="/orgs/$organizationId/workflows"
+            params={{ organizationId }}
+            className={buttonVariants({ variant: 'link' })}
+          >
+            Volver a los workflows
+          </Link>
+        ) : (
+          <Link
+            to="/orgs/$organizationId/workflows/$workflowId"
+            params={{ organizationId, workflowId }}
+            className={buttonVariants({ variant: 'link' })}
+          >
+            Volver al editor
+          </Link>
+        )}
+      </div>
+
+      <Alert variant="warning">
+        <AlertTitle>Nada se ejecuta sin publicar</AlertTitle>
+        <AlertDescription>
+          <p>
+            El compilador solo arma un borrador: no corre hasta que lo publiques.
+            {workflowId === undefined
+              ? ''
+              : ' Reemplazar el borrador tampoco cambia la versión activa.'}
+          </p>
+        </AlertDescription>
+      </Alert>
 
       <Alert>
         <AlertDescription>
@@ -111,7 +123,7 @@ export function CompilerPage({ organizationId, workflowId }: Props) {
               }}
             />
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-body-sm text-ink-muted">
               Tu rol no permite compilar. Puedes revisar las compilaciones recientes.
             </p>
           )}

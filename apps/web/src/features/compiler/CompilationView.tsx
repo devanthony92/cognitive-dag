@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from '../../components/ui/card';
+import { Skeleton } from '../../components/ui/skeleton';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { formatCostUsd, formatTokens } from '../llm/format';
 import { ApplyPanel } from './ApplyPanel';
@@ -42,7 +43,7 @@ export function CompilationView({ organizationId, compilationId, canWrite, onRet
   if (status.isError && !compilation) {
     return (
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <ProblemAlert error={status.error} />
         </CardContent>
       </Card>
@@ -50,9 +51,10 @@ export function CompilationView({ organizationId, compilationId, canWrite, onRet
   }
   if (!compilation) {
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Cargando la compilación…
-      </p>
+      <div role="status" className="grid gap-3">
+        <span className="sr-only">Cargando la compilación…</span>
+        <Skeleton className="h-24 w-full" />
+      </div>
     );
   }
 
@@ -63,7 +65,7 @@ export function CompilationView({ organizationId, compilationId, canWrite, onRet
           Compilación
           <span
             role="status"
-            className="rounded-full border px-2 py-0.5 text-xs font-medium"
+            className="rounded-full border border-line px-2 py-0.5 text-body-sm font-medium"
             aria-label={`Estado: ${STATUS_LABEL[compilation.status]}`}
           >
             {STATUS_LABEL[compilation.status]}
@@ -76,7 +78,7 @@ export function CompilationView({ organizationId, compilationId, canWrite, onRet
       </CardHeader>
       <CardContent className="grid gap-4">
         {!isFinalStatus(compilation) && (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-body-sm text-ink-muted">
             {compilation.status === 'queued'
               ? 'Esperando turno para compilar…'
               : 'El modelo está armando el workflow. Puedes cerrar esta página: la compilación sigue y aparecerá en las recientes.'}
@@ -111,7 +113,7 @@ function FailureNotice({ compilation }: { compilation: Compilation }) {
         <p className="font-medium">La compilación falló.</p>
         <p>{failureMessage(compilation)}</p>
         {compilation.errorCode && (
-          <p className="mt-1 text-xs text-muted-foreground">Código: {compilation.errorCode}</p>
+          <p className="mt-1 text-body-sm text-ink-muted">Código: {compilation.errorCode}</p>
         )}
         {compilation.hasFallback && (
           <p className="mt-1">
@@ -133,11 +135,14 @@ function Metrics({ compilation }: { compilation: Compilation }) {
     ['Costo estimado', formatCostUsd(compilation.costMicroUsd)],
   ];
   return (
-    <dl aria-label="Métricas de la compilación" className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+    <dl
+      aria-label="Métricas de la compilación"
+      className="flex flex-wrap gap-x-6 gap-y-2 text-body-sm"
+    >
       {items.map(([term, value]) => (
         <div key={term}>
-          <dt className="text-xs text-muted-foreground">{term}</dt>
-          <dd className="font-medium">{value}</dd>
+          <dt className="text-body-sm text-ink-muted">{term}</dt>
+          <dd className="font-medium text-ink">{value}</dd>
         </div>
       ))}
     </dl>
@@ -163,9 +168,11 @@ function Content({
 
   if (result.isPending) {
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Cargando la vista previa…
-      </p>
+      <div role="status" className="grid gap-3">
+        <span className="sr-only">Cargando la vista previa…</span>
+        <Skeleton className="h-6 w-1/2" />
+        <Skeleton className="h-48 w-full" />
+      </div>
     );
   }
   if (result.isError) {
@@ -200,10 +207,10 @@ function Content({
   const { omittedSensitiveFields, validation } = result.data;
   return (
     <div className="grid gap-4">
-      <h2 className="text-base font-semibold">
+      <h3 className="text-title font-semibold">
         {result.data.kind === 'fallback' ? 'Último intento' : 'Vista previa'}:{' '}
         <span className="font-normal">{result.data.title}</span>
-      </h2>
+      </h3>
       <ResultPreview definition={parsed.data} errors={validation.errors} />
 
       {omittedSensitiveFields.length > 0 && (
@@ -217,7 +224,7 @@ function Content({
                 </li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="mt-1 text-body-sm text-ink-muted">
               El compilador nunca decide destinos, URLs ni credenciales: no se podrá publicar hasta
               completarlos.
             </p>
@@ -226,8 +233,8 @@ function Content({
       )}
 
       {validation.errors.length > 0 && (
-        <section aria-label="Errores de validación" className="text-sm">
-          <p className="font-medium text-destructive">
+        <section aria-label="Errores de validación" className="text-body-sm">
+          <p className="font-medium text-state-failed">
             {validation.errors.length}{' '}
             {validation.errors.length === 1 ? 'error de validación' : 'errores de validación'}
           </p>

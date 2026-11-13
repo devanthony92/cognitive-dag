@@ -16,7 +16,6 @@ import {
   CardDescription,
   CardFooter,
   CardHeader,
-  CardTitle,
 } from '../../components/ui/card';
 import {
   Form,
@@ -53,9 +52,9 @@ export function ForgotPasswordForm() {
   });
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Recuperar contraseña</CardTitle>
+        <h1 className="text-display font-bold tracking-tight">Recuperar contraseña</h1>
         <CardDescription>
           Escribe tu correo y te enviaremos un enlace para elegir una contraseña nueva.
         </CardDescription>
@@ -97,7 +96,7 @@ export function ForgotPasswordForm() {
           </Form>
         )}
       </CardContent>
-      <CardFooter className="text-sm">
+      <CardFooter className="text-body-sm">
         <a href="/login" className="underline">
           Volver a iniciar sesión
         </a>
@@ -146,13 +145,13 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
 
   if (token === undefined) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Enlace no válido</CardTitle>
+          <h1 className="text-display font-bold tracking-tight">Enlace no válido</h1>
           <CardDescription>Pide un enlace nuevo para restablecer tu contraseña.</CardDescription>
         </CardHeader>
         <CardFooter>
-          <a href="/forgot-password" className="text-sm underline">
+          <a href="/forgot-password" className="text-body-sm underline">
             Pedir un enlace nuevo
           </a>
         </CardFooter>
@@ -162,15 +161,15 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
 
   if (confirm.isSuccess) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Contraseña actualizada</CardTitle>
+          <h1 className="text-display font-bold tracking-tight">Contraseña actualizada</h1>
           <CardDescription>
             Cerramos todas tus sesiones. Inicia sesión con la contraseña nueva.
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <a href="/login" className="text-sm underline">
+          <a href="/login" className="text-body-sm underline">
             Iniciar sesión
           </a>
         </CardFooter>
@@ -184,9 +183,9 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
     confirm.error instanceof ApiProblemError && confirm.error.problem.code === 'VALIDATION_FAILED';
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Elegir contraseña nueva</CardTitle>
+        <h1 className="text-display font-bold tracking-tight">Elegir contraseña nueva</h1>
         <CardDescription>El enlace sirve una sola vez y vence a los 30 minutos.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -232,7 +231,7 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
       </CardContent>
       {tokenRejected && (
         <CardFooter>
-          <a href="/forgot-password" className="text-sm underline">
+          <a href="/forgot-password" className="text-body-sm underline">
             Pedir un enlace nuevo
           </a>
         </CardFooter>

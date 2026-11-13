@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { buttonVariants } from '../components/ui/button';
+import { PageHeader } from '../components/ui/page-header';
 import { LlmUsageCard } from '../features/llm/LlmUsageCard';
 import { OrganizationLimits } from '../features/organizations/OrganizationLimits';
 import { OrganizationSettings } from '../features/organizations/OrganizationSettings';
@@ -19,22 +20,22 @@ function OrganizationHome() {
 
   return (
     <div className="grid w-full gap-8">
-      <section>
-        <h1 className="text-2xl font-semibold tracking-tight">{organization?.name}</h1>
-        {organization && (
-          <p className="text-muted-foreground">
-            {organization.isPersonal ? 'Organización personal' : 'Organización'} · Tu rol:{' '}
-            {ROLE_LABELS[organization.role]}
-          </p>
-        )}
-        <Link
-          to="/orgs/$organizationId/members"
-          params={{ organizationId }}
-          className={buttonVariants({ variant: 'secondary', className: 'mt-4' })}
-        >
-          Miembros
-        </Link>
-      </section>
+      <PageHeader
+        title={organization?.name ?? 'Organización'}
+        description={
+          organization &&
+          `${organization.isPersonal ? 'Organización personal' : 'Organización'} · Tu rol: ${ROLE_LABELS[organization.role]}`
+        }
+        action={
+          <Link
+            to="/orgs/$organizationId/members"
+            params={{ organizationId }}
+            className={buttonVariants({ variant: 'secondary' })}
+          >
+            Miembros
+          </Link>
+        }
+      />
       <OrganizationSettings organizationId={organizationId} />
       <OrganizationLimits organizationId={organizationId} />
       <LlmUsageCard organizationId={organizationId} />

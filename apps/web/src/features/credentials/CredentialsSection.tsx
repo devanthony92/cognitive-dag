@@ -17,9 +17,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../../components/ui/dialog';
+import { EmptyState } from '../../components/ui/empty-state';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { NativeSelect } from '../../components/ui/native-select';
+import { Skeleton } from '../../components/ui/skeleton';
 import {
   Table,
   TableBody,
@@ -83,14 +85,39 @@ export function CredentialsSection({
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {credentials.isPending && <p role="status">Cargando credenciales…</p>}
+        {credentials.isPending && (
+          <div role="status" className="grid gap-2">
+            <span className="sr-only">Cargando credenciales</span>
+            <Skeleton className="h-13 w-full" />
+            <Skeleton className="h-13 w-full" />
+          </div>
+        )}
         {credentials.isError && <ProblemAlert error={credentials.error} />}
         {archive.isError && <ProblemAlert error={archive.error} />}
         {credentials.isSuccess && credentials.data.length === 0 && (
-          <p className="text-muted-foreground">Todavía no hay credenciales.</p>
+          <EmptyState
+            titleAs="h3"
+            title="Todavía no hay credenciales."
+            description={
+              isOwner
+                ? 'Crea una para que los nodos «Petición HTTP» puedan autenticarse.'
+                : 'Un owner puede crear las credenciales de la organización.'
+            }
+            action={
+              isOwner ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => document.getElementById('credential-name')?.focus()}
+                >
+                  Crear la primera credencial
+                </Button>
+              ) : undefined
+            }
+          />
         )}
         {credentials.isSuccess && credentials.data.length > 0 && (
-          <Table>
+          <Table flush>
             <TableHeader>
               <TableRow>
                 <TableHead>Nombre</TableHead>
@@ -119,7 +146,7 @@ export function CredentialsSection({
                     {credential.rotatedAt ? formatDateTime(credential.rotatedAt) : '—'}
                   </TableCell>
                   {isOwner && (
-                    <TableCell className="flex gap-2">
+                    <TableCell className="flex gap-2 py-1">
                       <Button
                         type="button"
                         variant="secondary"
@@ -148,7 +175,7 @@ export function CredentialsSection({
         {isOwner ? (
           <CreateCredentialForm organizationId={organizationId} onCreated={refresh} />
         ) : (
-          <p className="text-sm text-muted-foreground">Solo los owners administran credenciales.</p>
+          <p className="text-body-sm text-ink-muted">Solo los owners administran credenciales.</p>
         )}
       </CardContent>
 
@@ -222,14 +249,14 @@ function CreateCredentialForm({
 
   return (
     <form
-      className="grid gap-3 border-t pt-4"
+      className="grid gap-4 border-t border-line pt-4"
       onSubmit={(event) => {
         event.preventDefault();
         create.mutate();
       }}
     >
-      <h2 className="text-sm font-semibold">Nueva credencial</h2>
-      <div className="grid gap-1.5">
+      <h3 className="text-title font-semibold">Nueva credencial</h3>
+      <div className="grid gap-2">
         <Label htmlFor="credential-name">Nombre</Label>
         <Input
           id="credential-name"
@@ -239,7 +266,7 @@ function CreateCredentialForm({
           onChange={(event) => setName(event.target.value)}
         />
       </div>
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="credential-kind">Tipo</Label>
         <NativeSelect
           id="credential-kind"
@@ -254,7 +281,7 @@ function CreateCredentialForm({
         </NativeSelect>
       </div>
       {kind === 'api_key_header' && (
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label htmlFor="credential-header">Nombre de la cabecera</Label>
           <Input
             id="credential-header"
@@ -265,7 +292,7 @@ function CreateCredentialForm({
           />
         </div>
       )}
-      <div className="grid gap-1.5">
+      <div className="grid gap-2">
         <Label htmlFor="credential-secret">Secreto</Label>
         <Input
           id="credential-secret"
@@ -276,7 +303,7 @@ function CreateCredentialForm({
           maxLength={4096}
           onChange={(event) => setSecret(event.target.value)}
         />
-        <p className="text-xs text-muted-foreground">{SECRET_HINT[kind]}</p>
+        <p className="text-body-sm text-ink-muted">{SECRET_HINT[kind]}</p>
       </div>
       {create.isError && <ProblemAlert error={create.error} />}
       <div>
@@ -324,7 +351,7 @@ function RotateDialog({
               Escribe el secreto nuevo. Reemplaza al anterior, que no se puede recuperar.
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label htmlFor="rotate-secret">Secreto nuevo</Label>
             <Input
               id="rotate-secret"
