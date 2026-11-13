@@ -12,13 +12,7 @@ import {
 import { ApiProblemError, request } from '../../api/client';
 import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader } from '../../components/ui/card';
 import {
   Form,
   FormControl,
@@ -100,9 +94,9 @@ export function RegisterForm() {
 
   if (register.isSuccess) {
     return (
-      <Card className="w-full max-w-md">
+      <Card className="w-full">
         <CardHeader>
-          <CardTitle>Revisa tu correo</CardTitle>
+          <h1 className="text-display font-bold tracking-tight">Revisa tu correo</h1>
           <CardDescription>{register.data.message}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -125,9 +119,9 @@ export function RegisterForm() {
     serverProblem instanceof ApiProblemError && serverProblem.problem.code === 'VALIDATION_FAILED';
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full">
       <CardHeader>
-        <CardTitle>Crear cuenta</CardTitle>
+        <h1 className="text-display font-bold tracking-tight">Crear cuenta</h1>
         <CardDescription>Se creará también tu organización personal.</CardDescription>
       </CardHeader>
       <CardContent>

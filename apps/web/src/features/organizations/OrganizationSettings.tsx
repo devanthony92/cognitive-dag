@@ -27,6 +27,7 @@ import {
   FormMessage,
 } from '../../components/ui/form';
 import { Input } from '../../components/ui/input';
+import { Skeleton } from '../../components/ui/skeleton';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { sessionQuery } from '../session/session';
 
@@ -36,9 +37,29 @@ type RenameOutput = z.output<typeof RenameOrganizationRequestSchema>;
 /** Owner-only settings of an organization (FR-036). Anyone else sees nothing. */
 export function OrganizationSettings({ organizationId }: { organizationId: string }) {
   const session = useQuery(sessionQuery);
+  if (session.isPending) return <SettingsSkeleton />;
   const organization = session.data?.organizations.find((item) => item.id === organizationId);
   if (organization?.role !== 'owner') return null;
   return <RenameForm organization={organization} />;
+}
+
+/** The shape of the form while the session loads; announced as a status, not as text. */
+function SettingsSkeleton() {
+  return (
+    <div role="status" aria-live="polite" className="w-full">
+      <span className="sr-only">Cargando datos de la organización</span>
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-6 w-1/3" />
+          <Skeleton className="h-4 w-2/3" />
+        </CardHeader>
+        <CardContent className="grid gap-4">
+          <Skeleton className="h-11 w-full" />
+          <Skeleton className="h-11 w-32" />
+        </CardContent>
+      </Card>
+    </div>
+  );
 }
 
 function RenameForm({ organization }: { organization: OrganizationSummary }) {

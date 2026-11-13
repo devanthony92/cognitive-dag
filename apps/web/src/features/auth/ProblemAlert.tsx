@@ -19,7 +19,9 @@ export function ProblemAlert({ error }: { error: unknown }) {
           {retryAfterSeconds !== undefined && (
             <p>Vuelve a intentarlo en {formatWait(retryAfterSeconds)}.</p>
           )}
-          <p className="mt-1 text-xs text-muted-foreground">correlationId: {correlationId}</p>
+          <p className="mt-1 text-body-sm text-ink-muted">
+            correlationId: <span className="font-mono">{correlationId}</span>
+          </p>
         </AlertDescription>
       </Alert>
     );

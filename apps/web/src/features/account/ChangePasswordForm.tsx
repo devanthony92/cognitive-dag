@@ -6,13 +6,8 @@ import { ChangePasswordRequestSchema } from '@cognitive-dag/contracts';
 import { ApiProblemError, request } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
+import { PageHeader } from '../../components/ui/page-header';
 import {
   Form,
   FormControl,
@@ -73,72 +68,74 @@ export function ChangePasswordForm() {
     ['VALIDATION_FAILED', 'INVALID_CREDENTIALS'].includes(change.error.problem.code);
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Cambiar contraseña</CardTitle>
-        <CardDescription>Cerraremos tus otras sesiones; esta seguirá abierta.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form
-            noValidate
-            onSubmit={(event) => void form.handleSubmit((values) => change.mutate(values))(event)}
-            className="grid gap-4"
-          >
-            <FormField
-              control={form.control}
-              name="currentPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contraseña actual</FormLabel>
-                  <FormControl>
-                    <PasswordInput autoComplete="current-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+    <div className="grid w-full gap-6">
+      <PageHeader
+        title="Cambiar contraseña"
+        description="Cerraremos tus otras sesiones; esta seguirá abierta."
+      />
+      <Card className="w-full">
+        <CardContent>
+          <Form {...form}>
+            <form
+              noValidate
+              onSubmit={(event) => void form.handleSubmit((values) => change.mutate(values))(event)}
+              className="grid gap-4"
+            >
+              <FormField
+                control={form.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contraseña actual</FormLabel>
+                    <FormControl>
+                      <PasswordInput autoComplete="current-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="newPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Contraseña nueva</FormLabel>
+                    <FormControl>
+                      <PasswordInput autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormDescription>Entre 8 y 25 caracteres.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="newPasswordConfirmation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Repite la contraseña nueva</FormLabel>
+                    <FormControl>
+                      <PasswordInput autoComplete="new-password" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {change.isSuccess && (
+                <Alert>
+                  <AlertDescription>
+                    Contraseña actualizada. Tus otras sesiones se cerraron.
+                  </AlertDescription>
+                </Alert>
               )}
-            />
-            <FormField
-              control={form.control}
-              name="newPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contraseña nueva</FormLabel>
-                  <FormControl>
-                    <PasswordInput autoComplete="new-password" {...field} />
-                  </FormControl>
-                  <FormDescription>Entre 8 y 25 caracteres.</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="newPasswordConfirmation"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Repite la contraseña nueva</FormLabel>
-                  <FormControl>
-                    <PasswordInput autoComplete="new-password" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            {change.isSuccess && (
-              <Alert>
-                <AlertDescription>
-                  Contraseña actualizada. Tus otras sesiones se cerraron.
-                </AlertDescription>
-              </Alert>
-            )}
-            {change.isError && !hasFieldErrors && <ProblemAlert error={change.error} />}
-            <Button type="submit" disabled={change.isPending}>
-              Cambiar contraseña
-            </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+              {change.isError && !hasFieldErrors && <ProblemAlert error={change.error} />}
+              <Button type="submit" disabled={change.isPending}>
+                Cambiar contraseña
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
