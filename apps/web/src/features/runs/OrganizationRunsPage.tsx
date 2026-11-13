@@ -6,34 +6,16 @@ import { RunStatusSchema, type OrganizationRun, type RunStatus } from '@cognitiv
 import { ApiProblemError } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '../../components/ui/card';
+import { EmptyState } from '../../components/ui/empty-state';
+import { PageHeader } from '../../components/ui/page-header';
+import { RowsSkeleton } from '../../components/ui/rows-skeleton';
 import { Label } from '../../components/ui/label';
 import { NativeSelect } from '../../components/ui/native-select';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '../../components/ui/table';
 import { ProblemAlert } from '../auth/ProblemAlert';
 import { workflowsQuery } from '../workflows/api';
 import { organizationRunsQuery, rerunRun, type OrganizationRunFilters } from './api';
-import { StatusBadge } from '../../components/status/StatusBadge';
-import {
-  ERROR_CLASS_LABELS,
-  formatDateTime,
-  formatDuration,
-  isFinalRun,
-  runDurationMs,
-} from './status';
+import { RunsTable } from './RunsTable';
+import { isFinalRun } from './status';
 import { useNow } from './useRunLive';
 import { useRunPermission } from './permissions';
 
@@ -96,65 +78,57 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
   const rerunProblem = rerun.error instanceof ApiProblemError ? rerun.error.problem : undefined;
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8">
-      <section className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">Ejecuciones</h1>
-        <p className="text-muted-foreground">
-          Todas las ejecuciones de la organización, de la más reciente a la más antigua.
-        </p>
-      </section>
+    <div className="grid w-full gap-6">
+      <PageHeader
+        title="Ejecuciones"
+        description="Todas las ejecuciones de la organización, de la más reciente a la más antigua."
+      />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Filtros</CardTitle>
-          <CardDescription>Encuentra lo que falló y reejecútalo sin salir de aquí.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-wrap items-end gap-4">
-          <div className="grid min-w-44 flex-1 gap-1.5">
-            <Label htmlFor="runs-status">Estado</Label>
-            <NativeSelect
-              id="runs-status"
-              value={filters.status ?? ''}
-              onChange={(event) => {
-                const parsed = RunStatusSchema.safeParse(event.target.value);
-                onFiltersChange({ ...filters, status: parsed.success ? parsed.data : undefined });
-              }}
-            >
-              <option value="">Todos</option>
-              {RunStatusSchema.options.map((status) => (
-                <option key={status} value={status}>
-                  {STATUS_FILTER_LABELS[status]}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-          <div className="grid min-w-44 flex-1 gap-1.5">
-            <Label htmlFor="runs-workflow">Workflow</Label>
-            <NativeSelect
-              id="runs-workflow"
-              value={filters.workflowId ?? ''}
-              onChange={(event) =>
-                onFiltersChange({ ...filters, workflowId: event.target.value || undefined })
-              }
-            >
-              <option value="">Todos</option>
-              {workflows.data?.map((workflow) => (
-                <option key={workflow.id} value={workflow.id}>
-                  {workflow.name}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-          {filtered && (
-            <Button
-              variant="secondary"
-              onClick={() => onFiltersChange({ status: undefined, workflowId: undefined })}
-            >
-              Limpiar filtros
-            </Button>
-          )}
-        </CardContent>
-      </Card>
+      <section aria-label="Filtros" className="flex flex-wrap items-end gap-4">
+        <div className="grid min-w-44 flex-1 gap-2">
+          <Label htmlFor="runs-status">Estado</Label>
+          <NativeSelect
+            id="runs-status"
+            value={filters.status ?? ''}
+            onChange={(event) => {
+              const parsed = RunStatusSchema.safeParse(event.target.value);
+              onFiltersChange({ ...filters, status: parsed.success ? parsed.data : undefined });
+            }}
+          >
+            <option value="">Todos</option>
+            {RunStatusSchema.options.map((status) => (
+              <option key={status} value={status}>
+                {STATUS_FILTER_LABELS[status]}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        <div className="grid min-w-44 flex-1 gap-2">
+          <Label htmlFor="runs-workflow">Workflow</Label>
+          <NativeSelect
+            id="runs-workflow"
+            value={filters.workflowId ?? ''}
+            onChange={(event) =>
+              onFiltersChange({ ...filters, workflowId: event.target.value || undefined })
+            }
+          >
+            <option value="">Todos</option>
+            {workflows.data?.map((workflow) => (
+              <option key={workflow.id} value={workflow.id}>
+                {workflow.name}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
+        {filtered && (
+          <Button
+            variant="secondary"
+            onClick={() => onFiltersChange({ status: undefined, workflowId: undefined })}
+          >
+            Limpiar filtros
+          </Button>
+        )}
+      </section>
 
       {rerunProblem?.code === 'RUN_INPUT_EXPIRED' ? (
         <Alert variant="destructive">
@@ -167,177 +141,120 @@ export function OrganizationRunsPage({ organizationId, filters, onFiltersChange 
         rerun.isError && <ProblemAlert error={rerun.error} />
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Historial</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {runs.isPending && <p className="text-sm text-muted-foreground">Cargando ejecuciones…</p>}
-          {runs.isError && (
-            <div className="grid gap-2">
-              <ProblemAlert error={runs.error} />
-              <div>
-                <Button variant="secondary" size="sm" onClick={() => void runs.refetch()}>
-                  Reintentar
-                </Button>
-              </div>
-            </div>
-          )}
-          {runs.isSuccess && items.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              {filtered
-                ? 'Ninguna ejecución coincide con los filtros.'
-                : 'La organización todavía no tiene ejecuciones. Lanza un workflow desde su editor.'}
-            </p>
-          )}
-          {items.length > 0 && blockedReason && (
-            <p id={REASON_ID} className="text-xs text-muted-foreground">
-              {blockedReason}
-            </p>
-          )}
-          {items.length > 0 && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Workflow</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Falló en</TableHead>
-                    <TableHead>Creada</TableHead>
-                    <TableHead>Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {items.map((run) => (
-                    <RunRow
-                      key={run.id}
-                      run={run}
-                      organizationId={organizationId}
-                      now={now}
-                      busy={rerun.isPending || !canExecute}
-                      {...(blockedReason ? { blockedBy: REASON_ID } : {})}
-                      target={target?.runId === run.id ? target : undefined}
-                      onRerun={(fromNodeId) =>
-                        rerun.mutate({ runId: run.id, ...(fromNodeId ? { fromNodeId } : {}) })
-                      }
-                    />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-          {runs.hasNextPage && (
-            <div>
+      {runs.isPending && <RowsSkeleton rows={5} />}
+      {runs.isError && (
+        <div className="grid justify-items-start gap-3">
+          <ProblemAlert error={runs.error} />
+          <Button variant="secondary" onClick={() => void runs.refetch()}>
+            Reintentar
+          </Button>
+        </div>
+      )}
+      {runs.isSuccess && items.length === 0 && (
+        <EmptyState
+          title={
+            filtered
+              ? 'Ninguna ejecución coincide con los filtros.'
+              : 'La organización todavía no tiene ejecuciones. Lanza un workflow desde su editor.'
+          }
+          action={
+            filtered ? (
               <Button
                 variant="secondary"
-                disabled={runs.isFetchingNextPage}
-                onClick={() => void runs.fetchNextPage()}
+                onClick={() => onFiltersChange({ status: undefined, workflowId: undefined })}
               >
-                {runs.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+                Limpiar filtros
               </Button>
-            </div>
+            ) : (
+              <Button asChild variant="secondary">
+                <Link to="/orgs/$organizationId/workflows" params={{ organizationId }}>
+                  Ir a Workflows
+                </Link>
+              </Button>
+            )
+          }
+        />
+      )}
+      {items.length > 0 && blockedReason && (
+        <p id={REASON_ID} className="text-body-sm text-ink-muted">
+          {blockedReason}
+        </p>
+      )}
+      {items.length > 0 && (
+        <RunsTable
+          runs={items}
+          organizationId={organizationId}
+          now={now}
+          showWorkflow
+          renderActions={(run) => (
+            <RerunActions
+              run={run}
+              busy={rerun.isPending || !canExecute}
+              {...(blockedReason ? { blockedBy: REASON_ID } : {})}
+              target={target?.runId === run.id ? target : undefined}
+              onRerun={(fromNodeId) =>
+                rerun.mutate({ runId: run.id, ...(fromNodeId ? { fromNodeId } : {}) })
+              }
+            />
           )}
-        </CardContent>
-      </Card>
+        />
+      )}
+      {runs.hasNextPage && (
+        <div>
+          <Button
+            variant="secondary"
+            disabled={runs.isFetchingNextPage}
+            onClick={() => void runs.fetchNextPage()}
+          >
+            {runs.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
 
-function RunRow({
+function RerunActions({
   run,
-  organizationId,
-  now,
   busy,
   blockedBy,
   target,
   onRerun,
 }: {
   run: OrganizationRun;
-  organizationId: string;
-  now: number;
   busy: boolean;
   /** Id of the sentence that says the role does not allow rerunning (ADR-0082). */
   blockedBy?: string;
   target: Target | undefined;
   onRerun: (fromNodeId?: string) => void;
 }) {
-  const final = isFinalRun(run.status);
-  const errorClass = run.error?.class ? ERROR_CLASS_LABELS[run.error.class] : undefined;
+  if (!isFinalRun(run.status)) return null;
   return (
-    <TableRow>
-      <TableCell className="max-w-48 truncate" title={run.workflowName}>
-        <Link
-          to="/orgs/$organizationId/workflows/$workflowId/runs"
-          params={{ organizationId, workflowId: run.workflowId }}
-          className="underline"
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        className="h-auto min-h-11 py-1.5 text-left whitespace-normal"
+        disabled={busy}
+        aria-describedby={blockedBy}
+        onClick={() => onRerun()}
+      >
+        <RotateCw aria-hidden />
+        {target && target.fromNodeId === undefined ? 'Reejecutando…' : 'Reejecutar'}
+      </Button>
+      {run.failedNodeId !== null && (
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-auto min-h-11 py-1.5 text-left whitespace-normal"
+          disabled={busy}
+          aria-describedby={blockedBy}
+          onClick={() => onRerun(run.failedNodeId ?? undefined)}
         >
-          {run.workflowName}
-        </Link>
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-wrap items-center gap-1.5">
-          <StatusBadge status={run.status} />
-          {errorClass && (
-            <span
-              title={errorClass.hint}
-              className="rounded-full border border-red-300 px-2 py-0.5 text-xs font-medium whitespace-nowrap text-red-900"
-            >
-              {errorClass.label}
-            </span>
-          )}
-        </div>
-        {run.rerunOf && (
-          <p className="mt-1 text-xs text-muted-foreground">
-            Reejecución{run.rerunFromNodeId ? ` desde ${run.rerunFromNodeId}` : ''}
-          </p>
-        )}
-      </TableCell>
-      <TableCell className="font-mono text-xs">{run.failedNodeId ?? '—'}</TableCell>
-      <TableCell className="whitespace-nowrap">
-        {formatDateTime(run.createdAt)}
-        <p className="text-xs text-muted-foreground">
-          Duración {formatDuration(runDurationMs(run, now))}
-        </p>
-      </TableCell>
-      <TableCell>
-        <div className="flex flex-col items-start gap-2">
-          <Link
-            to="/orgs/$organizationId/runs/$runId"
-            params={{ organizationId, runId: run.id }}
-            className="text-sm underline"
-          >
-            Ver detalle
-          </Link>
-          {final && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-auto py-1.5 text-left whitespace-normal"
-              disabled={busy}
-              aria-describedby={blockedBy}
-              onClick={() => onRerun()}
-            >
-              <RotateCw aria-hidden />
-              {target && target.fromNodeId === undefined ? 'Reejecutando…' : 'Reejecutar'}
-            </Button>
-          )}
-          {final && run.failedNodeId !== null && (
-            <Button
-              variant="secondary"
-              size="sm"
-              className="h-auto py-1.5 text-left whitespace-normal"
-              disabled={busy}
-              aria-describedby={blockedBy}
-              onClick={() => onRerun(run.failedNodeId ?? undefined)}
-            >
-              <RotateCw aria-hidden />
-              {target?.fromNodeId !== undefined
-                ? 'Reejecutando…'
-                : 'Reejecutar desde el nodo fallido'}
-            </Button>
-          )}
-        </div>
-      </TableCell>
-    </TableRow>
+          <RotateCw aria-hidden />
+          {target?.fromNodeId !== undefined ? 'Reejecutando…' : 'Reejecutar desde el nodo fallido'}
+        </Button>
+      )}
+    </>
   );
 }
