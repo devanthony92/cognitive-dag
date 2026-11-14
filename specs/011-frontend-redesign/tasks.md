@@ -316,7 +316,7 @@ que no puede hacer un agente.
       personales ni secretos; quedan, de F9 y sin tocar, el remitente de servicio `alertas@devama.cloud` y el OCID del
       Vault en `docs/operations/oracle.md`, que son identificadores y no secretos; `deploy/` sin cambios desde `f1d60bf`;
       se borraron 4 capturas sueltas `f10-pr3$name-*.png`)
-- [ ] T086 [US8] Abrir la PR 5 con los informes y los 6 checks en verde
+- [x] T086 [US8] Abrir la PR 5 con los informes y los 6 checks en verde (PR #93, 6 de 6 en verde)
 - [ ] T087 (autor) Merge de la PR 5 y confirmación final en producción
 
 **Hito de PR 5:** F10 cerrada con evidencia; el trabajo sigue en F11 (Integraciones).
