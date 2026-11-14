@@ -23,7 +23,7 @@ export function PageHeader({
         <h1 className="text-headline font-bold text-ink">{title}</h1>
         {description && <p className="text-body text-ink-muted">{description}</p>}
       </div>
-      {action && <div className="shrink-0">{action}</div>}
+      {action && <div className="max-w-full shrink-0">{action}</div>}
     </header>
   );
 }

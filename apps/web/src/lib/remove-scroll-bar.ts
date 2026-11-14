@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
 /**
- * Replaces `react-remove-scroll-bar` (an alias in `vite.config.ts`). The original injects a `<style>`
- * element every time a dialog, sheet or menu opens, and the production CSP (`style-src 'self'`) blocks
+ * Replaces `react-remove-scroll-bar` (an alias in `vite.config.ts`). The original injects a stylesheet
+ * node every time a dialog, sheet or menu opens, and the production CSP (`style-src 'self'`) blocks
  * it: a violation in the console and no scroll lock. This version only marks the body while an overlay
  * is open, and `index.css` holds the rule (`body[data-scroll-locked]`).
  */
