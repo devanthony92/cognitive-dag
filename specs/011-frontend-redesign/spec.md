@@ -38,7 +38,7 @@ Hechos medidos que condicionan el alcance:
 - El enlace «Crear cuenta» aparece en `routes/index.tsx` y en `features/auth/LoginForm.tsx` aunque el registro
   está cerrado en producción (Caddy responde 404 a `POST /api/v1/auth/register`, F9 D23A).
 - Producción sirve la web con CSP `default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self';
-  img-src 'self' data:`, COEP `require-corp` y COOP/CORP `same-origin`; `deploy/ops/check-headers.sh` lo
+img-src 'self' data:`, COEP `require-corp` y COOP/CORP `same-origin`; `deploy/ops/check-headers.sh` lo
   comprueba en cada despliegue y solo cambia con un ADR. Cada merge a `main` se despliega solo en
   https://cognitive.devama.cloud, sin staging (F9 D2C).
 - Auditoría de impeccable: **10/20**. Hallazgos: P0 error por defecto del router; P1 sin shell y cabecera de
@@ -64,7 +64,7 @@ Hechos medidos que condicionan el alcance:
 - Q: ¿Marca? → A: **Símbolo SVG propio** (anillo y cruz de registro de línea) más el nombre en Atkinson, y
   favicon SVG, dibujado en la PR 1.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 Actores: el operador técnico (sesiones largas en escritorio, a menudo de noche), la persona menos técnica que
 describe un proceso y aprueba pasos humanos, el miembro `viewer` que solo mira, quien llega por una invitación,
@@ -369,7 +369,7 @@ cabeceras, y la suite completa de `apps/web`.
 - **La compilación NL tarda o falla:** el esqueleto y el panel de error del editor se comportan como los de
   cualquier ruta.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -498,7 +498,7 @@ cabeceras, y la suite completa de `apps/web`.
 - **Destino de navegación**: etiqueta, icono, ruta, rol mínimo, activo.
 - **Panel de error de ruta**: título, causa, id de correlación, acciones, si es 503/red.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -525,6 +525,8 @@ cabeceras, y la suite completa de `apps/web`.
 - **SC-011**: El editor con un workflow de referencia mantiene el tiempo de la prueba
   `workflow-editor-performance` dentro de +10 % respecto a `main`, y el peso inicial de JavaScript de la
   primera carga no crece más de 15 % (fuentes aparte, medidas por separado).
+  _Desviación aceptada por el autor (PR 4):_ la apertura en caliente del editor queda +31 % sobre `main` en
+  navegador real (113 → 148 ms); el JS inicial queda en +0,04 %. Ver `docs/ui/editor-performance.md`.
 - **SC-012**: **0** enlaces visibles a rutas que respondan 404 en producción (incluido «Crear cuenta»).
 
 ## Assumptions

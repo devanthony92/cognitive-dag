@@ -40,58 +40,17 @@
   --color-node-http: var(--node-http);
   --color-node-approval: var(--node-approval);
   --color-node-mock: var(--node-mock);
-
-  /* Aliases of the former shadcn names, kept until every screen uses the tokens above (T049). */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-}
-
-:root {
-  --background: var(--ground);
-  --foreground: var(--ink);
-  --card: var(--surface);
-  --card-foreground: var(--ink);
-  --popover: var(--raised);
-  --popover-foreground: var(--ink);
-  --primary: var(--action);
-  --primary-foreground: var(--on-action);
-  --secondary: var(--raised);
-  --secondary-foreground: var(--ink);
-  --muted: var(--raised);
-  --muted-foreground: var(--ink-muted);
-  --accent: var(--raised);
-  --accent-foreground: var(--ink);
-  --destructive: var(--state-failed);
-  --border: var(--line);
-  --input: var(--line-strong);
-  --ring: var(--focus);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-line outline-focus/50;
   }
   html {
     font-family: var(--font-sans);
   }
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-ground text-ink antialiased;
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
   }

@@ -61,7 +61,7 @@ export function WebhookPanel({
   return (
     <section aria-label="Webhook" className="mt-6 grid gap-3 border-t pt-4">
       <h3 className="text-sm font-semibold">Webhook</h3>
-      {webhook.isPending && <p className="text-sm text-muted-foreground">Cargando…</p>}
+      {webhook.isPending && <p className="text-sm text-ink-muted">Cargando…</p>}
       {webhook.isError && <ProblemAlert error={webhook.error} />}
 
       {fresh && (
@@ -73,7 +73,7 @@ export function WebhookPanel({
             </p>
             <code
               data-testid="webhook-url"
-              className="rounded bg-muted p-2 text-xs break-all select-all"
+              className="rounded bg-raised p-2 text-xs break-all select-all"
             >
               {fresh.url}
             </code>
@@ -91,23 +91,23 @@ export function WebhookPanel({
       )}
 
       {webhook.isSuccess && state === null && (
-        <p className="text-sm text-muted-foreground">Todavía no hay un token para este webhook.</p>
+        <p className="text-sm text-ink-muted">Todavía no hay un token para este webhook.</p>
       )}
       {state && (
         <dl className="grid gap-1 text-sm">
           <div className="flex gap-2">
-            <dt className="text-muted-foreground">Dirección</dt>
+            <dt className="text-ink-muted">Dirección</dt>
             <dd className="min-w-0 break-all">{state.urlBase}…</dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-muted-foreground">Token</dt>
+            <dt className="text-ink-muted">Token</dt>
             <dd>
               Generación {state.generation}, el {formatDateTime(state.generatedAt)} por{' '}
               {state.generatedBy.name}
             </dd>
           </div>
           <div className="flex gap-2">
-            <dt className="text-muted-foreground">Estado</dt>
+            <dt className="text-ink-muted">Estado</dt>
             <dd>
               {state.active
                 ? 'Recibe eventos: hay una versión activa con este disparador.'

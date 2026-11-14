@@ -64,7 +64,7 @@ export function RunButton({ organizationId, workflowId, workflowName, showHistor
         </Button>
       )}
       {reason && (
-        <p id={reasonId} className="order-last w-full text-right text-xs text-muted-foreground">
+        <p id={reasonId} className="order-last w-full text-right text-xs text-ink-muted">
           {reason}
         </p>
       )}

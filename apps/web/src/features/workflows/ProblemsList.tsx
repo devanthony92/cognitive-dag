@@ -12,16 +12,16 @@ export function ProblemsList({ errors, labels, onSelectNode }: Props) {
   return (
     <section
       aria-label="Problemas"
-      className="max-h-40 shrink-0 overflow-y-auto border-t bg-card px-4 py-2 text-sm"
+      className="max-h-40 shrink-0 overflow-y-auto border-t bg-surface px-4 py-2 text-sm"
     >
       {errors.length === 0 ? (
-        <p className="flex items-center gap-2 text-muted-foreground">
-          <CircleCheck className="size-4 text-emerald-600" aria-hidden />
+        <p className="flex items-center gap-2 text-ink-muted">
+          <CircleCheck className="size-4 text-state-succeeded" aria-hidden />
           Sin problemas
         </p>
       ) : (
         <>
-          <p className="mb-1 flex items-center gap-2 font-medium text-destructive">
+          <p className="mb-1 flex items-center gap-2 font-medium text-state-failed">
             <TriangleAlert className="size-4" aria-hidden />
             {errors.length} {errors.length === 1 ? 'problema' : 'problemas'}
           </p>

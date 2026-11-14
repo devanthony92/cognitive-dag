@@ -128,7 +128,7 @@ export function RunDialog({
                     <input
                       id={id}
                       type="checkbox"
-                      className="size-4 rounded border-input accent-primary"
+                      className="size-4 rounded border-line-strong accent-primary"
                       {...aria}
                       {...register(field.name)}
                     />
@@ -172,11 +172,11 @@ export function RunDialog({
                       {...aria}
                       {...register(field.name)}
                     />
-                    <p className="text-xs text-muted-foreground">{JSON_HINT[kind]}</p>
+                    <p className="text-xs text-ink-muted">{JSON_HINT[kind]}</p>
                   </>
                 )}
                 {error && (
-                  <p id={`${id}-error`} className="text-sm text-destructive">
+                  <p id={`${id}-error`} className="text-sm text-state-failed">
                     {error}
                   </p>
                 )}
@@ -199,7 +199,7 @@ export function RunDialog({
               <ProblemAlert error={start.error} />
             )}
             {problem?.code === 'RUN_LIMIT_REACHED' && (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-ink-muted">
                 Puedes cancelar una ejecución en curso desde{' '}
                 <Link
                   to="/orgs/$organizationId/workflows/$workflowId/runs"

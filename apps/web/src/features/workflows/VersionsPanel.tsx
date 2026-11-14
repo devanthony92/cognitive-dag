@@ -123,7 +123,7 @@ export function VersionsPanel({
       {failure != null && <ProblemAlert error={failure} />}
 
       {versions.data?.length === 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-ink-muted">
           Todavía no hay versiones publicadas. Publica el borrador para crear la primera.
         </p>
       )}
@@ -133,15 +133,15 @@ export function VersionsPanel({
             <div className="flex items-center gap-2">
               <span className="font-medium">Versión {version.number}</span>
               {version.active && (
-                <span className="rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+                <span className="rounded-station bg-action px-2 py-0.5 text-xs text-on-action">
                   Activa
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {formatDate(version.publishedAt)} · {version.publishedBy.name}
             </p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-ink-muted">
               {version.nodeCount} nodos · {version.edgeCount} conexiones
             </p>
             {version.note && <p className="mt-1">{version.note}</p>}

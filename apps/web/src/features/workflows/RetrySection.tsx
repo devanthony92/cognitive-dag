@@ -42,13 +42,13 @@ export function RetrySection({ node, errors, onChange }: Props) {
     <section aria-label="Reintentos" className="grid gap-3 border-t pt-4">
       <div>
         <h3 className="text-sm font-semibold">Reintentos</h3>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs text-ink-muted">
           Qué tan insistente es este nodo ante un fallo pasajero. Si dejas un campo vacío se usa el
           valor por defecto.
         </p>
       </div>
       {general.map((message) => (
-        <p key={message} className="text-sm text-destructive">
+        <p key={message} className="text-sm text-state-failed">
           {message}
         </p>
       ))}
@@ -70,11 +70,11 @@ export function RetrySection({ node, errors, onChange }: Props) {
               value={current[key] === undefined ? '' : String(current[key])}
               onChange={(event) => update(key, event.target.value)}
             />
-            <p id={`${id}-hint`} className="text-xs text-muted-foreground">
+            <p id={`${id}-hint`} className="text-xs text-ink-muted">
               Por defecto {defaults[key]}. Entre {limits.min} y {limits.max}.
             </p>
             {messages.map((message) => (
-              <p key={message} className="text-sm text-destructive">
+              <p key={message} className="text-sm text-state-failed">
                 {message}
               </p>
             ))}

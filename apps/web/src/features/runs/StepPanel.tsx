@@ -36,10 +36,10 @@ function Json({ title, value }: { title: string; value: unknown }) {
   const text = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
   return (
     <div className="grid gap-1">
-      <h4 className="text-xs font-medium text-muted-foreground">{title}</h4>
+      <h4 className="text-xs font-medium text-ink-muted">{title}</h4>
       <pre
         tabIndex={0}
-        className="max-h-64 overflow-auto rounded-md border bg-muted/40 p-2 font-mono text-xs break-words whitespace-pre-wrap"
+        className="max-h-64 overflow-auto rounded-md border bg-raised/40 p-2 font-mono text-xs break-words whitespace-pre-wrap"
       >
         {text}
       </pre>
@@ -66,14 +66,14 @@ function StepContent({
   // A reused node ran in the original run: its content is read there, not here.
   if (reused) {
     return (
-      <div className="grid gap-2 text-sm text-muted-foreground">
+      <div className="grid gap-2 text-sm text-ink-muted">
         <p>Este nodo no se ejecutó de nuevo: se reutilizó su salida de la ejecución original.</p>
         {rerunOf && (
           <Link
             to="/orgs/$organizationId/runs/$runId"
             params={{ organizationId, runId: rerunOf }}
             search={{ node: step.nodeId }}
-            className="justify-self-start text-foreground underline"
+            className="justify-self-start text-ink underline"
           >
             Ver este nodo en la ejecución original
           </Link>
@@ -84,25 +84,25 @@ function StepContent({
 
   if (evaluatedInEngine) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-ink-muted">
         Este nodo se evalúa dentro del motor y no registra entrada ni salida.
       </p>
     );
   }
   if (waiting) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-ink-muted">
         {step.status === 'skipped'
           ? 'El nodo se omitió: su rama no se tomó.'
           : 'El nodo todavía no se ejecuta.'}
       </p>
     );
   }
-  if (io.isPending) return <p className="text-sm text-muted-foreground">Cargando contenido…</p>;
+  if (io.isPending) return <p className="text-sm text-ink-muted">Cargando contenido…</p>;
   if (io.isError) {
     if (io.error instanceof ApiProblemError && io.error.problem.code === 'STEP_IO_EXPIRED') {
       return (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-ink-muted">
           El contenido ya no está disponible: Temporal lo conserva solo durante su periodo de
           retención.
         </p>
@@ -113,22 +113,20 @@ function StepContent({
   const { input, output, truncated } = io.data;
   const confidence = step.nodeType === 'llm.classify' ? confidenceText(output) : undefined;
   if (input === undefined && output === undefined) {
-    return <p className="text-sm text-muted-foreground">Sin contenido disponible.</p>;
+    return <p className="text-sm text-ink-muted">Sin contenido disponible.</p>;
   }
   return (
     <div className="grid gap-3">
       {input !== undefined && <Json title="Entrada" value={input} />}
       {confidence && (
         <p className="text-sm">
-          <span className="text-muted-foreground">Confianza estimada: </span>
+          <span className="text-ink-muted">Confianza estimada: </span>
           <span className="font-medium">{confidence}</span>
         </p>
       )}
       {output !== undefined && <Json title="Salida" value={output} />}
       {truncated && (
-        <p className="text-xs text-muted-foreground">
-          El contenido es largo y se muestra recortado.
-        </p>
+        <p className="text-xs text-ink-muted">El contenido es largo y se muestra recortado.</p>
       )}
     </div>
   );
@@ -175,46 +173,46 @@ export function StepPanel({
         <h3 className="truncate text-base font-semibold" title={label}>
           {label}
         </h3>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate text-xs text-ink-muted">
           {typeLabel ?? step.nodeType} · {step.nodeId}
         </p>
       </div>
       <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-        <dt className="text-muted-foreground">Estado</dt>
+        <dt className="text-ink-muted">Estado</dt>
         <dd>
           <StatusBadge status={step.status} kind="step" />
           {waitingText && (
-            <p role="status" className="mt-1 text-xs font-medium text-amber-900">
+            <p role="status" className="mt-1 text-body-sm font-semibold text-state-waiting">
               {waitingText}
             </p>
           )}
         </dd>
         {showAttempts && (
           <>
-            <dt className="text-muted-foreground">Intentos</dt>
+            <dt className="text-ink-muted">Intentos</dt>
             <dd>{step.attempts}</dd>
           </>
         )}
-        <dt className="text-muted-foreground">Duración</dt>
+        <dt className="text-ink-muted">Duración</dt>
         <dd>{duration === null ? '—' : formatDuration(duration)}</dd>
-        <dt className="text-muted-foreground">Inicio</dt>
+        <dt className="text-ink-muted">Inicio</dt>
         <dd>{step.startedAt ? formatDateTime(step.startedAt) : '—'}</dd>
-        <dt className="text-muted-foreground">Fin</dt>
+        <dt className="text-ink-muted">Fin</dt>
         <dd>{step.finishedAt ? formatDateTime(step.finishedAt) : '—'}</dd>
       </dl>
       {step.llmUsage && (
         <section aria-label="Consumo LLM" className="grid gap-2">
           <h3 className="text-sm font-semibold">Consumo LLM</h3>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Modelo</dt>
+            <dt className="text-ink-muted">Modelo</dt>
             <dd className="min-w-0 break-words">{step.llmUsage.model ?? 'Varios modelos'}</dd>
-            <dt className="text-muted-foreground">Tokens de entrada</dt>
+            <dt className="text-ink-muted">Tokens de entrada</dt>
             <dd>{formatTokens(step.llmUsage.inputTokens)}</dd>
-            <dt className="text-muted-foreground">Tokens de salida</dt>
+            <dt className="text-ink-muted">Tokens de salida</dt>
             <dd>{formatTokens(step.llmUsage.outputTokens)}</dd>
-            <dt className="text-muted-foreground">Costo estimado</dt>
+            <dt className="text-ink-muted">Costo estimado</dt>
             <dd>{formatCostUsd(step.llmUsage.costMicroUsd)}</dd>
-            <dt className="text-muted-foreground">Reparaciones</dt>
+            <dt className="text-ink-muted">Reparaciones</dt>
             <dd>{step.llmUsage.repairs}</dd>
           </dl>
         </section>
@@ -222,7 +220,7 @@ export function StepPanel({
       {step.error && (
         <div
           role="alert"
-          className="rounded-md border border-destructive/50 p-3 text-sm text-destructive"
+          className="rounded-md border border-state-failed/50 p-3 text-sm text-state-failed"
         >
           <p className="font-medium break-words">{errorMessage(step.error)}</p>
           <p className="mt-1 font-mono text-xs break-all">{step.error.code}</p>
@@ -246,7 +244,7 @@ export function StepPanel({
             <RotateCw aria-hidden />
             {rerunning ? 'Reejecutando…' : 'Reejecutar desde aquí'}
           </Button>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-ink-muted">
             Reutiliza lo que ya salió bien antes de este nodo, en la misma versión.
           </p>
         </div>
