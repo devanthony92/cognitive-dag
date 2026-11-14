@@ -167,7 +167,8 @@ reexec_from_current_release() {
   local script="$1" sha target here
   shift
   [[ -z "${CDAG_OPS_REEXEC:-}" ]] || return 0
-  sha="$(sed -n 's/^GIT_SHA=//p' "$STATE_DIR/current.env" 2>/dev/null | tail -n 1)"
+  # No current.env is normal (first deploy): it must not end a script that runs with `set -e`.
+  sha="$(sed -n 's/^GIT_SHA=//p' "$STATE_DIR/current.env" 2>/dev/null | tail -n 1 || true)"
   [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || return 0
   target="$RELEASES_DIR/$sha/deploy/ops/$(basename "$script")"
   [[ -f "$target" ]] || return 0
