@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
@@ -6,6 +7,15 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig(({ command }) => ({
   // The router plugin must run before the React plugin.
   plugins: [tanstackRouter({ target: 'react', autoCodeSplitting: true }), react(), tailwindcss()],
+  // `react-remove-scroll-bar` injects a <style> that the strict CSP blocks (F10, audit-final.md).
+  resolve: {
+    alias: [
+      {
+        find: /^react-remove-scroll-bar$/,
+        replacement: fileURLToPath(new URL('./src/lib/remove-scroll-bar.ts', import.meta.url)),
+      },
+    ],
+  },
   // Read VITE_* variables from the repository-level .env.
   envDir: '../../',
   // A production build ignores the development `.env` (F9, FR-006): the API shares the origin, so
