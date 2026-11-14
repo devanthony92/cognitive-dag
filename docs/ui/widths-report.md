@@ -70,3 +70,33 @@ entero a la vista; se acerca con pellizco. La lista de ejecuciones (tira de serv
 navegador con la API simulada y está cubierta por pruebas. Detector de impeccable (`impeccable detect apps/web/src`,
 solo regex): 2 hallazgos, ambos en `styles/fonts.css` (las caras de reserva `Atkinson Fallback`/`Atkinson Mono
 Fallback`, documentadas en `DESIGN.md`); ninguno en el editor ni en la ejecución.
+
+## Recorrido final (PR 5, T079)
+
+Método: compilación de producción local (`vite build`) servida con la CSP de producción y una API simulada con datos
+ficticios; Chrome sin interfaz por el protocolo de depuración. Para cada ruta se fija el viewport, se emula el modo de
+color, se carga la ruta y se lee `documentElement.scrollWidth - clientWidth` (0 o menos = sin scroll horizontal), el
+número de `h1` y el de `main`. El zoom al 200 % se emula con un viewport de 720 px a escala de pantalla 2 (= 1440 px al
+200 %).
+
+Rutas (21): `/login`, `/register`, `/forgot-password`, `/reset-password` (con y sin token), `/verify-email`,
+`/invitations/accept`, `/` y una ruta inexistente sin sesión; con sesión, organización, Workflows, «Describir
+workflow», editor, Ejecuciones de la organización y de un workflow, detalle de ejecución, Aprobaciones, Conexiones,
+Miembros, Cuenta y una ruta inexistente.
+
+| Ancho            | Modos        | Mediciones | Con scroll horizontal | Pantallas sin exactamente un `h1` y un `main` |
+| ---------------- | ------------ | ---------- | --------------------- | --------------------------------------------- |
+| 375 px           | claro/oscuro | 42         | 0                     | 0                                             |
+| 768 px           | claro/oscuro | 42         | 0                     | 0                                             |
+| 1024 px          | claro/oscuro | 42         | 0                     | 0                                             |
+| 1440 px          | claro/oscuro | 42         | 0                     | 0                                             |
+| 1440 px al 200 % | claro/oscuro | 42         | 0                     | 0                                             |
+| **Total**        |              | **210**    | **0**                 | **0**                                         |
+
+Además, a 1280 px al 200 % (640 px a escala 2) las 18 rutas medidas en el recorrido de la revisión de accesibilidad dan
+0 con scroll, y a 320 px (reflujo de WCAG 1.4.10) 0 con scroll del documento tras corregir la cabecera de «Ejecuciones de
+un workflow» (+2 px); a ese ancho la barra inferior recorta la etiqueta de «Miembros» (ver
+[ADR-0103](../adr/0103-cierre-de-f10-redisenio-del-frontend.md)).
+
+SC-003 cumplido: 0 píxeles de scroll horizontal del documento en las 21 rutas a 375, 768, 1024 y 1440 px y a 200 % de
+zoom, en claro y en oscuro. Capturas del recorrido de PR 4: `docs/ui/screenshots/f10-pr4/`.
