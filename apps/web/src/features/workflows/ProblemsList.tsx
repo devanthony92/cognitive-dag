@@ -35,7 +35,7 @@ export function ProblemsList({ errors, labels, onSelectNode }: Props) {
                     <button
                       type="button"
                       onClick={() => onSelectNode(nodeId)}
-                      className="text-left underline-offset-2 hover:underline"
+                      className="min-h-11 text-left underline-offset-2 hover:underline"
                     >
                       <span className="font-medium">{where}: </span>
                       {error.message}

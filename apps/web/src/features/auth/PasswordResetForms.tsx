@@ -97,7 +97,7 @@ export function ForgotPasswordForm() {
         )}
       </CardContent>
       <CardFooter className="text-body-sm">
-        <a href="/login" className="underline">
+        <a href="/login" className="inline-flex min-h-11 items-center underline">
           Volver a iniciar sesión
         </a>
       </CardFooter>
@@ -151,7 +151,10 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
           <CardDescription>Pide un enlace nuevo para restablecer tu contraseña.</CardDescription>
         </CardHeader>
         <CardFooter>
-          <a href="/forgot-password" className="text-body-sm underline">
+          <a
+            href="/forgot-password"
+            className="inline-flex min-h-11 items-center text-body-sm underline"
+          >
             Pedir un enlace nuevo
           </a>
         </CardFooter>
@@ -169,7 +172,7 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
           </CardDescription>
         </CardHeader>
         <CardFooter>
-          <a href="/login" className="text-body-sm underline">
+          <a href="/login" className="inline-flex min-h-11 items-center text-body-sm underline">
             Iniciar sesión
           </a>
         </CardFooter>
@@ -231,7 +234,10 @@ export function ResetPasswordForm({ token }: { token: string | undefined }) {
       </CardContent>
       {tokenRejected && (
         <CardFooter>
-          <a href="/forgot-password" className="text-body-sm underline">
+          <a
+            href="/forgot-password"
+            className="inline-flex min-h-11 items-center text-body-sm underline"
+          >
             Pedir un enlace nuevo
           </a>
         </CardFooter>

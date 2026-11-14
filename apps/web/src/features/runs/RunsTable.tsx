@@ -145,7 +145,7 @@ function RunRow<T extends RunsTableRow>({
         {formatDuration(runDurationMs(run, now))}
       </TableCell>
       <TableCell className={STACKED.cell}>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <div className="flex max-w-56 flex-wrap items-center gap-x-3 gap-y-1 [&_button]:max-w-full [&_button]:shrink">
           <Link
             to="/orgs/$organizationId/runs/$runId"
             params={{ organizationId, runId: run.id }}

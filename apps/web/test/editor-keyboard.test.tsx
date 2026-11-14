@@ -133,6 +133,8 @@ describe('editor with the keyboard', () => {
     expect(within(dialog).getByText(/¿Eliminar «Traducir»\?/)).toBeDefined();
     await user.click(within(dialog).getByRole('button', { name: 'Cancelar' }));
     expect(station('generate_2')).not.toBeNull();
+    // Cancelling returns the focus to the station that asked, not to the top of the page.
+    await waitFor(() => expect(document.activeElement).toBe(station('generate_2')));
 
     station('generate_2').focus();
     await user.keyboard('{Delete}');

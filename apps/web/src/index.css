@@ -54,6 +54,11 @@
     font-size: var(--text-body);
     line-height: var(--text-body--line-height);
   }
+  /* An open dialog, sheet or menu locks the page scroll (src/lib/remove-scroll-bar.ts). */
+  body[data-scroll-locked] {
+    overflow: hidden;
+    overscroll-behavior: contain;
+  }
   :focus-visible {
     outline: none;
     box-shadow: var(--ring-focus);

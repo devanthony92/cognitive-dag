@@ -275,10 +275,14 @@ que no puede hacer un agente.
 - [x] T074 [US6] Medir `workflow-editor-performance` y el JS inicial antes/después; dentro de +10 % y +15 % (SC-011);
       documentar en la PR (JS inicial +0,04 %; apertura en caliente +31 % en navegador real, **desviación aceptada
       por el autor**, `docs/ui/editor-performance.md`)
-- [ ] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
+- [x] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
       grises de estaciones y estados; 33 archivos de prueba previos (incluidas `workflow-editor*`, `runs-*`) sin debilitarlas
-- [ ] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde
-- [ ] T077 (autor) Merge de la PR 4 y comprobación en producción, incluida una ejecución real en vivo
+- [x] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde
+- [x] T077 (autor) Merge de la PR 4 y comprobación en producción, incluida una ejecución real en vivo (merge de #92,
+      `9090b0f`, desplegado el 2026-11-14; en producción se publicó la versión 1 de un workflow de prueba y una
+      ejecución real terminó COMPLETADA en 2,4 s: Clasificar → Condición, rama «Sí» ejecutada y «No» omitida; vista
+      de ejecución con estaciones e insignias de estado, tira de pasos en la lista de Ejecuciones, sin errores de
+      consola)
 
 **Hito de PR 4:** el plano de estaciones en producción, en el editor y en la ejecución.
 
@@ -286,25 +290,33 @@ que no puede hacer un agente.
 
 ## Phase 5: Cierre (PR 5 — Sonnet; Haiku para PLAN, README, ADR y `tasks.md`)
 
-- [ ] T078 [US8] Auditoría final de impeccable sobre producción; ≥ 16/20, 0 P0 y 0 P1; informe en
+- [x] T078 [US8] Auditoría final de impeccable sobre producción; ≥ 16/20, 0 P0 y 0 P1; informe en
       `docs/ui/audit-final.md` con comparación contra `audit-baseline.md` (SC-001). Cualquier hallazgo restante
-      se corrige en esta PR o se abre un issue con dueño y fecha
-- [ ] T079 [P] [US8] Informe de contraste final (`docs/ui/contrast-report.md`) desde `scripts/ui` / `ui-contrast.test.ts`
+      se corrige en esta PR o se abre un issue con dueño y fecha (17/20, 0 P0, 0 P1; páginas públicas medidas en
+      producción y pantallas con sesión sobre la compilación local con API simulada; 6 P2 corregidos; 1 P2 abierto
+      con decisión en ADR-0103)
+- [x] T079 [P] [US8] Informe de contraste final (`docs/ui/contrast-report.md`) desde `scripts/ui` / `ui-contrast.test.ts`
       y recorrido final de anchos (`docs/ui/widths-report.md`) en las 20 rutas × 4 anchos × 2 modos + 200 % de zoom
-      (SC-003, SC-004)
-- [ ] T080 [P] [US8] Revisión manual con teclado y lector de pantalla de login, Workflows, editor, Ejecuciones,
+      (SC-003, SC-004) (82 de 82 pares; 21 rutas × 5 anchos × 2 modos = 210 mediciones sin scroll horizontal)
+- [x] T080 [P] [US8] Revisión manual con teclado y lector de pantalla de login, Workflows, editor, Ejecuciones,
       detalle de ejecución, Aprobaciones, Conexiones, Miembros y Cuenta; criterios WCAG 2.2 AA de la spec (US8.2);
-      sin incumplimientos abiertos sin decisión escrita
-- [ ] T081 [P] [US8] Revisión de `forced-colors`, `prefers-reduced-motion`, zoom al 200 %, almacenamiento bloqueado y
-      fuente que no carga (casos límite de la spec)
-- [ ] T082 [US8] Re-ejecutar `/impeccable document` para que `DESIGN.md` (y su sidecar) refleje los valores reales
-- [ ] T083 [P] [US8] `docs/adr/0103-cierre-de-f10-redisenio-del-frontend.md`: resultados, excepciones aceptadas con dueño y
+      sin incumplimientos abiertos sin decisión escrita (teclado y árbol de accesibilidad hechos, `docs/ui/a11y-report.md`;
+      **pendiente del autor:** pasada con lector de pantalla real, ADR-0103 excepción 2)
+- [x] T081 [P] [US8] Revisión de `forced-colors`, `prefers-reduced-motion`, zoom al 200 %, almacenamiento bloqueado y
+      fuente que no carga (casos límite de la spec) (con emulación del navegador; `docs/ui/a11y-report.md`)
+- [x] T082 [US8] Re-ejecutar `/impeccable document` para que `DESIGN.md` (y su sidecar) refleje los valores reales
+      (los 46 valores de color de `DESIGN.md` coinciden con `tokens.css`; se quitó la marca de semilla; el sidecar
+      `.impeccable/design.json` se generó en local pero `.impeccable/` está en `.git/info/exclude` y no se versiona)
+- [x] T083 [P] [US8] `docs/adr/0103-cierre-de-f10-redisenio-del-frontend.md`: resultados, excepciones aceptadas con dueño y
       revisión; ADR-0101 y 0102 en `accepted`
-- [ ] T084 [P] [US8] `README.md` y `docs/PLAN.md`: F10 = Rediseño del frontend (completada), F11 = Integraciones (sin tocar
+- [x] T084 [P] [US8] `README.md` y `docs/PLAN.md`: F10 = Rediseño del frontend (completada), F11 = Integraciones (sin tocar
       ADR históricos); marcar esta lista con el estado real de cada tarea
-- [ ] T085 [US8] Confirmar que ningún archivo bajo `docs/` ni capturas incluyen datos reales ni secretos
-      (gitleaks en CI) y que `deploy/ops/check-headers.sh` y la CSP no cambiaron en toda la fase
-- [ ] T086 [US8] Abrir la PR 5 con los informes y los 6 checks en verde
+- [x] T085 [US8] Confirmar que ningún archivo bajo `docs/` ni capturas incluyen datos reales ni secretos
+      (gitleaks en CI) y que `deploy/ops/check-headers.sh` y la CSP no cambiaron en toda la fase (revisado: sin correos
+      personales ni secretos; quedan, de F9 y sin tocar, el remitente de servicio `alertas@devama.cloud` y el OCID del
+      Vault en `docs/operations/oracle.md`, que son identificadores y no secretos; `deploy/` sin cambios desde `f1d60bf`;
+      se borraron 4 capturas sueltas `f10-pr3$name-*.png`)
+- [x] T086 [US8] Abrir la PR 5 con los informes y los 6 checks en verde (PR #93, 6 de 6 en verde)
 - [ ] T087 (autor) Merge de la PR 5 y confirmación final en producción
 
 **Hito de PR 5:** F10 cerrada con evidencia; el trabajo sigue en F11 (Integraciones).

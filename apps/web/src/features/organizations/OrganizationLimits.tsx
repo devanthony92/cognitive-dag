@@ -66,9 +66,9 @@ export function OrganizationLimits({ organizationId }: { organizationId: string 
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <dl className="grid gap-2 text-body-sm sm:grid-cols-2">
+        <dl className="grid gap-x-6 gap-y-3 text-body-sm sm:grid-cols-2">
           {rows.map(([name, value]) => (
-            <div key={name} className="rounded-md border border-line p-3">
+            <div key={name} className="border-t border-line pt-3">
               <dt className="text-ink-muted">{name}</dt>
               <dd className="text-title font-semibold text-ink">{value}</dd>
             </div>

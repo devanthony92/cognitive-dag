@@ -13,7 +13,7 @@ runs without an explicit publish by a user. See [ADR-0002](docs/adr/0002-llm-com
 
 ## Status
 
-**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler, F7 — triggers and human control, F8 — hardening and F9 — deployment: complete.** F8 removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
+**F0 — foundations and walking skeleton, F1 — identity and multi-tenancy, F2 — DAG model and visual editor, F3 — execution engine, F4 — resilience, F5 — cognitive nodes, F6 — natural language compiler, F7 — triggers and human control, F8 — hardening, F9 — deployment and F10 — frontend redesign: complete.** F8 removed the eight product flags: every feature is on, the flag catalog is empty and `GET /api/v1/features` answers `{}` ([ADR-0084](docs/adr/0084-eliminacion-de-los-flags-de-producto.md)). The worker keeps three kill switches: `LLM_ENABLED`, `HTTP_ENABLED` and `TRIGGERS_ENABLED`.
 
 | Area                 | What F0 delivers                                                                                                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -116,9 +116,7 @@ F9 adds:
 | Documentation | 99 architecture decision records ([ADR-0089](docs/adr/0089-ocir-como-registro-y-etiquetado-por-digest.md) to [ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)); threat model v3.0 and an evidence matrix with no deferred rows; constitution 1.1.0                                                                                      |
 
 Memory use in production was measured at idle only (the busiest service uses 27.7 % of its limit) and a rebuild on a clean VM has not been timed
-([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). **Next: F10** (frontend redesign, specified in
-[specs/011-frontend-redesign](specs/011-frontend-redesign/spec.md)); the former F10 (integrations) is now F11, both listed in
-[docs/PLAN.md](docs/PLAN.md) §10.
+([ADR-0099](docs/adr/0099-cierre-de-f9-despliegue.md)). F10 redesigned the frontend as "Línea Nocturna" (frontend only, five PRs, no feature flag): semantic light/dark tokens, self-hosted Atkinson Hyperlegible fonts under the strict CSP, an app shell with a rail and a bottom bar, nodes drawn as metro stations and runs as services with a status ([ADR-0101](docs/adr/0101-sistema-visual-linea-nocturna.md) to [ADR-0103](docs/adr/0103-cierre-de-f10-redisenio-del-frontend.md)). The final impeccable audit scored 17/20 (from 10/20) with no P0 or P1; the contrast, width, accessibility and editor-performance reports are in [docs/ui/](docs/ui/). Open exceptions (editor open time +31 %, no real screen reader pass yet, 320 px bottom bar) are listed with an owner in ADR-0103. **Next: F11** (integrations, still to be defined), listed in [docs/PLAN.md](docs/PLAN.md) §10.
 
 ## Architecture
 

@@ -98,10 +98,10 @@ export function LoginForm({ onLoggedIn }: { onLoggedIn: (info: SessionInfo) => v
         </Form>
       </CardContent>
       <CardFooter className="flex-wrap justify-between gap-x-4 gap-y-2 text-body-sm">
-        <a href="/forgot-password" className="underline">
+        <a href="/forgot-password" className="inline-flex min-h-11 items-center underline">
           Olvidé mi contraseña
         </a>
-        <a href="/verify-email" className="underline">
+        <a href="/verify-email" className="inline-flex min-h-11 items-center underline">
           Reenviar verificación
         </a>
       </CardFooter>
