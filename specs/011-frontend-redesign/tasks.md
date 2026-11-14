@@ -275,10 +275,14 @@ que no puede hacer un agente.
 - [x] T074 [US6] Medir `workflow-editor-performance` y el JS inicial antes/después; dentro de +10 % y +15 % (SC-011);
       documentar en la PR (JS inicial +0,04 %; apertura en caliente +31 % en navegador real, **desviación aceptada
       por el autor**, `docs/ui/editor-performance.md`)
-- [ ] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
+- [x] T075 [US8] Recorrido de anchos (editor y ejecución a 375 px con dedo emulado), modos claro/oscuro, escala de
       grises de estaciones y estados; 33 archivos de prueba previos (incluidas `workflow-editor*`, `runs-*`) sin debilitarlas
-- [ ] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde
-- [ ] T077 (autor) Merge de la PR 4 y comprobación en producción, incluida una ejecución real en vivo
+- [x] T076 [US8] Abrir la PR 4 con capturas del editor y de la ejecución en claro/oscuro a 375 y 1440 px; CI en verde
+- [x] T077 (autor) Merge de la PR 4 y comprobación en producción, incluida una ejecución real en vivo (merge de #92,
+      `9090b0f`, desplegado el 2026-11-14; en producción se publicó la versión 1 de un workflow de prueba y una
+      ejecución real terminó COMPLETADA en 2,4 s: Clasificar → Condición, rama «Sí» ejecutada y «No» omitida; vista
+      de ejecución con estaciones e insignias de estado, tira de pasos en la lista de Ejecuciones, sin errores de
+      consola)
 
 **Hito de PR 4:** el plano de estaciones en producción, en el editor y en la ejecución.
 
