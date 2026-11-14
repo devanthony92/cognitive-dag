@@ -493,6 +493,19 @@ function EditorSession({
     setPendingDelete(undefined);
   };
 
+  /** The station or connection that opened the delete confirmation: focus goes back to it. */
+  const deleteOpenerRef = useRef<HTMLElement | null>(null);
+  const restoreDeleteFocus = (event: Event) => {
+    event.preventDefault();
+    const opener = deleteOpenerRef.current;
+    deleteOpenerRef.current = null;
+    // After a deletion the opener is gone: land on the first station left, not on the page top.
+    (opener?.isConnected
+      ? opener
+      : document.querySelector<HTMLElement>('.react-flow__node')
+    )?.focus();
+  };
+
   const onEditorKeyDown = (event: KeyboardEvent<HTMLElement>) => {
     if (event.key === 'Escape' && connectFrom !== undefined) {
       setConnectFrom(undefined);
@@ -505,6 +518,7 @@ function EditorSession({
     const id = item.getAttribute('data-id');
     if (!id) return;
     const isNode = item.classList.contains('react-flow__node');
+    deleteOpenerRef.current = item;
     if (event.key === 'Enter' || event.key === ' ') {
       if (isNode && connectFrom !== undefined) {
         finishConnect(id);
@@ -564,7 +578,7 @@ function EditorSession({
         <Link
           to="/orgs/$organizationId/workflows"
           params={{ organizationId }}
-          className="text-sm underline"
+          className="inline-flex min-h-11 items-center text-sm underline"
         >
           Workflows
         </Link>
@@ -757,7 +771,7 @@ function EditorSession({
                   aria-selected={tab === id}
                   onClick={() => setTab(id)}
                   className={cn(
-                    'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
+                    'min-h-11 flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
                     tab === id ? 'border-ink' : 'border-transparent text-ink-muted hover:text-ink',
                   )}
                 >
@@ -849,7 +863,7 @@ function EditorSession({
                     aria-selected={tab === id}
                     onClick={() => setTab(id)}
                     className={cn(
-                      'flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
+                      'min-h-11 flex-1 border-b-2 px-3 py-2 text-sm font-medium outline-none focus-visible:ring-[3px] focus-visible:ring-focus/50',
                       tab === id
                         ? 'border-ink'
                         : 'border-transparent text-ink-muted hover:text-ink',
@@ -914,7 +928,7 @@ function EditorSession({
           open={pendingDelete !== undefined}
           onOpenChange={(open) => !open && setPendingDelete(undefined)}
         >
-          <DialogContent>
+          <DialogContent onCloseAutoFocus={restoreDeleteFocus}>
             <DialogHeader>
               <DialogTitle>{`¿Eliminar «${pendingDelete?.name ?? ''}»?`}</DialogTitle>
               <DialogDescription>

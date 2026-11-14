@@ -178,6 +178,7 @@
 .station-canvas .react-flow__attribution {
   background: var(--surface);
   color: var(--ink-muted);
+  font-size: 0.75rem;
 }
 .station-canvas .react-flow__attribution a {
   color: var(--ink-muted);

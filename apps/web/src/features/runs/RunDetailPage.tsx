@@ -122,7 +122,7 @@ export function RunDetailPage({
         <Link
           to="/orgs/$organizationId/workflows/$workflowId/runs"
           params={{ organizationId, workflowId: data.workflowId }}
-          className="text-sm underline"
+          className="inline-flex min-h-11 items-center text-sm underline"
         >
           Ejecuciones
         </Link>
