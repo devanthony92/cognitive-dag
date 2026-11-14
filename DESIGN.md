@@ -18,6 +18,8 @@ colors:
   ink-muted-day: "oklch(0.44 0.04 265)"
   action-night: "oklch(0.96 0.01 255)"
   on-action-night: "oklch(0.19 0.05 268)"
+  focus-night: "oklch(0.96 0.01 255)"
+  focus-day: "oklch(0.22 0.05 268)"
   action-day: "oklch(0.22 0.05 268)"
   on-action-day: "oklch(0.985 0.004 250)"
   state-running-night: "oklch(0.79 0.12 225)"
@@ -139,7 +141,7 @@ components:
 
 # Design System: CognitiveDAG
 
-<!-- SEED: elegido con el usuario antes de implementar (F10). Los tokens de arriba son el objetivo normativo del rediseño; reejecutar `/impeccable document` cuando exista el código para recoger los valores reales y generar el sidecar. Los pares claro/oscuro están por verificar con medidor de contraste (AA) al implementar. -->
+<!-- Contrastado con el código al cierre de F10 (2026-11-14): los 23 colores (46 valores claro y oscuro) y las escalas de tipo, radios, sombra, anchos y duraciones coinciden con `apps/web/src/styles/tokens.css`; los pares claro/oscuro pasan `scripts/ui/contrast.ts` (informe en `docs/ui/contrast-report.md`). -->
 
 ## Overview
 
@@ -242,11 +244,11 @@ Mínimo absoluto 12 px; desaparecen los 10/11 px. Razón de escala ≈1.25. Cada
 
 **Shell de aplicación (siempre presente, también en error):**
 
-- Cabecera de 56 px: logotipo (marca: anillo + cruz de registro de línea → por definir en el logo), selector de organización, usuario.
-- Carril de navegación a la izquierda: 240 px ≥1024 px; 72 px solo iconos+etiqueta bajo 1024 px; **barra inferior de 56 px** con 5 destinos bajo 768 px. Sin scroll horizontal en ningún ancho (hoy: 1043 px de cabecera).
+- Cabecera de 56 px: marca (símbolo SVG propio del bundle: anillo + cruz de registro de línea, con el nombre en Atkinson; favicon SVG), selector de organización, usuario.
+- Carril de navegación a la izquierda: 240 px ≥1024 px; 72 px solo iconos+etiqueta bajo 1024 px; **barra inferior de 56 px** con 5 destinos bajo 768 px. Sin scroll horizontal del documento en ningún ancho de 375 px en adelante, ni a 200 % de zoom. Bajo 375 px (320 px, el ancho de reflujo de WCAG 1.4.10) la barra inferior recorta la etiqueta del último destino: límite conocido, ver ADR-0103.
 - Destinos: Workflows, Ejecuciones, Aprobaciones, Conexiones, Miembros.
 
-**Tres anchos de página con nombre** (se acaba la mezcla actual de `max-w-3xl` y todo-ancho):
+**Tres anchos de página con nombre** (ninguna ruta usa otro `max-w-*`):
 
 - `page-narrow` 640 px: formularios y auth.
 - `page-default` 1120 px: listas y ajustes.
@@ -254,7 +256,7 @@ Mínimo absoluto 12 px; desaparecen los 10/11 px. Razón de escala ≈1.25. Cada
 
 **Espaciado** en base 4 px: 4, 8, 12, 16, 24, 32, 48, 64. Ritmo vertical: más aire sobre un encabezado que bajo él. Densidad de operación: filas de tabla de 52 px (objetivo táctil ≥44 px de contenido interactivo).
 
-**Objetivos táctiles:** 44×44 px mínimo en controles (hoy 36 px).
+**Objetivos táctiles:** 44×44 px mínimo en controles, enlaces de texto de formularios y migas, y pestañas.
 
 **Estados de carga y error de ruta:**
 
@@ -330,7 +332,8 @@ Duraciones: 120 ms (estado), 200 ms (paneles), 320 ms (rutas, máximo). Curva `c
 - **Do** mantener el shell (cabecera + carril) visible en carga, error y vacío.
 - **Do** usar `page-narrow`, `page-default` o `page-full`; ningún otro ancho.
 - **Do** autoalojar fuentes y respetar la CSP: nada de `style="…"` en HTML ni `<style>` inyectado; los tokens viven en CSS cargado desde `'self'`.
-- **Do** mínimo 44 px en objetivos táctiles y 12 px en texto.
+- **Do** mínimo 44 px en objetivos táctiles y 12 px en texto (también la atribución de React Flow).
+- **Do** bloquear el scroll bajo un diálogo con el atributo `data-scroll-locked` del `body` y una regla de `index.css` (`src/lib/remove-scroll-bar.ts`): el paquete original inyecta un `<style>` que la CSP bloquea.
 - **Do** definir el modo claro y el oscuro con los mismos tokens semánticos y verificar contraste AA en ambos.
 
 ### Don't:
