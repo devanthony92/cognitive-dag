@@ -8,6 +8,7 @@ export LC_ALL=C
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=/dev/null
 source "$here/lib.sh"
+reexec_from_current_release "${BASH_SOURCE[0]}" "$@"
 
 problems=0
 problem() {
