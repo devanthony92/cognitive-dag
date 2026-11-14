@@ -54,6 +54,7 @@ export function RecentCompilations({ organizationId, workflowId, selectedId, onS
         {list.isError && <ProblemAlert error={list.error} />}
         {list.data?.length === 0 && (
           <EmptyState
+            className="rounded-none border-0 py-4"
             titleAs="h3"
             title="Todavía no hay compilaciones."
             description="Describe lo que quieres automatizar y aparecerá aquí."
