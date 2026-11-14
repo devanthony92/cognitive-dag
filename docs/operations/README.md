@@ -48,6 +48,32 @@ Todos en la VM, como `cdag-deploy` (`sudo -iu cdag-deploy`).
 /opt/cognitive-dag/deploy/ops/compose.sh ps                  # docker compose con la configuración y la versión actual
 ```
 
+### Qué copia de los scripts se ejecuta
+
+Un despliegue **nunca mueve** el checkout de `/opt/cognitive-dag`: exporta cada commit a
+`/var/lib/cognitive-dag/state/releases/<sha>` y `deploy.sh` se re-ejecuta desde ahí. Por eso el
+`lib.sh` del checkout puede ser anterior al `compose.prod.yaml` de la versión en marcha, que exige
+variables (`*_CONFIG_HASH`, ADR-0100) que solo exporta el `lib.sh` de su propio commit.
+
+Para que eso no importe, `compose.sh`, `create-account.sh`, `doctor.sh`, `alerts.sh` y `rollback.sh`
+se re-ejecutan solos (`exec`, mismos argumentos y misma entrada estándar) desde
+`releases/<sha de current.env>/deploy/ops/<mismo script>`. No lo hacen si ya corren desde ahí, si no hay
+versión actual ni exportación de ella, ni cuando `CDAG_OPS_REEXEC` está definida (así no hay bucles).
+`ssh-deploy.sh`, la orden forzada de la clave de despliegue, y `deploy.sh` siguen ejecutándose desde
+`/opt`: `deploy.sh` ya hace su propio traspaso a la exportación.
+
+**Paso manual único**: un checkout anterior a este arreglo no trae el traspaso, así que hay que
+actualizarlo una vez, como el dueño del checkout (no como `root`, para no dejar archivos de `root` en él):
+
+```bash
+sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only
+```
+
+Los despliegues no dependen de ese paso: `ssh-deploy.sh` y `deploy.sh` viejos siguen desplegando bien. Si
+un script falla con `required variable TEMPORAL_CONFIG_HASH is missing a value`, el checkout sigue sin
+actualizar; mientras tanto se puede ejecutar el script desde la exportación:
+`/var/lib/cognitive-dag/state/releases/<sha de current.env>/deploy/ops/<script>`.
+
 ### Crear una cuenta (el registro está cerrado, D23A)
 
 Caddy responde 404 a `POST /api/v1/auth/register`, así que las cuentas autorizadas se crean desde la VM,

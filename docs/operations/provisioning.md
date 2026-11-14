@@ -132,6 +132,11 @@ sudo systemctl start cognitive-dag-alerts.service     # una pasada a mano; no de
 
 Prueba cada alerta una vez con el procedimiento de [alerts.md](./alerts.md).
 
+> Los scripts de operación (`create-account.sh`, `compose.sh`, `doctor.sh`, `alerts.sh`, `rollback.sh`)
+> se re-ejecutan desde la exportación de la versión actual, así que no importa que `/opt/cognitive-dag`
+> quede atrás tras los despliegues. Si el checkout es anterior a ese traspaso, actualízalo una vez:
+> `sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only` (ver [README.md](./README.md#qué-copia-de-los-scripts-se-ejecuta)).
+
 ### 9. Despliegue automático
 
 Configura la llave restringida y el entorno `deploy` de GitHub como indica
@@ -194,3 +199,7 @@ sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only
 sudo systemctl restart cognitive-dag-secrets      # vuelve a volcar los secretos y deja ca.crt en 0444
 sudo -iu cdag-deploy /opt/cognitive-dag/deploy/ops/deploy.sh <sha-del-merge>
 ```
+
+Con un checkout anterior al traspaso de los scripts de operación (ver [README.md](./README.md#qué-copia-de-los-scripts-se-ejecuta)), el `git pull --ff-only`
+de arriba es también el paso manual que hace que `create-account.sh`, `compose.sh`, `doctor.sh`,
+`alerts.sh` y `rollback.sh` se ejecuten desde la versión desplegada.

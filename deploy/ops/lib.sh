@@ -156,6 +156,27 @@ compose() {
   )
 }
 
+# reexec_from_current_release <this script> [args...]: the operation scripts are used from the checkout
+# in CDAG_ROOT, which a deploy never moves (it is only the source of the exports), so its copy of
+# this library and of the scripts can be older than the Compose file of the running version: that
+# file may need variables (like *_CONFIG_HASH) that only the library of its own commit exports.
+# This replaces the process by the same script from the export of the current version, with the same
+# arguments and standard input; with no export, no current version, or when it already runs from
+# there, it returns and the script goes on in place. CDAG_OPS_REEXEC stops any loop.
+reexec_from_current_release() {
+  local script="$1" sha target here
+  shift
+  [[ -z "${CDAG_OPS_REEXEC:-}" ]] || return 0
+  # No current.env is normal (first deploy): it must not end a script that runs with `set -e`.
+  sha="$(sed -n 's/^GIT_SHA=//p' "$STATE_DIR/current.env" 2>/dev/null | tail -n 1 || true)"
+  [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || return 0
+  target="$RELEASES_DIR/$sha/deploy/ops/$(basename "$script")"
+  [[ -f "$target" ]] || return 0
+  here="$(cd "$(dirname "$script")" && pwd -P)"
+  [[ "$here" != "$(cd "$(dirname "$target")" && pwd -P)" ]] || return 0
+  CDAG_OPS_REEXEC=1 exec bash "$target" "$@"
+}
+
 state_value() { # state_value <file> <KEY>: a value of a version file, empty when there is none
   local file="$STATE_DIR/$1" key="$2"
   [[ -f "$file" ]] || return 0

@@ -563,6 +563,148 @@ if [[ " $* " == *" archive "* ]]; then tar -c -C "$STUB_REPO" deploy; fi`,
     });
   });
 
+  describe('operation scripts run from the current release (the checkout is stale)', () => {
+    const opsDir = (): string => dir('opt/cognitive-dag/deploy/ops');
+    const releaseOps = (sha: string): string => state(`releases/${sha}/deploy/ops`);
+    const OPS_WITH_COMPOSE = ['compose.sh', 'doctor.sh', 'rollback.sh', 'create-account.sh'];
+
+    /**
+     * Puts a copy of the scripts in the checkout whose library is older than the release: it does not
+     * export the *_CONFIG_HASH variables that the Compose file of the release requires.
+     */
+    function staleCheckout(): void {
+      cpSync(join(ROOT, 'deploy/ops'), opsDir(), { recursive: true });
+      const lib = readFileSync(join(opsDir(), 'lib.sh'), 'utf8');
+      const stale = lib.replace(/ "\$\{upper\}_CONFIG_HASH=[^\n]*\)"\)/, ')');
+      expect(stale).not.toBe(lib);
+      writeFileSync(join(opsDir(), 'lib.sh'), stale);
+    }
+    const fromCheckout = (script: string, args: string[] = [], input?: string) =>
+      sandbox.run(posix(join(opsDir(), script)), args, env(), input);
+    const lastCompose = (): ComposeCall => composeCalls().at(-1) as ComposeCall;
+
+    it('a stale lib.sh in the checkout would run compose without the hash', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      staleCheckout();
+      sandbox.clearCalls();
+      const result = fromCheckout('compose.sh', ['ps'], undefined);
+      expect(result.status, result.output).toBe(0);
+      // Marker that the release was used: its library exports the hash of each configuration.
+      expect(lastCompose().config.temporal.hash).toMatch(/^[0-9a-f]{64}$/);
+    });
+
+    it.each([
+      ['compose.sh', ['ps']],
+      ['doctor.sh', []],
+    ])('%s from the checkout runs the library of the current release', (script, args) => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      staleCheckout();
+      sandbox.clearCalls();
+      sandbox.stub(
+        'stat',
+        'if [[ "$1" == "-f" ]]; then echo tmpfs; else exec /usr/bin/stat "$@"; fi',
+      );
+      fromCheckout(script, args);
+      const calls = composeCalls();
+      expect(calls.length).toBeGreaterThan(0);
+      for (const call of calls) {
+        expect(call.sha).toBe(SHA2);
+        for (const svc of CONFIG_SERVICES) expect(call.config[svc].hash).toMatch(/^[0-9a-f]{64}$/);
+        expect(/ -f (\S+)/.exec(call.args)?.[1]).toBe(
+          posix(state(`releases/${SHA2}/deploy/compose.prod.yaml`)),
+        );
+      }
+    });
+
+    it('rollback.sh from the checkout keeps working', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      expect(deploy(SHA2).status).toBe(0);
+      staleCheckout();
+      sandbox.clearCalls();
+      const result = fromCheckout('rollback.sh');
+      expect(result.status, result.output).toBe(0);
+      expect(readState('current.env')).toContain(SHA1);
+      for (const call of composeCalls()) {
+        for (const svc of CONFIG_SERVICES) expect(call.config[svc].hash).toMatch(/^[0-9a-f]{64}$/);
+      }
+    });
+
+    it('create-account.sh from the checkout keeps the arguments and the password on stdin', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      staleCheckout();
+      sandbox.stub(
+        'docker',
+        `if [[ " $* " == *" exec "* ]]; then cat >"$STUB_STDIN"; echo 202; fi
+printf 'cfg %s\\n' "$TEMPORAL_CONFIG_HASH" >>"$STUB_LOG"`,
+      );
+      const password = randomBytes(12).toString('base64url');
+      const result = sandbox.run(
+        posix(join(opsDir(), 'create-account.sh')),
+        ['someone@example.test', 'Alguien'],
+        env({ STUB_STDIN: posix(dir('stdin.txt')) }),
+        `${password}\n`,
+      );
+      expect(result.status, result.output).toBe(0);
+      const sent = readFileSync(dir('stdin.txt'), 'utf8');
+      expect(sent).toContain(password);
+      expect(sent).toContain('someone@example.test');
+      expect(sandbox.calls().join('\n')).toMatch(/cfg [0-9a-f]{64}/);
+      expect(sandbox.calls().join('\n')).not.toContain(password);
+    });
+
+    it('runs in place, once, when it already is the release or the environment says it was re-run', () => {
+      expect(deploy(SHA1).status).toBe(0);
+      staleCheckout();
+      // From the release itself: nothing to hand over.
+      sandbox.clearCalls();
+      const own = sandbox.run(posix(join(releaseOps(SHA1), 'compose.sh')), ['ps'], env());
+      expect(own.status, own.output).toBe(0);
+      expect(composeCalls()).toHaveLength(1);
+      // Marked as already re-run: the stale copy is used as it is, and does not loop.
+      sandbox.clearCalls();
+      const marked = sandbox.run(
+        posix(join(opsDir(), 'compose.sh')),
+        ['ps'],
+        env({ CDAG_OPS_REEXEC: '1' }),
+      );
+      expect(marked.status, marked.output).toBe(0);
+      expect(composeCalls()).toHaveLength(1);
+      expect(lastCompose().config.temporal.hash).toBe('');
+    });
+
+    it('runs in place when there is no current version or no export of it', () => {
+      staleCheckout();
+      expect(fromCheckout('compose.sh', ['ps']).output).toMatch(/no version has been deployed/);
+      expect(deploy(SHA1).status).toBe(0);
+      rmSync(state(`releases/${SHA1}`), { recursive: true });
+      sandbox.clearCalls();
+      const result = fromCheckout('compose.sh', ['ps']);
+      expect(result.status, result.output).toBe(0);
+      expect(composeCalls()).toHaveLength(1);
+    });
+
+    it('ssh-deploy.sh and deploy.sh stay in the checkout', () => {
+      for (const script of ['ssh-deploy.sh', 'deploy.sh', 'check-headers.sh', 'lib.sh']) {
+        const text = readFileSync(join(ROOT, 'deploy/ops', script), 'utf8');
+        expect(text, script).not.toContain('reexec_from_current_release "');
+      }
+    });
+
+    it('every script that runs compose hands over to the current release', () => {
+      const files = readdirSync(join(ROOT, 'deploy/ops')).filter((f) => f.endsWith('.sh'));
+      const handed = files.filter((f) =>
+        readFileSync(join(ROOT, 'deploy/ops', f), 'utf8').includes(
+          'reexec_from_current_release "${BASH_SOURCE[0]}" "$@"',
+        ),
+      );
+      expect(handed.sort()).toEqual(
+        ['alerts.sh', 'compose.sh', 'create-account.sh', 'doctor.sh', 'rollback.sh'].sort(),
+      );
+      expect(OPS_WITH_COMPOSE.every((f) => handed.includes(f))).toBe(true);
+    });
+  });
+
   describe('rollback.sh', () => {
     function twoVersions(): void {
       expect(deploy(SHA1).status).toBe(0);

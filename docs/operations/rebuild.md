@@ -28,6 +28,10 @@ datos de prueba se pierden y las cuentas se vuelven a crear con `create-account.
    `sudo -iu cdag-deploy /opt/cognitive-dag/deploy/ops/deploy.sh <sha>`. Como no hay base de datos, no hay
    volcado previo; el `migrator` crea el esquema desde cero.
 6. Crea las cuentas con `create-account.sh` y vuelve a probar las alertas ([alerts.md](./alerts.md)).
+   En una VM nueva el checkout de `/opt/cognitive-dag` queda atrás de la versión en marcha tras desplegar.
+   No hace falta actualizarlo: `create-account.sh`, `compose.sh`, `doctor.sh`, `alerts.sh` y `rollback.sh` se
+   re-ejecutan desde la exportación de la versión actual (ver [README.md](./README.md#qué-copia-de-los-scripts-se-ejecuta)). Solo un checkout clonado de un
+   commit anterior a ese traspaso necesita `sudo -u cdag-deploy git -C /opt/cognitive-dag pull --ff-only` una vez.
 
 Comprobación: `doctor.sh` termina en `ok`, `check-headers.sh` pasa y se puede iniciar sesión.
 
